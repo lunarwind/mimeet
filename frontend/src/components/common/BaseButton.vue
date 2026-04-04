@@ -1,6 +1,11 @@
 <template>
   <button
-    :class="['btn', `btn-${variant}`, `btn-${size}`, { 'btn-loading': loading, 'w-full': fullWidth }]"
+    :class="[
+      'btn',
+      `btn-${variant}`,
+      `btn-${size}`,
+      { 'btn-loading': loading, 'w-full': fullWidth },
+    ]"
     :disabled="disabled || loading"
     @click="$emit('click', $event)"
   >
@@ -37,33 +42,81 @@ defineEmits<{
   outline: none;
 }
 
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* Size */
-.btn-sm  { height: 40px; padding: 0 16px; font-size: 14px; }
-.btn-md  { height: 48px; padding: 0 24px; font-size: 15px; }
-.btn-lg  { height: 56px; padding: 0 32px; font-size: 16px; }
+.btn-sm {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.btn-md {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 15px;
+}
+.btn-lg {
+  height: 56px;
+  padding: 0 32px;
+  font-size: 16px;
+}
 
 /* Variant */
-.btn-primary   { background: #F0294E; color: white; }
-.btn-primary:hover:not(:disabled)   { background: #D01A3C; }
-.btn-secondary { background: transparent; color: #374151; border: 1.5px solid #E5E7EB; }
-.btn-secondary:hover:not(:disabled) { background: #F9FAFB; border-color: #D1D5DB; }
-.btn-danger    { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
-.btn-danger:hover:not(:disabled)    { background: #FEE2E2; }
-.btn-ghost     { background: transparent; color: #F0294E; border: none; }
-.btn-ghost:hover:not(:disabled)     { background: #FFF1F3; }
+.btn-primary {
+  background: #f0294e;
+  color: white;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #d01a3c;
+}
+.btn-secondary {
+  background: transparent;
+  color: #374151;
+  border: 1.5px solid #e5e7eb;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+.btn-danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+.btn-ghost {
+  background: transparent;
+  color: #f0294e;
+  border: none;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: #fff1f3;
+}
 
-.w-full { width: 100%; }
+.w-full {
+  width: 100%;
+}
 
 /* Spinner */
 .spinner {
-  width: 18px; height: 18px;
-  border: 2px solid rgba(255,255,255,0.3);
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

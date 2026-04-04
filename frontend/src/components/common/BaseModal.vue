@@ -7,8 +7,15 @@
           <div v-if="title" class="modal-header">
             <span class="modal-title">{{ title }}</span>
             <button v-if="closable" class="modal-close" @click="$emit('update:modelValue', false)">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M18 6 6 18M6 6l12 12"/>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
@@ -29,15 +36,18 @@
 </template>
 
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-  modelValue: boolean
-  title?: string
-  closable?: boolean
-  closeOnOverlay?: boolean
-}>(), {
-  closable: true,
-  closeOnOverlay: true,
-})
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    title?: string
+    closable?: boolean
+    closeOnOverlay?: boolean
+  }>(),
+  {
+    closable: true,
+    closeOnOverlay: true,
+  },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -89,7 +99,7 @@ function onOverlayClick() {
   background: none;
   border: none;
   cursor: pointer;
-  color: #6B7280;
+  color: #6b7280;
   padding: 4px;
   display: flex;
   align-items: center;

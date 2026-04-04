@@ -1,4 +1,4 @@
-export function mockLogin(data: any) {
+export function mockLogin(_data: any) {
   return {
     success: true,
     data: {
@@ -18,7 +18,7 @@ export function mockLogin(data: any) {
   }
 }
 
-export function mockRegister(data: any) {
+export function mockRegister(_data: any) {
   return {
     success: true,
     data: {

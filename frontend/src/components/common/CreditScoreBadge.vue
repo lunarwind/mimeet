@@ -39,26 +39,26 @@ const levelLabel = computed(() => {
 }
 
 .credit-top {
-  background: #FFFBEB;
-  color: #92400E;
-  border-color: #FDE68A;
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
 }
 
 .credit-good {
-  background: #ECFDF5;
-  color: #065F46;
-  border-color: #A7F3D0;
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
 }
 
 .credit-normal {
-  background: #EFF6FF;
-  color: #1E40AF;
-  border-color: #BFDBFE;
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
 }
 
 .credit-low {
-  background: #FEF2F2;
-  color: #991B1B;
-  border-color: #FECACA;
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
 }
 </style>

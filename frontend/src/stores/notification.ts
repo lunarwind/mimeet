@@ -13,21 +13,19 @@ export interface Notification {
 
 export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref<Notification[]>([])
-  const unreadCount = computed(
-    () => notifications.value.filter(n => !n.isRead).length
-  )
+  const unreadCount = computed(() => notifications.value.filter((n) => !n.isRead).length)
 
   function setNotifications(list: Notification[]) {
     notifications.value = list
   }
 
   function markAsRead(notificationId: number) {
-    const n = notifications.value.find(n => n.id === notificationId)
+    const n = notifications.value.find((n) => n.id === notificationId)
     if (n) n.isRead = true
   }
 
   function markAllAsRead() {
-    notifications.value.forEach(n => (n.isRead = true))
+    notifications.value.forEach((n) => (n.isRead = true))
   }
 
   function addNotification(notification: Notification) {

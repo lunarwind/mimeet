@@ -24,7 +24,7 @@ export const useUiStore = defineStore('ui', () => {
   function showToast(
     message: string,
     type: 'success' | 'error' | 'warning' | 'info' = 'info',
-    duration = 3000
+    duration = 3000,
   ) {
     toast.value = { message, type, visible: true }
     setTimeout(() => {
