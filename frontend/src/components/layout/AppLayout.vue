@@ -4,8 +4,15 @@
     <header class="top-bar">
       <div class="top-bar-left">
         <button v-if="showBack" @click="router.back()" class="back-btn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m15 18-6-6 6-6"/>
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="m15 18-6-6 6-6" />
           </svg>
         </button>
         <span class="top-bar-title">{{ title }}</span>
@@ -31,13 +38,16 @@ import BottomNav from './BottomNav.vue'
 
 const router = useRouter()
 
-withDefaults(defineProps<{
-  title?: string
-  showBack?: boolean
-}>(), {
-  title: 'MiMeet',
-  showBack: false,
-})
+withDefaults(
+  defineProps<{
+    title?: string
+    showBack?: boolean
+  }>(),
+  {
+    title: 'MiMeet',
+    showBack: false,
+  },
+)
 </script>
 
 <style scoped>
@@ -45,7 +55,7 @@ withDefaults(defineProps<{
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: #F9F9FB;
+  background: #f9f9fb;
 }
 
 .top-bar {
@@ -53,7 +63,7 @@ withDefaults(defineProps<{
   top: 0;
   height: 56px;
   background: white;
-  border-bottom: 0.5px solid #E5E7EB;
+  border-bottom: 0.5px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;

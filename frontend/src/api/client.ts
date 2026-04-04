@@ -7,7 +7,7 @@ const client: AxiosInstance = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+    Accept: 'application/json',
   },
   timeout: 10000,
 })
@@ -56,7 +56,7 @@ client.interceptors.response.use(
     }
 
     return Promise.reject(error)
-  }
+  },
 )
 
 import { setupMockAdapter } from '@/mocks/mockAdapter'

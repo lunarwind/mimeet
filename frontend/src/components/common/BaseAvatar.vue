@@ -1,12 +1,6 @@
 <template>
   <div :class="['avatar', `avatar-${size}`]">
-    <img
-      v-if="src"
-      :src="src"
-      :alt="alt"
-      class="avatar-img"
-      @error="onError"
-    />
+    <img v-if="src" :src="src" :alt="alt" class="avatar-img" @error="onError" />
     <div v-else class="avatar-fallback">
       {{ initials }}
     </div>
@@ -17,18 +11,21 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-const props = withDefaults(defineProps<{
-  src?: string | null
-  alt?: string
-  nickname?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl'
-  showOnline?: boolean
-  isOnline?: boolean
-}>(), {
-  size: 'md',
-  showOnline: false,
-  isOnline: false,
-})
+const props = withDefaults(
+  defineProps<{
+    src?: string | null
+    alt?: string
+    nickname?: string
+    size?: 'sm' | 'md' | 'lg' | 'xl'
+    showOnline?: boolean
+    isOnline?: boolean
+  }>(),
+  {
+    size: 'md',
+    showOnline: false,
+    isOnline: false,
+  },
+)
 
 const imgError = ref(false)
 
@@ -50,10 +47,22 @@ function onError() {
   overflow: hidden;
 }
 
-.avatar-sm  { width: 32px; height: 32px; }
-.avatar-md  { width: 48px; height: 48px; }
-.avatar-lg  { width: 56px; height: 56px; }
-.avatar-xl  { width: 80px; height: 80px; }
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+}
+.avatar-md {
+  width: 48px;
+  height: 48px;
+}
+.avatar-lg {
+  width: 56px;
+  height: 56px;
+}
+.avatar-xl {
+  width: 80px;
+  height: 80px;
+}
 
 .avatar-img {
   width: 100%;
@@ -64,8 +73,8 @@ function onError() {
 .avatar-fallback {
   width: 100%;
   height: 100%;
-  background: #F4C0D1;
-  color: #72243E;
+  background: #f4c0d1;
+  color: #72243e;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,6 +93,10 @@ function onError() {
   border: 1.5px solid white;
 }
 
-.online  { background: #10B981; }
-.offline { background: #D1D5DB; }
+.online {
+  background: #10b981;
+}
+.offline {
+  background: #d1d5db;
+}
 </style>

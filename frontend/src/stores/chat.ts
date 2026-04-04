@@ -16,21 +16,19 @@ export interface Conversation {
 
 export const useChatStore = defineStore('chat', () => {
   const conversations = ref<Conversation[]>([])
-  const totalUnread = computed(() =>
-    conversations.value.reduce((sum, c) => sum + c.unreadCount, 0)
-  )
+  const totalUnread = computed(() => conversations.value.reduce((sum, c) => sum + c.unreadCount, 0))
 
   function setConversations(list: Conversation[]) {
     conversations.value = list
   }
 
   function markAsRead(conversationId: number) {
-    const conv = conversations.value.find(c => c.id === conversationId)
+    const conv = conversations.value.find((c) => c.id === conversationId)
     if (conv) conv.unreadCount = 0
   }
 
   function incrementUnread(conversationId: number) {
-    const conv = conversations.value.find(c => c.id === conversationId)
+    const conv = conversations.value.find((c) => c.id === conversationId)
     if (conv) conv.unreadCount++
   }
 

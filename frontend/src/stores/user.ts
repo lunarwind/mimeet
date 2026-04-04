@@ -15,12 +15,8 @@ export interface User {
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null)
-  const memberLevel = ref<number>(
-    parseInt(localStorage.getItem('member_level') ?? '0')
-  )
-  const isSuspended = ref<boolean>(
-    localStorage.getItem('is_suspended') === 'true'
-  )
+  const memberLevel = ref<number>(parseInt(localStorage.getItem('member_level') ?? '0'))
+  const isSuspended = ref<boolean>(localStorage.getItem('is_suspended') === 'true')
 
   function setUser(user: User) {
     currentUser.value = user

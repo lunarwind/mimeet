@@ -6,14 +6,17 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
-  fullscreen?: boolean
-  size?: number
-  text?: string
-}>(), {
-  fullscreen: false,
-  size: 32,
-})
+withDefaults(
+  defineProps<{
+    fullscreen?: boolean
+    size?: number
+    text?: string
+  }>(),
+  {
+    fullscreen: false,
+    size: 32,
+  },
+)
 </script>
 
 <style scoped>
@@ -34,17 +37,21 @@ withDefaults(defineProps<{
 }
 
 .spinner {
-  border: 3px solid #F3F4F6;
-  border-top-color: #F0294E;
+  border: 3px solid #f3f4f6;
+  border-top-color: #f0294e;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .loading-text {
   font-size: 14px;
-  color: #6B7280;
+  color: #6b7280;
   font-family: 'Noto Sans TC', sans-serif;
 }
 </style>
