@@ -35,7 +35,7 @@ export const publicRoutes: RouteRecordRaw[] = [
     path: '/verify-email',
     name: 'verify-email',
     component: () => import('@/views/public/EmailVerifyView.vue'),
-    meta: { requiresAuth: true, minLevel: 1 },
+    meta: { requiresAuth: false, minLevel: 1 },
   },
   {
     path: '/privacy',

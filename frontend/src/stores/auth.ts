@@ -1,27 +1,63 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { getMe } from '@/api/auth'
+
+export interface AuthUser {
+  id: number
+  email: string
+  nickname: string
+  avatar: string | null
+  gender: string
+  status: string
+  credit_score: number
+  membership_level: number
+  verified: string
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('auth_token'))
-  const isLoggedIn = computed(() => !!token.value)
+  const user = ref<AuthUser | null>(null)
 
-  function setToken(newToken: string) {
-    token.value = newToken
-    localStorage.setItem('auth_token', newToken)
+  const isLoggedIn = computed(() => !!token.value)
+  const membershipLevel = computed(() => user.value?.membership_level ?? 0)
+  const isSuspended = computed(() => user.value?.status === 'suspended')
+
+  function setToken(t: string) {
+    token.value = t
+    localStorage.setItem('auth_token', t)
   }
 
-  function clearToken() {
-    token.value = null
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('member_level')
-    localStorage.removeItem('is_suspended')
+  function setUser(u: AuthUser) {
+    user.value = u
   }
 
   async function initialize() {
-    // 之後從 API 驗證 token 有效性
-    // 目前先從 localStorage 恢復狀態
-    token.value = localStorage.getItem('auth_token')
+    if (!token.value) return
+    // 已有 token，嘗試取得用戶資料（頁面重整後恢復狀態）
+    try {
+      const data = await getMe()
+      user.value = data.user
+    } catch {
+      // Token 失效，清除
+      logout()
+    }
   }
 
-  return { token, isLoggedIn, setToken, clearToken, initialize }
+  function logout() {
+    token.value = null
+    user.value = null
+    localStorage.removeItem('auth_token')
+  }
+
+  return {
+    token,
+    user,
+    isLoggedIn,
+    membershipLevel,
+    isSuspended,
+    setToken,
+    setUser,
+    initialize,
+    logout,
+  }
 })
