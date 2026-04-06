@@ -55,4 +55,10 @@ export const publicRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/public/AntiFraudView.vue'),
     meta: { requiresAuth: false },
   },
+  {
+    path: '/dev/check',
+    name: 'dev-sprint-check',
+    component: () => import('@/views/dev/SprintCheckView.vue'),
+    meta: { requiresAuth: false },
+  },
 ]
