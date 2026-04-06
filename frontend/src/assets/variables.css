@@ -1,0 +1,15 @@
+:root {
+  --primary: #F0294E;
+  --primary-dark: #D01A3C;
+  --primary-light: #FFF5F7;
+  --primary-50: #FFE4EA;
+  --gold: #F59E0B;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --surface: #F9F9FB;
+  --card: #FFFFFF;
+  --border: #E5E7EB;
+  --hero-gradient-start: #F0294E;
+  --hero-gradient-end: #A80F2C;
+}
