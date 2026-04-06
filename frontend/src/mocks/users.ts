@@ -279,9 +279,10 @@ export function mockFetchUserProfile(userId: number): UserProfileData | null {
     job: JOBS[idx % JOBS.length],
     education: EDUCATIONS[idx % EDUCATIONS.length],
     photos: [
-      { id: 1, url: `https://i.pravatar.cc/400?img=${userId}`, is_avatar: true, order: 0 },
-      { id: 2, url: `https://i.pravatar.cc/400?img=${(userId % 50) + 1}`, is_avatar: false, order: 1 },
-      { id: 3, url: `https://i.pravatar.cc/400?img=${((userId + 10) % 50) + 1}`, is_avatar: false, order: 2 },
+      { id: 1, url: `https://picsum.photos/seed/user${userId}a/400/400`, is_avatar: true, order: 0 },
+      { id: 2, url: `https://picsum.photos/seed/user${userId}b/400/400`, is_avatar: false, order: 1 },
+      { id: 3, url: `https://picsum.photos/seed/user${userId}c/400/400`, is_avatar: false, order: 2 },
+      { id: 4, url: `https://picsum.photos/seed/user${userId}d/400/400`, is_avatar: false, order: 3 },
     ],
     verification_status: {
       email_verified: user.emailVerified,

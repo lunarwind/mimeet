@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import UserCard from '@/components/explore/UserCard.vue'
 import FilterBottomSheet from '@/components/explore/FilterBottomSheet.vue'
@@ -45,6 +45,7 @@ const {
   isLoadingMore,
   hasMore,
   isEmpty,
+  sentinelRef,
   fetchMore,
   reset,
 } = useExplore(mergedFilters)
@@ -58,22 +59,6 @@ watch(searchQuery, () => {
 
 // 標籤切換立即重新載入
 watch(activeTag, () => reset())
-
-// Intersection Observer 觸發載入更多
-const sentinelRef = ref<HTMLElement | null>(null)
-let observer: IntersectionObserver | null = null
-
-onMounted(() => {
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries[0].isIntersecting && hasMore.value && !isLoadingMore.value) {
-        fetchMore()
-      }
-    },
-    { rootMargin: '200px' }
-  )
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
-})
 
 // ── 篩選 Bottom Sheet 操作 ────────────────────────────────
 function onApplyFilter(filters: ExploreFilter) {

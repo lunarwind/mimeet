@@ -59,3 +59,14 @@ export const CreditLevelLabel: Record<CreditLevel, string> = {
   normal: '普通',
   low: '受限',
 }
+
+/** 個人資料更新 payload */
+export interface UpdateProfilePayload {
+  nickname?: string
+  introduction?: string
+  location?: string
+  height?: number
+  weight?: number
+  education?: string
+  job?: string
+}

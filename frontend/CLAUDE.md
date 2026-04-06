@@ -22,6 +22,11 @@
 - S3-06 VerifyView ✅
 - S3-07 SuspendedView ✅
 
+- S3-08 AppealView ✅
+- S3-09 useProfile ✅
+- S3-10 useInfiniteScroll ✅
+
 ## Sprint 3 附加產出
 - Mock 資料系統：src/mocks/users.ts（50 筆測試用戶，DEV 自動啟用）
 - 檢核頁面：src/views/dev/SprintCheckView.vue（路由 #/dev/check）
+- Dev 身份切換：5 種測試身份（Lv1/Lv2/Lv3/受限/停權）

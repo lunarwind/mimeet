@@ -49,6 +49,16 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('auth_token')
   }
 
+  /**
+   * Dev 專用：直接設定 mock user（不打 API）
+   * 只在 import.meta.env.DEV 下使用
+   */
+  function setDevUser(mockUser: AuthUser) {
+    token.value = 'dev-mock-token'
+    localStorage.setItem('auth_token', 'dev-mock-token')
+    user.value = mockUser
+  }
+
   return {
     token,
     user,
@@ -57,6 +67,7 @@ export const useAuthStore = defineStore('auth', () => {
     isSuspended,
     setToken,
     setUser,
+    setDevUser,
     initialize,
     logout,
   }

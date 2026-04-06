@@ -2,17 +2,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import VerifyBadge from '@/components/common/VerifyBadge.vue'
-import { fetchUserProfile, favoriteUser, unfavoriteUser, blockUser, type UserProfileData } from '@/api/users'
+import { blockUser } from '@/api/users'
 import { getCreditLevel, CreditLevelLabel } from '@/types/user'
 import { useAuthStore } from '@/stores/auth'
+import { useProfile } from '@/composables/useProfile'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-
-const profile = ref<UserProfileData | null>(null)
-const isLoading = ref(true)
-const error = ref<string | null>(null)
+const { profile, isLoading, error, fetchProfile, toggleFavorite: doToggleFavorite } = useProfile()
 const bioExpanded = ref(false)
 const currentPhotoIndex = ref(0)
 const showMoreMenu = ref(false)
@@ -62,14 +60,8 @@ const lastActiveText = computed(() => {
 const isSelf = computed(() => authStore.user?.id === userId.value)
 
 // ── 載入 ──────────────────────────────────────────────────
-onMounted(async () => {
-  try {
-    profile.value = await fetchUserProfile(userId.value)
-  } catch {
-    error.value = '無法載入用戶資料'
-  } finally {
-    isLoading.value = false
-  }
+onMounted(() => {
+  fetchProfile(userId.value)
 })
 
 // ── 圖片輪播 ──────────────────────────────────────────────
@@ -88,13 +80,7 @@ async function toggleFavorite() {
   if (!profile.value || favoriteLoading.value) return
   favoriteLoading.value = true
   try {
-    if (profile.value.is_favorited) {
-      await unfavoriteUser(profile.value.id)
-      profile.value.is_favorited = false
-    } else {
-      await favoriteUser(profile.value.id)
-      profile.value.is_favorited = true
-    }
+    await doToggleFavorite(profile.value.id)
   } finally {
     favoriteLoading.value = false
   }
