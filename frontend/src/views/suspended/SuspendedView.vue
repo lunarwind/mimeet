@@ -1,260 +1,440 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const userNickname = computed(() => authStore.user?.nickname ?? '用戶')
+const creditScore = computed(() => authStore.user?.credit_score ?? 0)
+const maxScore = 120
+const scorePercent = computed(() => Math.max(0, Math.min(100, (creditScore.value / maxScore) * 100)))
+const suspendReason = computed(() => {
+  if (creditScore.value <= 0) return '您的帳號因誠信分數歸零已被系統自動停權'
+  return '您的帳號因違反使用條款已被暫停'
+})
+
+// ── 分數動畫 ──────────────────────────────────────────────
+const animatedScore = ref(0)
+
+onMounted(() => {
+  const target = creditScore.value
+  if (target <= 0) { animatedScore.value = 0; return }
+  const duration = 1000
+  const start = performance.now()
+  function step(now: number) {
+    const elapsed = now - start
+    const progress = Math.min(elapsed / duration, 1)
+    // ease-out
+    const eased = 1 - Math.pow(1 - progress, 3)
+    animatedScore.value = Math.round(eased * target)
+    if (progress < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+})
 
 function goToAppeal() {
   router.push('/suspended/appeal')
 }
 
 function handleLogout() {
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('member_level')
+  localStorage.removeItem('is_suspended')
+  localStorage.removeItem('dev_identity_key')
   authStore.logout()
   router.push('/login')
 }
 </script>
 
 <template>
-  <div class="suspended-view">
-    <!-- 圖示 -->
-    <div class="suspended-icon" aria-hidden="true">
-      <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-        <circle cx="40" cy="40" r="36" fill="#FEF2F2" stroke="#FECACA" stroke-width="2"/>
-        <circle cx="40" cy="40" r="24" fill="#FEE2E2"/>
-        <path
-          d="M40 28v12"
-          stroke="#EF4444"
-          stroke-width="3"
-          stroke-linecap="round"
-        />
-        <circle cx="40" cy="48" r="2" fill="#EF4444"/>
-      </svg>
+  <div class="suspended-page">
+    <!-- 模糊背景：假 ExploreView -->
+    <div class="suspended-bg" aria-hidden="true">
+      <!-- 假 TopBar -->
+      <div class="fake-topbar">
+        <div class="fake-topbar__title" />
+        <div class="fake-topbar__btn" />
+      </div>
+      <!-- 假搜尋框 -->
+      <div class="fake-search" />
+      <!-- 假標籤列 -->
+      <div class="fake-tags">
+        <span v-for="n in 5" :key="n" class="fake-tag" />
+      </div>
+      <!-- 假 UserCard x6 -->
+      <div v-for="n in 6" :key="n" class="fake-card">
+        <div class="fake-card__avatar" />
+        <div class="fake-card__body">
+          <div class="fake-card__line fake-card__line--name" />
+          <div class="fake-card__line fake-card__line--sub" />
+          <div class="fake-card__line fake-card__line--badges" />
+        </div>
+        <div class="fake-card__right">
+          <div class="fake-card__badge" />
+          <div class="fake-card__heart" />
+        </div>
+      </div>
     </div>
 
-    <!-- 標題 -->
-    <h1 class="suspended-title">帳號已暫停使用</h1>
-    <p class="suspended-subtitle">{{ userNickname }}，您的帳號目前處於停權狀態</p>
+    <!-- 深色遮罩 -->
+    <div class="suspended-overlay" />
 
-    <!-- 說明卡片 -->
+    <!-- 中央卡片 -->
     <div class="suspended-card">
-      <h2 class="suspended-card__title">停權原因</h2>
-      <p class="suspended-card__text">
-        您的帳號因違反平台使用條款而被暫時停權。在停權期間，您將無法使用平台的任何功能。
+      <!-- ① 警示圖示 -->
+      <div class="suspended-card__icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+
+      <!-- ② 標題 -->
+      <h1 class="suspended-card__title">帳號已暫停使用</h1>
+
+      <!-- ③ 誠信分數 -->
+      <div class="suspended-card__score">
+        <span class="suspended-card__score-label">您的誠信分數</span>
+        <div class="suspended-card__score-row">
+          <span class="suspended-card__score-value">{{ animatedScore }}</span>
+          <span class="suspended-card__score-max">/ {{ maxScore }}</span>
+        </div>
+        <div class="suspended-card__bar">
+          <div
+            class="suspended-card__bar-fill"
+            :style="{ width: `${scorePercent}%` }"
+          />
+        </div>
+      </div>
+
+      <!-- ④ 停權原因 -->
+      <p class="suspended-card__reason">{{ suspendReason }}</p>
+
+      <!-- ⑤ 分隔線 -->
+      <hr class="suspended-card__divider" />
+
+      <!-- ⑥ 說明文字 -->
+      <p class="suspended-card__desc">
+        如您認為此停權有誤，可提出申訴。<br />
+        我們將於 3-5 個工作天內審核，<br />
+        審核結果將以 Email 通知您。
       </p>
 
-      <h2 class="suspended-card__title suspended-card__title--mt">停權期間限制</h2>
-      <ul class="suspended-card__list">
-        <li>無法瀏覽其他用戶資料</li>
-        <li>無法發送或接收訊息</li>
-        <li>無法使用探索與配對功能</li>
-        <li>無法發布動態</li>
-      </ul>
-    </div>
-
-    <!-- 申訴說明 -->
-    <div class="suspended-appeal-info">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-      </svg>
-      <p>如果您認為此停權決定有誤，可以提交申訴，我們將在 3 個工作天內回覆。</p>
-    </div>
-
-    <!-- 操作按鈕 -->
-    <div class="suspended-actions">
-      <button class="suspended-actions__btn suspended-actions__btn--primary" @click="goToAppeal">
-        提交申訴
+      <!-- ⑦ 按鈕 -->
+      <button class="suspended-card__btn suspended-card__btn--primary" @click="goToAppeal">
+        提出申訴
       </button>
-      <button class="suspended-actions__btn suspended-actions__btn--secondary" @click="handleLogout">
+      <button class="suspended-card__btn suspended-card__btn--secondary" @click="handleLogout">
         登出
       </button>
-    </div>
-
-    <!-- 底部連結 -->
-    <div class="suspended-footer">
-      <p class="suspended-footer__text">如有任何疑問，請聯繫客服</p>
-      <a class="suspended-footer__link" href="mailto:support@mimeet.tw">support@mimeet.tw</a>
     </div>
   </div>
 </template>
 
 <style scoped>
-.suspended-view {
+.suspended-page {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ── 模糊背景層 ────────────────────────────────────────────── */
+.suspended-bg {
+  position: absolute;
+  inset: 0;
+  background: #F8F9FB;
+  filter: blur(8px);
+  opacity: 0.25;
+  pointer-events: none;
+  padding: 0 16px;
+  animation: fade-in 0.3s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 0.25; }
+}
+
+/* 假 TopBar */
+.fake-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 4px;
+}
+
+.fake-topbar__title {
+  width: 60px;
+  height: 20px;
+  background: #CBD5E1;
+  border-radius: 6px;
+}
+
+.fake-topbar__btn {
+  width: 36px;
+  height: 36px;
+  background: #E2E8F0;
+  border-radius: 10px;
+}
+
+/* 假搜尋框 */
+.fake-search {
+  height: 44px;
+  background: #E2E8F0;
+  border-radius: 9999px;
+  margin: 8px 0;
+}
+
+/* 假標籤列 */
+.fake-tags {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.fake-tag {
+  width: 56px;
+  height: 28px;
+  background: #E2E8F0;
+  border-radius: 9999px;
+}
+
+.fake-tag:first-child {
+  background: #F0294E;
+  opacity: 0.4;
+}
+
+/* 假 UserCard */
+.fake-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 88px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 0 12px;
+  margin-bottom: 8px;
+}
+
+.fake-card__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #E2E8F0;
+  flex-shrink: 0;
+}
+
+.fake-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fake-card__line {
+  height: 10px;
+  background: #E2E8F0;
+  border-radius: 5px;
+}
+
+.fake-card__line--name { width: 55%; }
+.fake-card__line--sub { width: 40%; }
+.fake-card__line--badges { width: 65%; height: 16px; }
+
+.fake-card__right {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100dvh;
-  background: #F9F9FB;
-  padding: 60px 24px 40px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fake-card__badge {
+  width: 36px;
+  height: 18px;
+  background: #E2E8F0;
+  border-radius: 6px;
+}
+
+.fake-card__heart {
+  width: 28px;
+  height: 28px;
+  background: #F1F5F9;
+  border-radius: 50%;
+}
+
+/* ── 深色遮罩 ──────────────────────────────────────────────── */
+.suspended-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  animation: fade-in-overlay 0.3s ease;
+}
+
+@keyframes fade-in-overlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ── 中央卡片 ──────────────────────────────────────────────── */
+.suspended-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 48px);
+  max-width: 380px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: slide-up-card 0.4s 0.1s ease-out both;
 }
 
-/* ── Icon ──────────────────────────────────────────────────── */
-.suspended-icon {
-  margin-bottom: 24px;
-  animation: shake 0.6s ease-in-out;
+@keyframes slide-up-card {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 20px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
+/* ① 圖示 */
+.suspended-card__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #EF4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(239,68,68,0.3);
 }
 
-/* ── Title ─────────────────────────────────────────────────── */
-.suspended-title {
-  font-size: 22px;
+/* ② 標題 */
+.suspended-card__title {
+  font-size: 20px;
   font-weight: 700;
   color: #0F172A;
-  margin-bottom: 8px;
+  margin-bottom: 20px;
 }
 
-.suspended-subtitle {
-  font-size: 14px;
-  color: #64748B;
-  margin-bottom: 28px;
-}
-
-/* ── Card ──────────────────────────────────────────────────── */
-.suspended-card {
+/* ③ 分數 */
+.suspended-card__score {
   width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #F1F5F9;
-  padding: 20px;
-  text-align: left;
+  background: #FEF2F2;
+  border-radius: 12px;
+  padding: 16px;
   margin-bottom: 16px;
 }
 
-.suspended-card__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0F172A;
-  margin-bottom: 8px;
-}
-
-.suspended-card__title--mt {
-  margin-top: 16px;
-}
-
-.suspended-card__text {
-  font-size: 13px;
-  color: #64748B;
-  line-height: 1.7;
-}
-
-.suspended-card__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.suspended-card__list li {
-  font-size: 13px;
-  color: #64748B;
-  line-height: 1.8;
-  padding-left: 16px;
-  position: relative;
-}
-
-.suspended-card__list li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 10px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #EF4444;
-}
-
-/* ── Appeal Info ────────────────────────────────────────────── */
-.suspended-appeal-info {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 400px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 24px;
-  text-align: left;
-}
-
-.suspended-appeal-info svg {
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.suspended-appeal-info p {
+.suspended-card__score-label {
   font-size: 12px;
-  color: #1E40AF;
-  line-height: 1.6;
-  margin: 0;
+  color: #64748B;
+  display: block;
+  margin-bottom: 6px;
 }
 
-/* ── Actions ───────────────────────────────────────────────── */
-.suspended-actions {
+.suspended-card__score-row {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  max-width: 400px;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
-.suspended-actions__btn {
+.suspended-card__score-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: #EF4444;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.suspended-card__score-max {
+  font-size: 16px;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+.suspended-card__bar {
   width: 100%;
-  height: 48px;
+  height: 6px;
+  background: #E2E8F0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.suspended-card__bar-fill {
+  height: 100%;
+  background: #EF4444;
+  border-radius: 3px;
+  transition: width 1s ease-out;
+}
+
+/* ④ 原因 */
+.suspended-card__reason {
+  font-size: 13px;
+  color: #64748B;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* ⑤ 分隔 */
+.suspended-card__divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid #F1F5F9;
+  margin: 0 0 16px;
+}
+
+/* ⑥ 說明 */
+.suspended-card__desc {
+  font-size: 12px;
+  color: #94A3B8;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+/* ⑦ 按鈕 */
+.suspended-card__btn {
+  width: 100%;
+  height: 46px;
   border-radius: 10px;
   border: none;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
 
-.suspended-actions__btn:active {
+.suspended-card__btn:active {
   transform: scale(0.97);
 }
 
-.suspended-actions__btn--primary {
+.suspended-card__btn + .suspended-card__btn {
+  margin-top: 8px;
+}
+
+.suspended-card__btn--primary {
   background: #F0294E;
   color: #fff;
 }
 
-.suspended-actions__btn--primary:active {
+.suspended-card__btn--primary:active {
   background: #D01A3C;
 }
 
-.suspended-actions__btn--secondary {
+.suspended-card__btn--secondary {
   background: #fff;
   color: #64748B;
   border: 1.5px solid #E2E8F0;
 }
 
-/* ── Footer ────────────────────────────────────────────────── */
-.suspended-footer {
-  margin-top: 32px;
-}
-
-.suspended-footer__text {
-  font-size: 12px;
-  color: #94A3B8;
-  margin-bottom: 4px;
-}
-
-.suspended-footer__link {
-  font-size: 12px;
-  color: #F0294E;
-  text-decoration: none;
-  font-weight: 500;
+.suspended-card__btn--secondary:active {
+  background: #F8FAFC;
 }
 </style>

@@ -212,6 +212,17 @@ const groups: CheckGroup[] = [
       { id: 's3-10-reset',    label: 'reset() 正常運作（切換篩選後列表重置）' },
     ],
   },
+  {
+    title: '停權體驗（切換身份5 測試）',
+    items: [
+      { id: 'sus-redirect',  label: '切換為「身份5 已停權」後點任意 /app/* 連結 → 立即跳轉 /suspended', link: '#/app/explore' },
+      { id: 'sus-blur',      label: '/suspended 頁面背景有模糊虛景效果' },
+      { id: 'sus-score',     label: '誠信分數顯示正確（應為 0）' },
+      { id: 'sus-bar',       label: '分數進度條為紅色' },
+      { id: 'sus-appeal',    label: '「提出申訴」按鈕導向 /suspended/appeal',   link: '#/suspended/appeal' },
+      { id: 'sus-logout',    label: '「登出」按鈕清除 session 並跳至 /login' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
