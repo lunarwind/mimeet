@@ -85,4 +85,16 @@ export const appRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/app/settings/DeleteAccountView.vue'),
     meta: { requiresAuth: true, minLevel: 1 },
   },
+  {
+    path: '/app/settings/subscription',
+    name: 'settings-subscription',
+    component: () => import('@/views/app/settings/SubscriptionView.vue'),
+    meta: { requiresAuth: true, minLevel: 1 },
+  },
+  {
+    path: '/app/reports/history',
+    name: 'reports-history',
+    component: () => import('@/views/app/ReportsHistoryView.vue'),
+    meta: { requiresAuth: true, minLevel: 1 },
+  },
 ]
