@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuthStore, type AuthUser } from '@/stores/auth'
 import { getCreditLevel, CreditLevelLabel } from '@/types/user'
 
-const router = useRouter()
 const authStore = useAuthStore()
 
 // ── Dev 身份定義 ──────────────────────────────────────────
@@ -225,135 +223,13 @@ const groups: CheckGroup[] = [
       { id: 'sus-logout',    label: '「登出」按鈕清除 session 並跳至 /login' },
     ],
   },
-  // ═══════════════════════════════════════════════════════════
-  //  Sprint 4
-  // ═══════════════════════════════════════════════════════════
-  {
-    title: 'S4-01 AppLayout + BottomNav + TopBar',
-    items: [
-      { id: 's4-01-bottomnav',   label: '探索頁底部顯示 BottomNav（5 Tab）',          link: '#/app/explore' },
-      { id: 's4-01-tab-active',  label: '當前頁面 Tab 為紅色高亮' },
-      { id: 's4-01-tab-explore', label: '點「探索」Tab 切換至 /app/explore' },
-      { id: 's4-01-tab-msg',     label: '點「訊息」Tab 切換至 /app/messages' },
-      { id: 's4-01-tab-date',    label: '點「約會」Tab 切換至 /app/dates' },
-      { id: 's4-01-tab-notify',  label: '點「通知」Tab 切換至 /app/notifications' },
-      { id: 's4-01-tab-me',      label: '點「我的」Tab 切換至 /app/settings' },
-      { id: 's4-01-topbar',      label: 'TopBar 元件可複用（有 title / showBack / right slot）' },
-      { id: 's4-01-safe-area',   label: 'BottomNav 有 safe-area-inset-bottom 留白' },
-    ],
-  },
-  {
-    title: 'S4-02 AccountView（帳號設定）',
-    items: [
-      { id: 's4-02-load',     label: '頁面能正常載入',                           link: '#/app/settings' },
-      { id: 's4-02-avatar',   label: '頭像 + 暱稱 + Email 顯示' },
-      { id: 's4-02-badges',   label: '驗證徽章正確顯示（依身份等級）' },
-      { id: 's4-02-credit',   label: '誠信分數 + 進度條 + 等級標籤顯示' },
-      { id: 's4-02-verify',   label: '身份驗證入口可點，跳至 /app/settings/verify', link: '#/app/settings/verify' },
-      { id: 's4-02-blocked',  label: '封鎖名單入口可點' },
-      { id: 's4-02-reports',  label: '問題回報入口可點' },
-      { id: 's4-02-delete',   label: '刪除帳號入口可點' },
-      { id: 's4-02-logout',   label: '登出按鈕清除 session 並跳至 /login' },
-    ],
-  },
-  {
-    title: 'S4-03 BlockedView（封鎖名單）',
-    items: [
-      { id: 's4-03-load',     label: '頁面能正常載入',                           link: '#/app/settings/blocked' },
-      { id: 's4-03-back',     label: 'TopBar 有返回按鈕，可回上一頁' },
-      { id: 's4-03-list',     label: '封鎖名單列表顯示（頭像 + 暱稱 + 封鎖日期）' },
-      { id: 's4-03-unblock',  label: '「解除封鎖」按鈕點擊後用戶從列表移除' },
-      { id: 's4-03-empty',    label: '解除全部後顯示空狀態' },
-    ],
-  },
-  {
-    title: 'S4-04 DeleteAccountView（刪除帳號）',
-    items: [
-      { id: 's4-04-load',     label: '頁面能正常載入',                           link: '#/app/settings/delete-account' },
-      { id: 's4-04-warning',  label: '紅色警告 Banner 顯示「7天冷靜期」說明' },
-      { id: 's4-04-reason',   label: '刪除原因 Radio 可選（5 個選項）' },
-      { id: 's4-04-password', label: '密碼輸入框可輸入' },
-      { id: 's4-04-submit',   label: '送出後顯示冷靜期等待畫面（含預計刪除日期）' },
-      { id: 's4-04-cancel',   label: '「取消刪除」按鈕點擊後顯示成功恢復畫面' },
-    ],
-  },
-  {
-    title: 'S4-05 NotificationsView（通知中心）',
-    items: [
-      { id: 's4-05-load',      label: '頁面能正常載入',                          link: '#/app/notifications' },
-      { id: 's4-05-skeleton',   label: '載入中顯示骨架屏' },
-      { id: 's4-05-list',       label: '通知列表顯示（icon + 內容 + 時間）' },
-      { id: 's4-05-unread',     label: '未讀通知有黃色背景 + 紅色圓點' },
-      { id: 's4-05-tap',        label: '點擊通知標記已讀（黃色消失）' },
-      { id: 's4-05-mark-all',   label: '「全部已讀」按鈕一次標記所有已讀' },
-      { id: 's4-05-scroll',     label: '無限滾動載入更多通知' },
-    ],
-  },
-  {
-    title: 'S4-06 ShopView（會員商城）',
-    items: [
-      { id: 's4-06-load',     label: '頁面能正常載入',                          link: '#/app/shop' },
-      { id: 's4-06-plans',    label: '三個方案卡片顯示（月/季/年）' },
-      { id: 's4-06-select',   label: '點擊方案卡片切換選中狀態（紅框）' },
-      { id: 's4-06-popular',  label: '季費方案有「最受歡迎」標籤' },
-      { id: 's4-06-subscribe',label: '「立即訂閱」按鈕可點' },
-      { id: 's4-06-trial',    label: '體驗價入口可點，跳至 /app/shop/trial',     link: '#/app/shop/trial' },
-      { id: 's4-06-upgrade',  label: '從 /app/messages 跳轉來時顯示升級提示 Banner' },
-    ],
-  },
-  {
-    title: 'S4-07 TrialView（體驗訂閱）',
-    items: [
-      { id: 's4-07-load',     label: '頁面能正常載入',                          link: '#/app/shop/trial' },
-      { id: 's4-07-hero',     label: '漸層 Hero 卡片顯示 NT$ 199 / 30天' },
-      { id: 's4-07-features', label: '體驗內容清單顯示（5 項）' },
-      { id: 's4-07-notice',   label: '注意事項黃色方塊顯示' },
-      { id: 's4-07-purchase', label: '購買按鈕點擊後顯示成功畫面' },
-    ],
-  },
-  {
-    title: 'S4-08 MessagesView（聊天列表）',
-    items: [
-      { id: 's4-08-load',     label: '頁面能正常載入（需 Lv2+ 身份）',            link: '#/app/messages' },
-      { id: 's4-08-skeleton',  label: '載入中顯示骨架屏' },
-      { id: 's4-08-list',      label: '對話列表顯示（頭像 + 暱稱 + 最後訊息 + 時間）' },
-      { id: 's4-08-online',    label: '在線用戶有綠色圓點' },
-      { id: 's4-08-badge',     label: '未讀訊息有紅色數字 Badge' },
-      { id: 's4-08-click',     label: '點擊對話可進入 ChatView' },
-      { id: 's4-08-guard',     label: '切換身份1（Lv1）→ 進入 /app/messages 被攔截至 /app/shop' },
-    ],
-  },
-  {
-    title: 'S4-09 ChatView（聊天對話）',
-    items: [
-      { id: 's4-09-load',     label: '頁面能正常載入',                          link: '#/app/messages/1' },
-      { id: 's4-09-topbar',    label: 'TopBar 顯示對方頭像 + 暱稱 + 在線狀態' },
-      { id: 's4-09-messages',  label: '歷史訊息正確顯示（左=對方，右=自己）' },
-      { id: 's4-09-send',      label: '輸入訊息並送出，氣泡出現在右側' },
-      { id: 's4-09-reply',     label: '送出後 1-3 秒對方自動回覆' },
-      { id: 's4-09-scroll',    label: '新訊息自動捲到底部' },
-      { id: 's4-09-no-nav',    label: 'BottomNav 不顯示（hideBottomNav）' },
-    ],
-  },
-  {
-    title: 'S4-10 ReportsView（問題回報）',
-    items: [
-      { id: 's4-10-load',     label: '頁面能正常載入',                          link: '#/app/reports' },
-      { id: 's4-10-type',      label: '回報類型 Chip 可切換（一般/系統/匿名）' },
-      { id: 's4-10-reason',    label: '具體原因下拉選單依類型動態更新' },
-      { id: 's4-10-textarea',  label: '詳細說明文字框 + 字數計數器' },
-      { id: 's4-10-submit',    label: '送出後顯示案號成功畫面' },
-      { id: 's4-10-history',   label: '「歷史紀錄」切換後顯示過往案件列表' },
-      { id: 's4-10-reply',     label: '已處理案件顯示管理員回覆（綠色區塊）' },
-    ],
-  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
 
 // ── 勾選狀態（localStorage 持久化） ──────────────────────
 type CheckState = 'none' | 'pass' | 'fail'
-const STORAGE_KEY = 'sprint-check-state'
+const STORAGE_KEY = 'sprint3-check-state'
 
 function loadState(): Record<string, CheckState> {
   try {
@@ -381,12 +257,6 @@ function cycle(id: string) {
 
 function resetAll() { states.value = {} }
 
-function goTest(link: string) {
-  // link 格式為 '#/app/explore'，去掉 '#' 前綴後用 router.push 導航
-  const path = link.startsWith('#') ? link.slice(1) : link
-  router.push(path)
-}
-
 const passCount = computed(() => Object.values(states.value).filter(s => s === 'pass').length)
 const failCount = computed(() => Object.values(states.value).filter(s => s === 'fail').length)
 
@@ -400,7 +270,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3 & 4 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">
@@ -481,10 +351,10 @@ function groupPassCount(group: CheckGroup): number {
             <svg v-else-if="getState(item.id) === 'fail'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <span class="check-item__label">{{ item.label }}</span>
-          <button v-if="item.link" class="check-item__link" @click="goTest(item.link!)" :title="`前往 ${item.link}`">
+          <a v-if="item.link" :href="item.link" class="check-item__link" target="_blank" :title="`前往 ${item.link}`">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             前往
-          </button>
+          </a>
         </div>
       </section>
     </div>
@@ -556,7 +426,6 @@ function groupPassCount(group: CheckGroup): number {
 .check-item--pass .check-item__label { color:#166534; }
 .check-item--fail .check-item__label { color:#991B1B; }
 
-.check-item__link { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#F0294E; border:none; padding:4px 10px; border-radius:6px; background:#FFF0F3; white-space:nowrap; flex-shrink:0; cursor:pointer; transition:background 0.15s; }
+.check-item__link { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#F0294E; text-decoration:none; padding:4px 10px; border-radius:6px; background:#FFF0F3; white-space:nowrap; flex-shrink:0; transition:background 0.15s; }
 .check-item__link:hover { background:#FFE4EA; }
-.check-item__link:active { transform:scale(0.95); }
 </style>
