@@ -32,6 +32,12 @@ export const appRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, minLevel: 2 },
   },
   {
+    path: '/app/dates/scan',
+    name: 'dates-scan',
+    component: () => import('@/views/app/QRScanView.vue'),
+    meta: { requiresAuth: true, minLevel: 2 },
+  },
+  {
     path: '/app/shop',
     name: 'shop',
     component: () => import('@/views/app/ShopView.vue'),

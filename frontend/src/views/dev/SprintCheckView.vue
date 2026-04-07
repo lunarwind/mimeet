@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore, type AuthUser } from '@/stores/auth'
 import { getCreditLevel, CreditLevelLabel } from '@/types/user'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 // ── Dev 身份定義 ──────────────────────────────────────────
@@ -223,13 +225,96 @@ const groups: CheckGroup[] = [
       { id: 'sus-logout',    label: '「登出」按鈕清除 session 並跳至 /login' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 4
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S4-01 MessagesView',
+    items: [
+      { id: 's4-01-load',     label: '頁面正常載入（用身份3 Lv3測試）',               link: '#/app/messages' },
+      { id: 's4-01-height',   label: 'ChatCard 高度 72px' },
+      { id: 's4-01-bold',     label: '未讀對話暱稱加粗 + neutral-50 背景' },
+      { id: 's4-01-search',   label: '搜尋欄輸入有反應（過濾暱稱/訊息）' },
+      { id: 's4-01-empty',    label: '空狀態顯示聊天泡泡插圖 + 探索按鈕' },
+    ],
+  },
+  {
+    title: 'S4-02/03 ChatView + MessageBubble',
+    items: [
+      { id: 's4-02-load',     label: '點擊任一對話進入聊天頁',                       link: '#/app/messages/1' },
+      { id: 's4-02-self',     label: '自己訊息靠右，#F0294E 背景，白色文字' },
+      { id: 's4-02-other',    label: '對方訊息靠左，#F1F5F9 背景，深色文字' },
+      { id: 's4-02-scroll',   label: '進入時自動捲至最底部' },
+      { id: 's4-02-status',   label: '已讀/未讀狀態顯示於訊息右下' },
+      { id: 's4-02-date',     label: '日期分隔符顯示（今天/昨天/日期）' },
+    ],
+  },
+  {
+    title: 'S4-04 ChatInput',
+    items: [
+      { id: 's4-04-grow',     label: '輸入框自動增高（貼入多行文字）' },
+      { id: 's4-04-enter',    label: 'Enter 送出，Shift+Enter 換行' },
+      { id: 's4-04-disabled', label: '無內容時送出按鈕灰色' },
+    ],
+  },
+  {
+    title: 'S4-05/06 useChat + 未讀 Badge',
+    items: [
+      { id: 's4-05-mock',     label: 'Mock 模式每 3-8 秒收到假訊息' },
+      { id: 's4-05-badge',    label: 'BottomNav 訊息 icon 未讀數更新' },
+      { id: 's4-05-clear',    label: '進入對話後未讀數歸零' },
+    ],
+  },
+  {
+    title: 'S4-07/08 DatesView + DateCard',
+    items: [
+      { id: 's4-07-load',     label: '頁面正常載入（用身份3測試）',                   link: '#/app/dates' },
+      { id: 's4-07-tabs',     label: 'Tab 切換（待接受/進行中/已完成）' },
+      { id: 's4-07-gradient', label: 'DateCard 漸層背景（#F0294E → #C0203E）顯示' },
+      { id: 's4-07-countdown',label: '進行中約會倒數計時運作' },
+      { id: 's4-07-accept',   label: '待接受約會有「接受」+「拒絕」按鈕' },
+    ],
+  },
+  {
+    title: 'S4-09 QRCodeDisplay',
+    items: [
+      { id: 's4-09-qr',       label: 'QR 圖示顯示' },
+      { id: 's4-09-timer',    label: '倒數計時正確（分:秒格式）' },
+      { id: 's4-09-expired',  label: '過期後顯示「已過期」+ 重新產生按鈕' },
+    ],
+  },
+  {
+    title: 'S4-10 QR 掃碼頁',
+    items: [
+      { id: 's4-10-load',     label: '頁面正常載入',                                 link: '#/app/dates/scan' },
+      { id: 's4-10-manual',   label: '開發環境顯示手動輸入欄位' },
+      { id: 's4-10-mock',     label: '「模擬驗證（成功）」顯示成功畫面 + 分數' },
+      { id: 's4-10-denied',   label: '相機授權拒絕時顯示 fallback UI' },
+    ],
+  },
+  {
+    title: 'S4 身份切換驗證',
+    items: [
+      { id: 's4-id-lv1',      label: '身份1 Lv1 → 進入 #/app/messages 被擋至 /app/shop', link: '#/app/messages' },
+      { id: 's4-id-lv3',      label: '身份3 Lv3 → 所有 S4 頁面完整可用',              link: '#/app/messages' },
+      { id: 's4-id-sus',      label: '身份5 停權 → 進入 /app/* 跳轉 /suspended',      link: '#/app/messages' },
+    ],
+  },
+  {
+    title: 'S4-11 真機測試',
+    items: [
+      { id: 's4-11-ip',       label: 'dev/check 頁面顯示區網 IP' },
+      { id: 's4-11-mobile',   label: '手機瀏覽器能開啟 dev/check 頁面' },
+      { id: 's4-11-camera',   label: 'QR 掃碼頁在手機上能請求相機權限' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
 
 // ── 勾選狀態（localStorage 持久化） ──────────────────────
 type CheckState = 'none' | 'pass' | 'fail'
-const STORAGE_KEY = 'sprint3-check-state'
+const STORAGE_KEY = 'sprint-check-state'
 
 function loadState(): Record<string, CheckState> {
   try {
@@ -257,6 +342,17 @@ function cycle(id: string) {
 
 function resetAll() { states.value = {} }
 
+function goTest(link: string) {
+  const path = link.startsWith('#') ? link.slice(1) : link
+  router.push(path)
+}
+
+// ── 區網 IP（真機測試用） ────────────────────────────────
+const lanUrl = ref('')
+if (import.meta.env.DEV) {
+  lanUrl.value = window.location.origin.replace('localhost', window.location.hostname)
+}
+
 const passCount = computed(() => Object.values(states.value).filter(s => s === 'pass').length)
 const failCount = computed(() => Object.values(states.value).filter(s => s === 'fail').length)
 
@@ -270,7 +366,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3 & 4 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">
@@ -322,6 +418,17 @@ function groupPassCount(group: CheckGroup): number {
       <div class="check-bar__fill check-bar__fill--fail" :style="{ width: `${(failCount / totalItems) * 100}%` }" />
     </div>
 
+    <!-- 真機測試提示 -->
+    <div v-if="lanUrl" class="device-info">
+      <h3 class="device-info__title">📱 真機測試</h3>
+      <p class="device-info__url">區網位址：<strong>{{ lanUrl }}/#/dev/check</strong></p>
+      <div class="device-info__notes">
+        <p><b>iOS Safari：</b>getUserMedia 需 HTTPS（localhost 除外）。建議使用 <code>npx vite --https</code> 或安裝 <code>@vitejs/plugin-basic-ssl</code>。</p>
+        <p><b>Android Chrome：</b>HTTP 區網 IP 下 getUserMedia 會被拒絕。同樣需要 HTTPS 或使用 Chrome devtools port forwarding（<code>chrome://inspect</code>）。</p>
+        <p><b>替代方案：</b>QR 掃碼頁在 DEV 環境提供「手動輸入代碼」fallback，不需要相機也能測試驗證流程。</p>
+      </div>
+    </div>
+
     <!-- Groups -->
     <div class="check-groups">
       <section v-for="group in groups" :key="group.title" class="check-group">
@@ -351,10 +458,10 @@ function groupPassCount(group: CheckGroup): number {
             <svg v-else-if="getState(item.id) === 'fail'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <span class="check-item__label">{{ item.label }}</span>
-          <a v-if="item.link" :href="item.link" class="check-item__link" target="_blank" :title="`前往 ${item.link}`">
+          <button v-if="item.link" class="check-item__link" @click="goTest(item.link!)" :title="`前往 ${item.link}`">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             前往
-          </a>
+          </button>
         </div>
       </section>
     </div>
@@ -426,6 +533,15 @@ function groupPassCount(group: CheckGroup): number {
 .check-item--pass .check-item__label { color:#166534; }
 .check-item--fail .check-item__label { color:#991B1B; }
 
-.check-item__link { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#F0294E; text-decoration:none; padding:4px 10px; border-radius:6px; background:#FFF0F3; white-space:nowrap; flex-shrink:0; transition:background 0.15s; }
+.check-item__link { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#F0294E; border:none; padding:4px 10px; border-radius:6px; background:#FFF0F3; white-space:nowrap; flex-shrink:0; cursor:pointer; transition:background 0.15s; }
 .check-item__link:hover { background:#FFE4EA; }
+.check-item__link:active { transform:scale(0.95); }
+
+/* ── Device Info ──────────────────────────────────────────── */
+.device-info { margin:12px 16px 0; padding:14px 16px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; }
+.device-info__title { font-size:14px; font-weight:700; color:#1E40AF; margin:0 0 6px; }
+.device-info__url { font-size:13px; color:#1E40AF; margin:0 0 10px; word-break:break-all; }
+.device-info__notes { display:flex; flex-direction:column; gap:6px; }
+.device-info__notes p { font-size:11px; color:#1E40AF; line-height:1.5; margin:0; }
+.device-info__notes code { background:rgba(59,130,246,0.1); padding:1px 4px; border-radius:3px; font-size:10px; }
 </style>
