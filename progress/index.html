@@ -552,17 +552,17 @@ S3:[
   {id:'S3-10',title:'useInfiniteScroll composable',cat:'FE',status:'done'},
 ],
 S4:[
-  {id:'S4-01',title:'MessagesView（聊天列表 + ChatCard 72px）',cat:'FE',status:'todo'},
-  {id:'S4-02',title:'ChatView（訊息 Bubble + 輸入框 + 捲至底部）',cat:'FE',status:'todo'},
-  {id:'S4-03',title:'MessageBubble 元件（自己靠右主色 / 對方靠左白色）',cat:'FE',status:'todo'},
-  {id:'S4-04',title:'ChatInput（自動增高 + Enter 送出 / Shift+Enter 換行）',cat:'FE',status:'todo'},
-  {id:'S4-05',title:'useChat composable（Socket.IO 骨架 + Mock 模式）',cat:'FE',status:'todo'},
-  {id:'S4-06',title:'未讀 Badge 即時同步（Pinia chat store）',cat:'FE',status:'todo'},
-  {id:'S4-07',title:'DatesView（約會列表 + 待接受 / 進行中 / 完成 分類）',cat:'FE',status:'todo'},
-  {id:'S4-08',title:'DateCard 元件（漸層背景 + 狀態標籤 + 倒數計時）',cat:'FE',status:'todo'},
-  {id:'S4-09',title:'QRCodeDisplay 元件（Mock QR 圖示 + 倒數）',cat:'FE',status:'todo'},
-  {id:'S4-10',title:'QR 掃碼頁（相機 API + 授權拒絕 fallback UI）',cat:'FE',status:'todo'},
-  {id:'S4-11',title:'真機測試 getUserMedia（iOS Safari / Android Chrome）',cat:'FE',status:'todo'},
+  {id:'S4-01',title:'MessagesView（聊天列表 + ChatCard 72px）',cat:'FE',status:'done'},
+  {id:'S4-02',title:'ChatView（訊息 Bubble + 輸入框 + 捲至底部）',cat:'FE',status:'done'},
+  {id:'S4-03',title:'MessageBubble 元件（自己靠右主色 / 對方靠左白色）',cat:'FE',status:'done'},
+  {id:'S4-04',title:'ChatInput（自動增高 + Enter 送出 / Shift+Enter 換行）',cat:'FE',status:'done'},
+  {id:'S4-05',title:'useChat composable（Socket.IO 骨架 + Mock 模式）',cat:'FE',status:'done'},
+  {id:'S4-06',title:'未讀 Badge 即時同步（Pinia chat store）',cat:'FE',status:'done'},
+  {id:'S4-07',title:'DatesView（約會列表 + 待接受 / 進行中 / 完成 分類）',cat:'FE',status:'done'},
+  {id:'S4-08',title:'DateCard 元件（漸層背景 + 狀態標籤 + 倒數計時）',cat:'FE',status:'done'},
+  {id:'S4-09',title:'QRCodeDisplay 元件（Mock QR 圖示 + 倒數）',cat:'FE',status:'done'},
+  {id:'S4-10',title:'QR 掃碼頁（相機 API + jsQR 掃描 + fallback UI）',cat:'FE',status:'done'},
+  {id:'S4-11',title:'真機測試 getUserMedia + HTTPS（basicSsl）',cat:'FE',status:'done'},
 ],
 S5:[
   {id:'S5-01',title:'ShopView（4個訂閱方案卡片 + 付費牆升級引導）',cat:'FE',status:'todo'},
@@ -822,7 +822,7 @@ function updateLastUpdate() {
   } catch(e) {
     document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('zh-TW')
   }
-  document.getElementById('footerDate').textContent = '產生於 ' + new Date().toLocaleDateString('zh-TW')
+  document.getElementById('footerDate').textContent = '最後更新 2026-04-08'
 }
 
 // ── Interactions ─────────────────────────────────
