@@ -108,6 +108,41 @@ export async function unblockUser(userId: number): Promise<void> {
   await client.delete(`/users/${userId}/block`)
 }
 
+// ── 封鎖名單 ──────────────────────────────────────────────
+export interface BlockedUser {
+  id: number
+  nickname: string
+  avatar: string | null
+  blockedAt: string
+}
+
+export async function fetchBlockedUsers(page: number): Promise<{ users: BlockedUser[]; hasMore: boolean }> {
+  if (USE_MOCK) {
+    await delay(300 + Math.random() * 300)
+    const { MOCK_USERS } = await import('@/mocks/users')
+    // Mock：取 id 2,5,11 作為被封鎖用戶
+    const allBlocked: BlockedUser[] = [2, 5, 11].map(id => {
+      const u = MOCK_USERS.find(m => m.id === id)!
+      return { id: u.id, nickname: u.nickname, avatar: u.avatar, blockedAt: new Date(Date.now() - id * 86400000).toISOString() }
+    })
+    const perPage = 20
+    const start = (page - 1) * perPage
+    const paged = allBlocked.slice(start, start + perPage)
+    return { users: paged, hasMore: start + perPage < allBlocked.length }
+  }
+
+  const res = await client.get<{
+    success: boolean
+    data: { blocked_users: { id: number; nickname: string; avatar: string | null; blocked_at: string }[] }
+  }>('/me/blocked-users', { params: { page } })
+  return {
+    users: res.data.data.blocked_users.map(u => ({
+      id: u.id, nickname: u.nickname, avatar: u.avatar, blockedAt: u.blocked_at,
+    })),
+    hasMore: res.data.data.blocked_users.length >= 20,
+  }
+}
+
 // ── 內部工具 ──────────────────────────────────────────────
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))

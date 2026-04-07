@@ -509,7 +509,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
   </div>
 </template>
 
-<style scoped>
+<style>
 /* ── Variables ──────────────────────────────── */
 :root {
   --p: #F0294E; --pd: #D01A3C; --pl: #FFF5F7; --p50: #FFE4EA;

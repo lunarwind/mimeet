@@ -262,7 +262,7 @@ const features = [
   </div>
 </template>
 
-<style scoped>
+<style>
 /* ─── CSS Variables ─────────────────────────────────── */
 :root {
   --primary: #F0294E;

@@ -209,7 +209,7 @@ function clearSearch() {
 .explore-view {
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - 64px - 52px);
+  flex: 1;
   background: #F8F9FB;
 }
 

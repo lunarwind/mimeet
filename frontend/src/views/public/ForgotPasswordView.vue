@@ -162,7 +162,7 @@ function tryAgain() {
   </div>
 </template>
 
-<style scoped>
+<style>
 :root {
   --p: #F0294E; --pd: #D01A3C; --pl: #FFF5F7; --p50: #FFE4EA;
   --t1: #111827; --t2: #6B7280; --t3: #9CA3AF;
