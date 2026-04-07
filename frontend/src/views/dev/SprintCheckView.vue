@@ -308,6 +308,106 @@ const groups: CheckGroup[] = [
       { id: 's4-11-camera',   label: 'QR 掃碼頁在手機上能請求相機權限' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 5
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S5-01 ShopView',
+    items: [
+      { id: 's5-01-load',     label: '頁面正常載入',                                     link: '#/app/shop' },
+      { id: 's5-01-cards',    label: '4 個方案卡片顯示（週/月/季/年）' },
+      { id: 's5-01-member',   label: '身份3 Lv3：頂部顯示「我的會員」區塊' },
+      { id: 's5-01-nomember', label: '身份1 Lv1：不顯示我的會員區塊' },
+      { id: 's5-01-trial',    label: '新手體驗入口（身份1顯示，身份3不顯示）' },
+      { id: 's5-01-modal',    label: '點擊方案顯示確認 Modal' },
+    ],
+  },
+  {
+    title: 'S5-02 TrialView',
+    items: [
+      { id: 's5-02-load',     label: '頁面正常載入',                                     link: '#/app/shop/trial' },
+      { id: 's5-02-price',    label: 'NT$199 價格顯示' },
+      { id: 's5-02-used',     label: '身份3 已購買過：顯示已使用提示' },
+    ],
+  },
+  {
+    title: 'S5-03/04 AccountView + 隱私設定',
+    items: [
+      { id: 's5-03-load',     label: '頁面正常載入',                                     link: '#/app/settings' },
+      { id: 's5-03-avatar',   label: '頭像點擊觸發上傳' },
+      { id: 's5-03-fields',   label: '表單欄位正確顯示' },
+      { id: 's5-03-birthday', label: '生日欄位 disabled' },
+      { id: 's5-03-counter',  label: '字數計數器運作' },
+      { id: 's5-04-lock',     label: '身份1 Lv1：隱私 Toggle 顯示鎖頭' },
+      { id: 's5-04-toggle',   label: '身份3 Lv3：隱私 Toggle 正常可操作' },
+      { id: 's5-03-save',     label: '儲存後顯示 Toast' },
+    ],
+  },
+  {
+    title: 'S5-05 訂閱管理',
+    items: [
+      { id: 's5-05-load',     label: '頁面正常載入',                                     link: '#/app/settings/subscription' },
+      { id: 's5-05-plan',     label: '身份3：顯示目前方案 + 到期日' },
+      { id: 's5-05-empty',    label: '身份1：顯示「目前沒有有效訂閱」' },
+      { id: 's5-05-cancel',   label: '取消訂閱流程（身份3測試）' },
+    ],
+  },
+  {
+    title: 'S5-06 NotificationsView',
+    items: [
+      { id: 's5-06-load',     label: '頁面正常載入',                                     link: '#/app/notifications' },
+      { id: 's5-06-mock',     label: '10 筆 Mock 通知顯示' },
+      { id: 's5-06-unread',   label: '未讀通知有左側紅線' },
+      { id: 's5-06-click',    label: '點擊通知跳轉對應頁面' },
+      { id: 's5-06-readall',  label: '全部已讀按鈕' },
+    ],
+  },
+  {
+    title: 'S5-07 BlockedView',
+    items: [
+      { id: 's5-07-load',     label: '頁面正常載入',                                     link: '#/app/settings/blocked' },
+      { id: 's5-07-list',     label: '封鎖列表顯示' },
+      { id: 's5-07-unblock',  label: '解除封鎖確認 Modal' },
+      { id: 's5-07-empty',    label: '空狀態顯示' },
+    ],
+  },
+  {
+    title: 'S5-08 ReportsView',
+    items: [
+      { id: 's5-08-load',     label: '頁面正常載入',                                     link: '#/app/reports' },
+      { id: 's5-08-types',    label: '5 種回報類型 Radio 卡片' },
+      { id: 's5-08-upload',   label: '截圖上傳（最多 3 張）' },
+      { id: 's5-08-ticket',   label: '送出後顯示案號' },
+      { id: 's5-08-history',  label: '回報歷史頁',                                       link: '#/app/reports/history' },
+    ],
+  },
+  {
+    title: 'S5-09 DeleteAccountView',
+    items: [
+      { id: 's5-09-load',     label: '頁面正常載入',                                     link: '#/app/settings/delete-account' },
+      { id: 's5-09-check',    label: '勾選確認框才能進行' },
+      { id: 's5-09-input',    label: '輸入「DELETE」才啟用刪除按鈕' },
+      { id: 's5-09-countdown',label: '確認 Modal 倒數 5 秒' },
+      { id: 's5-09-flow',     label: '身份3 測試刪除流程（Mock 模式不真刪）' },
+    ],
+  },
+  {
+    title: 'S5-10 usePayment',
+    items: [
+      { id: 's5-10-paid',     label: '身份3：isPaid = true，isExpiringSoon 依到期日' },
+      { id: 's5-10-free',     label: '身份1：isPaid = false' },
+      { id: 's5-10-plans',    label: 'fetchPlans 回傳 4 個方案' },
+    ],
+  },
+  {
+    title: 'S5-11 useImageUpload',
+    items: [
+      { id: 's5-11-spinner',  label: '上傳頭像顯示 spinner' },
+      { id: 's5-11-size',     label: '超過 5MB 顯示錯誤訊息' },
+      { id: 's5-11-format',   label: '格式不符顯示錯誤訊息' },
+      { id: 's5-11-mock',     label: 'Mock 模式 1.5 秒後回傳假 URL' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
@@ -366,7 +466,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3 & 4 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3-5 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">
