@@ -226,15 +226,15 @@ function goLanding() { router.push('/') }
 
     <!-- 底部裝飾 -->
     <div class="login-footer">
-      <a href="#/privacy" class="footer-link">隱私權政策</a>
+      <a href="#" class="footer-link">隱私權政策</a>
       <span class="footer-dot">·</span>
-      <a href="#/terms" class="footer-link">使用者條款</a>
+      <a href="#" class="footer-link">使用者條款</a>
     </div>
 
   </div>
 </template>
 
-<style>
+<style scoped>
 /* ── Variables ──────────────────────────────── */
 :root {
   --p:     #F0294E;
