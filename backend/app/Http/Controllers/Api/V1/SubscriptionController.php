@@ -3,118 +3,76 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Subscription;
+use App\Models\SubscriptionPlan;
+use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class SubscriptionController extends Controller
 {
+    public function __construct(
+        private readonly PaymentService $paymentService,
+    ) {}
+
     /**
-     * Get available subscription plans.
+     * GET /api/v1/subscriptions/plans
      */
     public function plans(): JsonResponse
     {
-        $plans = [
-            [
-                'id' => 'plan_weekly',
-                'name' => '週方案',
-                'duration_days' => 7,
-                'price' => 199,
-                'currency' => 'TWD',
-                'membership_level' => 2,
-                'features' => ['無限訊息', '查看誰瀏覽過你', '進階搜尋'],
-                'is_popular' => false,
-            ],
-            [
-                'id' => 'plan_monthly',
-                'name' => '月方案',
-                'duration_days' => 30,
-                'price' => 599,
-                'currency' => 'TWD',
-                'membership_level' => 2,
-                'features' => ['無限訊息', '查看誰瀏覽過你', '進階搜尋', '優先曝光'],
-                'is_popular' => true,
-            ],
-            [
-                'id' => 'plan_quarterly',
-                'name' => '季方案',
-                'duration_days' => 90,
-                'price' => 1499,
-                'currency' => 'TWD',
-                'membership_level' => 2,
-                'features' => ['無限訊息', '查看誰瀏覽過你', '進階搜尋', '優先曝光', '專屬徽章'],
-                'is_popular' => false,
-            ],
-            [
-                'id' => 'plan_yearly',
-                'name' => '年方案',
-                'duration_days' => 365,
-                'price' => 4999,
-                'currency' => 'TWD',
-                'membership_level' => 2,
-                'features' => ['無限訊息', '查看誰瀏覽過你', '進階搜尋', '優先曝光', '專屬徽章', 'VIP 客服'],
-                'is_popular' => false,
-            ],
-        ];
+        $plans = SubscriptionPlan::where('is_active', true)
+            ->where('is_trial', false)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->slug,
+                'name' => $p->name,
+                'duration_days' => $p->duration_days,
+                'price' => $p->price,
+                'currency' => $p->currency,
+                'membership_level' => $p->membership_level,
+                'features' => $p->features,
+            ]);
 
-        $trial = [
-            'id' => 'plan_trial',
-            'name' => '體驗方案',
-            'duration_days' => 3,
-            'price' => 49,
-            'currency' => 'TWD',
-            'membership_level' => 2,
-            'features' => ['無限訊息', '進階搜尋'],
-            'is_trial' => true,
-            'limit_per_user' => 1,
-        ];
+        $trial = SubscriptionPlan::where('is_active', true)
+            ->where('is_trial', true)
+            ->first();
 
         return response()->json([
             'success' => true,
-            'code' => 'PLANS_LIST',
+            'code' => 200,
             'message' => 'OK',
             'data' => [
                 'plans' => $plans,
-                'trial' => $trial,
+                'trial' => $trial ? [
+                    'id' => $trial->slug,
+                    'name' => $trial->name,
+                    'duration_days' => $trial->duration_days,
+                    'price' => $trial->price,
+                    'currency' => $trial->currency,
+                    'features' => $trial->features,
+                    'is_trial' => true,
+                ] : null,
             ],
         ]);
     }
 
     /**
-     * Get current user's subscription.
+     * GET /api/v1/subscriptions/me
      */
     public function mySubscription(Request $request): JsonResponse
     {
-        $user = $request->user();
-
-        // Mock: return null subscription for free users
-        $subscription = null;
-
-        if ($user && (int) $user->membership_level >= 1) {
-            $subscription = [
-                'id' => 'sub_' . Str::random(12),
-                'plan_id' => 'plan_monthly',
-                'plan_name' => '月方案',
-                'status' => 'active',
-                'auto_renew' => true,
-                'started_at' => now()->subDays(15)->toISOString(),
-                'expires_at' => now()->addDays(15)->toISOString(),
-                'membership_level' => 2,
-            ];
-        }
+        $subscription = $this->paymentService->getActiveSubscription($request->user());
 
         return response()->json([
             'success' => true,
-            'code' => 'MY_SUBSCRIPTION',
+            'code' => 200,
             'message' => 'OK',
-            'data' => [
-                'subscription' => $subscription,
-            ],
+            'data' => ['subscription' => $subscription],
         ]);
     }
 
     /**
-     * Create a subscription order (returns payment URL).
+     * POST /api/v1/subscriptions/orders
      */
     public function createOrder(Request $request): JsonResponse
     {
@@ -123,22 +81,33 @@ class SubscriptionController extends Controller
             'payment_method' => 'sometimes|string|in:credit_card,atm,cvs',
         ]);
 
-        $orderId = 'order_' . Str::random(16);
+        try {
+            $result = $this->paymentService->createOrder(
+                $request->user(),
+                $request->input('plan_id'),
+                $request->input('payment_method', 'credit_card'),
+            );
+        } catch (\Exception $e) {
+            if ($e->getMessage() === 'TRIAL_ALREADY_USED') {
+                return response()->json([
+                    'success' => false,
+                    'code' => 422,
+                    'message' => '您已使用過體驗方案',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
-            'code' => 'ORDER_CREATED',
-            'message' => '訂單已建立。',
-            'data' => [
-                'order_id' => $orderId,
-                'payment_url' => 'https://payment-sandbox.ecpay.com.tw/mock/' . $orderId,
-                'expires_at' => now()->addMinutes(30)->toISOString(),
-            ],
+            'code' => 201,
+            'message' => '訂單已建立',
+            'data' => $result,
         ], 201);
     }
 
     /**
-     * Update subscription (toggle auto_renew).
+     * PATCH /api/v1/subscriptions/me — toggle auto_renew
      */
     public function update(Request $request): JsonResponse
     {
@@ -146,20 +115,30 @@ class SubscriptionController extends Controller
             'auto_renew' => 'required|boolean',
         ]);
 
+        $sub = Subscription::where('user_id', $request->user()->id)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$sub) {
+            return response()->json([
+                'success' => false,
+                'code' => 404,
+                'message' => '目前沒有有效訂閱',
+            ], 404);
+        }
+
+        $sub->update(['auto_renew' => $request->boolean('auto_renew')]);
+
         return response()->json([
             'success' => true,
-            'code' => 'SUBSCRIPTION_UPDATED',
-            'message' => $request->boolean('auto_renew')
-                ? '已開啟自動續約。'
-                : '已關閉自動續約。',
-            'data' => [
-                'auto_renew' => $request->boolean('auto_renew'),
-            ],
+            'code' => 200,
+            'message' => $request->boolean('auto_renew') ? '已開啟自動續約' : '已關閉自動續約',
+            'data' => ['auto_renew' => $sub->auto_renew],
         ]);
     }
 
     /**
-     * Request subscription cancellation (creates a support ticket).
+     * POST /api/v1/subscriptions/cancel-request
      */
     public function cancelRequest(Request $request): JsonResponse
     {
@@ -167,60 +146,80 @@ class SubscriptionController extends Controller
             'reason' => 'sometimes|string|max:500',
         ]);
 
+        $sub = Subscription::where('user_id', $request->user()->id)
+            ->where('status', 'active')
+            ->first();
+
+        if ($sub) {
+            $sub->update(['auto_renew' => false]);
+        }
+
         return response()->json([
             'success' => true,
-            'code' => 'CANCEL_REQUEST_CREATED',
-            'message' => '取消訂閱申請已提交，客服將於 24 小時內處理。',
-            'data' => [
-                'ticket_id' => 'ticket_' . Str::random(12),
-            ],
+            'code' => 200,
+            'message' => '取消訂閱申請已提交',
         ]);
     }
 
     /**
-     * Get trial plan info.
+     * GET /api/v1/subscription/trial
      */
     public function trial(Request $request): JsonResponse
     {
+        $plan = SubscriptionPlan::where('is_trial', true)->where('is_active', true)->first();
+
+        $eligible = $plan && !\App\Models\Order::where('user_id', $request->user()->id)
+            ->whereHas('plan', fn ($q) => $q->where('is_trial', true))
+            ->where('status', 'paid')
+            ->exists();
+
         return response()->json([
             'success' => true,
-            'code' => 'TRIAL_INFO',
+            'code' => 200,
             'message' => 'OK',
             'data' => [
-                'plan' => [
-                    'id' => 'plan_trial',
-                    'name' => '體驗方案',
-                    'duration_days' => 3,
-                    'price' => 49,
-                    'currency' => 'TWD',
-                    'membership_level' => 2,
-                    'features' => ['無限訊息', '進階搜尋'],
-                ],
-                'eligible' => true,
+                'plan' => $plan ? [
+                    'id' => $plan->slug,
+                    'name' => $plan->name,
+                    'duration_days' => $plan->duration_days,
+                    'price' => $plan->price,
+                    'currency' => $plan->currency,
+                    'features' => $plan->features,
+                ] : null,
+                'eligible' => $eligible,
             ],
         ]);
     }
 
     /**
-     * Purchase trial plan.
+     * POST /api/v1/subscription/trial/purchase
      */
     public function trialPurchase(Request $request): JsonResponse
     {
-        $request->validate([
-            'payment_method' => 'sometimes|string|in:credit_card,atm,cvs',
-        ]);
+        $trialPlan = SubscriptionPlan::where('is_trial', true)->where('is_active', true)->firstOrFail();
 
-        $orderId = 'order_trial_' . Str::random(12);
+        try {
+            $result = $this->paymentService->createOrder(
+                $request->user(),
+                $trialPlan->slug,
+                $request->input('payment_method', 'credit_card'),
+            );
+        } catch (\Exception $e) {
+            if ($e->getMessage() === 'TRIAL_ALREADY_USED') {
+                return response()->json([
+                    'success' => false,
+                    'code' => 422,
+                    'message' => '您已使用過體驗方案',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'success' => true,
-            'code' => 'TRIAL_ORDER_CREATED',
-            'message' => '體驗方案訂單已建立。',
-            'data' => [
-                'order_id' => $orderId,
-                'payment_url' => 'https://payment-sandbox.ecpay.com.tw/mock/' . $orderId,
-                'expires_at' => now()->addMinutes(30)->toISOString(),
-            ],
+            'code' => 201,
+            'message' => '體驗方案訂單已建立',
+            'data' => $result,
         ], 201);
     }
 }

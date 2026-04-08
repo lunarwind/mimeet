@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\CreditScoreHistory;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+
+class CreditScoreService
+{
+    /**
+     * Adjust a user's credit score with history logging.
+     */
+    public static function adjust(User $user, int $delta, string $type, string $reason, ?int $operatorId = null): void
+    {
+        $before = $user->credit_score;
+        $after = max(0, min(100, $before + $delta));
+
+        DB::transaction(function () use ($user, $delta, $type, $reason, $operatorId, $before, $after) {
+            $user->update(['credit_score' => $after]);
+
+            CreditScoreHistory::create([
+                'user_id' => $user->id,
+                'delta' => $delta,
+                'score_before' => $before,
+                'score_after' => $after,
+                'type' => $type,
+                'reason' => $reason,
+                'operator_id' => $operatorId,
+            ]);
+        });
+
+        // Auto-suspend when score reaches zero
+        if ($after === 0 && $before > 0) {
+            $user->update(['status' => 'suspended']);
+        }
+    }
+
+    /**
+     * Get the current credit score (fresh from DB).
+     */
+    public static function getScore(User $user): int
+    {
+        return $user->fresh()->credit_score;
+    }
+}

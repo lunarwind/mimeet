@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UF-001 MiMeet 用戶流程圖</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<style>
+  :root {
+    --primary: #F0294E;
+    --primary-light: #FFF5F7;
+    --success: #065f46;
+    --danger: #7f1d1d;
+    --info: #1e3a5f;
+    --n50: #F9FAFB; --n100: #F3F4F6; --n200: #E5E7EB;
+    --n500: #6B7280; --n700: #374151; --n900: #111827;
+    --sw: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', system-ui, sans-serif; background: var(--n50); color: var(--n900); display: flex; min-height: 100vh; }
+
+  #sidebar { width: var(--sw); min-height: 100vh; background: #1C1C24; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; z-index: 100; overflow-y: auto; }
+  .sb-head { padding: 24px 20px 16px; border-bottom: 1px solid #2e2e3a; }
+  .brand { font-size: 22px; font-weight: 700; color: var(--primary); }
+  .doc-id { font-size: 11px; color: #6b6b80; margin-top: 2px; font-family: monospace; }
+  .sb-sec { font-size: 10px; font-weight: 600; color: #4b4b60; letter-spacing: 0.08em; text-transform: uppercase; padding: 20px 20px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(240,41,78,0.08); border-left-color: rgba(240,41,78,0.4); }
+  .nav-item.active { background: rgba(240,41,78,0.15); border-left-color: var(--primary); }
+  .nav-num { width: 22px; height: 22px; background: #2e2e3a; border-radius: 6px; font-size: 10px; font-weight: 700; color: #8888a0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: monospace; }
+  .nav-item.active .nav-num { background: var(--primary); color: #fff; }
+  .nav-label { font-size: 12.5px; color: #9999b0; line-height: 1.3; }
+  .nav-item.active .nav-label { color: #fff; font-weight: 500; }
+
+  #main { margin-left: var(--sw); flex: 1; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--n200); padding: 16px 40px; position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 12px; }
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-badge { background: var(--primary-light); color: var(--primary); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+
+  /* Overview */
+  #page-overview { padding: 40px; }
+  .hero { background: linear-gradient(135deg, #1C1C24 0%, #2a1a28 100%); border-radius: 16px; padding: 40px; margin-bottom: 32px; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(240,41,78,0.15), transparent 70%); }
+  .hero-tag { font-size: 11px; font-weight: 600; color: var(--primary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .hero h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .hero p { color: #8888a0; font-size: 13.5px; line-height: 1.6; }
+  .hero-meta { display: flex; gap: 24px; margin-top: 24px; }
+  .hero-meta-item { font-size: 12px; color: #6b6b80; }
+  .hero-meta-item strong { color: #aaaabc; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 32px; }
+  .flow-card { background: #fff; border: 1px solid var(--n200); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; display: flex; gap: 14px; align-items: flex-start; }
+  .flow-card:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(240,41,78,0.1); transform: translateY(-1px); }
+  .fc-num { width: 36px; height: 36px; background: var(--primary-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--primary); flex-shrink: 0; font-family: monospace; }
+  .fc-title { font-size: 13.5px; font-weight: 600; color: var(--n900); margin-bottom: 4px; }
+  .fc-desc { font-size: 12px; color: var(--n500); line-height: 1.5; }
+  .fc-tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 6px; font-weight: 500; }
+  .t-mvp { background: #ecfdf5; color: #065f46; }
+  .t-p2  { background: #eff6ff; color: #1e3a5f; }
+  .t-core { background: #fff0f3; color: #c0143c; }
+  .t-admin { background: #fef9c3; color: #854d0e; }
+
+  /* Diagram pages */
+  .dpage { display: none; padding: 40px; }
+  .dpage.visible { display: block; }
+  .ph-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .pid { font-size: 11px; font-family: monospace; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 3px 8px; border-radius: 4px; }
+  .ptitle { font-size: 22px; font-weight: 700; }
+  .pdesc { font-size: 13.5px; color: var(--n500); line-height: 1.6; padding: 12px 16px; background: var(--n100); border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; margin-bottom: 20px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--n500); }
+  .leg-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .dbox { background: #fff; border: 1px solid var(--n200); border-radius: 14px; padding: 32px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .dbox .mermaid { display: flex; justify-content: center; }
+
+  /* Appendix */
+  .appendix { margin-top: 40px; }
+  .appendix h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--n200); }
+  .dt { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; }
+  .dt th { background: var(--n100); font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--n200); font-size: 12px; color: var(--n700); }
+  .dt td { padding: 10px 14px; border-bottom: 1px solid var(--n100); color: var(--n700); }
+  .dt tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .bg { background: #ecfdf5; color: #065f46; }
+  .br { background: #fef2f2; color: #991b1b; }
+  .bb { background: #eff6ff; color: #1e40af; }
+  .bo { background: #fffbeb; color: #92400e; }
+  .sp { color: #059669; font-weight: 700; }
+  .sm { color: #dc2626; font-weight: 700; }
+
+  #scrollTop { position: fixed; bottom: 28px; right: 28px; width: 40px; height: 40px; background: var(--primary); color: #fff; border: none; border-radius: 50%; cursor: pointer; font-size: 18px; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(240,41,78,0.4); z-index: 200; }
+  #scrollTop.show { display: flex; }
+  .loading-overlay { position: fixed; inset: 0; background: #1C1C24; display: flex; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 16px; }
+  .loading-brand { font-size: 32px; font-weight: 700; color: var(--primary); }
+  .loading-bar { width: 160px; height: 3px; background: #2e2e3a; border-radius: 2px; overflow: hidden; }
+  .loading-bar-inner { height: 100%; background: var(--primary); border-radius: 2px; animation: la 1.4s ease-in-out infinite; }
+  @keyframes la { 0%{width:0%;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0%;margin-left:100%} }
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loading">
+  <div class="loading-brand">MiMeet</div>
+  <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+  <div style="font-size:12px;color:#4b4b60">載入流程圖中…</div>
+</div>
+
+<nav id="sidebar">
+  <div class="sb-head">
+    <div class="brand">MiMeet</div>
+    <div class="doc-id">UF-001 · 用戶流程圖 v1.1</div>
+  </div>
+  <div class="sb-sec">文件總覽</div>
+  <div class="nav-item active" onclick="showPage('overview')"><div class="nav-num">⊞</div><div class="nav-label">索引總覽</div></div>
+  <div class="sb-sec">前台流程</div>
+  <div class="nav-item" onclick="showPage('uf01')"><div class="nav-num">01</div><div class="nav-label">主用戶旅程總覽</div></div>
+  <div class="nav-item" onclick="showPage('uf02')"><div class="nav-num">02</div><div class="nav-label">註冊與分層驗證</div></div>
+  <div class="nav-item" onclick="showPage('uf03')"><div class="nav-num">03</div><div class="nav-label">登入與帳號狀態</div></div>
+  <div class="nav-item" onclick="showPage('uf04')"><div class="nav-num">04</div><div class="nav-label">搜尋與探索</div></div>
+  <div class="nav-item" onclick="showPage('uf05')"><div class="nav-num">05</div><div class="nav-label">聊天與即時訊息</div></div>
+  <div class="nav-item" onclick="showPage('uf06')"><div class="nav-num">06</div><div class="nav-label">QR碼約會驗證</div></div>
+  <div class="nav-item" onclick="showPage('uf07')"><div class="nav-num">07</div><div class="nav-label">訂閱付費</div></div>
+  <div class="nav-item" onclick="showPage('uf08')"><div class="nav-num">08</div><div class="nav-label">社群動態</div></div>
+  <div class="nav-item" onclick="showPage('uf09')"><div class="nav-num">09</div><div class="nav-label">安全與回報</div></div>
+  <div class="sb-sec">後台流程</div>
+  <div class="nav-item" onclick="showPage('uf10')"><div class="nav-num">10</div><div class="nav-label">後台管理員</div></div>
+  <div class="sb-sec">附錄</div>
+  <div class="nav-item" onclick="showPage('appendix')"><div class="nav-num">∑</div><div class="nav-label">等級 & 分數規則</div></div>
+</nav>
+
+<div id="main">
+  <div class="topbar">
+    <span class="topbar-title" id="ttitle">索引總覽</span>
+    <span class="topbar-badge" id="tbadge">文件索引</span>
+  </div>
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <div id="page-overview">
+    <div class="hero">
+      <div class="hero-tag">UF-001 · User Flow Document</div>
+      <h1>MiMeet 用戶流程圖</h1>
+      <p>完整涵蓋前台用戶旅程與後台管理員操作流程，共 10 個流程圖。</p>
+      <div class="hero-meta">
+        <div class="hero-meta-item"><strong>版本</strong> v1.1</div>
+        <div class="hero-meta-item"><strong>建立</strong> 2026年3月</div>
+        <div class="hero-meta-item"><strong>參考</strong> PRD-001 / UI-001 / API-001</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="flow-card" onclick="showPage('uf01')"><div class="fc-num">01</div><div><div class="fc-title">主用戶旅程總覽</div><div class="fc-desc">三類用戶角色 Lv0/Lv1/Lv3 的高層次路徑分支，含升級引導</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf02')"><div class="fc-num">02</div><div><div class="fc-title">註冊與分層驗證流程</div><div class="fc-desc">3步驟表單 → Email → SMS → 女性自拍 / 男性信用卡進階驗證</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf03')"><div class="fc-num">03</div><div><div class="fc-title">登入與帳號狀態處理</div><div class="fc-desc">登入錯誤、IP 封鎖、停權檢查、申訴流程、忘記密碼重設</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf04')"><div class="fc-num">04</div><div><div class="fc-title">搜尋與探索流程</div><div class="fc-desc">篩選 Sheet、用戶卡片、個人資料頁、收藏、付費牆觸發</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf05')"><div class="fc-num">05</div><div><div class="fc-title">聊天與即時訊息流程</div><div class="fc-desc">WebSocket、每日配額、誠信分數限制、已讀回執、QR 邀請入口</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf06')"><div class="fc-num">06</div><div><div class="fc-title">QR碼約會驗證流程</div><div class="fc-desc">邀請 → 接受 → 時間窗 → 掃碼 → GPS 判斷 → 分數獎勵</div><span class="fc-tag t-core">核心差異化</span></div></div>
+      <div class="flow-card" onclick="showPage('uf07')"><div class="fc-num">07</div><div><div class="fc-title">訂閱付費流程</div><div class="fc-desc">體驗方案判斷、綠界結帳、Webhook、自動續訂、到期降級、取消</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf08')"><div class="fc-num">08</div><div><div class="fc-title">社群動態流程</div><div class="fc-desc">動態發布限制、AI 審核、人工審核、點愛心、收藏對象動態</div><span class="fc-tag t-p2">Phase 2</span></div></div>
+      <div class="flow-card" onclick="showPage('uf09')"><div class="fc-num">09</div><div><div class="fc-title">安全與回報流程</div><div class="fc-desc">封鎖、一般檢舉（雙方 -10分）、問題回報、案號追蹤</div><span class="fc-tag t-mvp">MVP</span></div></div>
+      <div class="flow-card" onclick="showPage('uf10')"><div class="fc-num">10</div><div><div class="fc-title">後台管理員流程</div><div class="fc-desc">驗證審核、回報處理、廣播、SEO 工具、系統參數設定</div><span class="fc-tag t-admin">後台</span></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ UF-01 ═══ -->
+  <div id="page-uf01" class="dpage">
+    <div class="ph-top"><span class="pid">UF-01</span><h2 class="ptitle">主用戶旅程總覽</h2></div>
+    <p class="pdesc">展示三類主要用戶角色（訪客、一般用戶、付費會員）的關鍵路徑分支，及功能升級引導機制。</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:#7f1d1d"></div>停權狀態</div>
+      <div class="leg"><div class="leg-dot" style="background:#1a2740"></div>付費會員功能</div>
+      <div class="leg"><div class="leg-dot" style="background:#1a3a1a"></div>商城付費入口</div>
+    </div>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    OPEN([開啟 MiMeet]) --> AUTH{已登入?}
+    AUTH -->|否| LANDING[Landing Page 品牌首頁]
+    LANDING --> CHOICE{用戶選擇}
+    CHOICE -->|新用戶| REG[前往 UF-02 註冊]
+    CHOICE -->|既有用戶| LOGIN[前往 UF-03 登入]
+    AUTH -->|是| STATUS{帳號狀態}
+    STATUS -->|停權| SUSPEND[停權頁面 只能申訴]
+    STATUS -->|正常| MEMBER_TYPE{會員等級}
+    MEMBER_TYPE -->|Lv0 註冊會員| LV0
+    MEMBER_TYPE -->|Lv1 驗證會員| LV1
+    MEMBER_TYPE -->|Lv3 付費會員| LV3
+    subgraph LV0 [Level 0 — 註冊會員]
+        direction LR
+        L0A[瀏覽探索列表] --- L0B[基礎搜尋]
+        L0B --- L0C[每日 10 則訊息]
+    end
+    subgraph LV1 [Level 1 — 驗證會員]
+        direction LR
+        L1A[完整個人資料] --- L1B[每日 30 則訊息]
+        L1B --- L1C[進階驗證入口]
+    end
+    subgraph LV3 [Level 3 — 付費會員]
+        direction LR
+        L3A[無限聊天+已讀] --- L3B[QR約會驗證]
+        L3B --- L3C["VIP隱身/廣播"]
+    end
+    LV0 --> UPGRADE[升級提示]
+    LV1 --> UPGRADE
+    UPGRADE --> SHOP[會員商城 UF-07]
+    style SUSPEND fill:#7f1d1d,color:#fff
+    style SHOP fill:#1a3a1a,color:#fff
+    style LV3 fill:#1a2740,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-02 ═══ -->
+  <div id="page-uf02" class="dpage">
+    <div class="ph-top"><span class="pid">UF-02</span><h2 class="ptitle">註冊與分層驗證流程</h2></div>
+    <p class="pdesc">三步驟註冊 → Email 驗證 → 手機 SMS 驗證 → 進階驗證（依性別分流）。女性需上傳含隨機碼自拍由管理員審核；男性透過信用卡支付 NT100 元完成驗證。</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:#065f46"></div>驗證成功</div>
+      <div class="leg"><div class="leg-dot" style="background:#7f1d1d"></div>錯誤拒絕</div>
+      <div class="leg"><div class="leg-dot" style="background:#1e3a5f"></div>等級提升</div>
+    </div>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    START(["訪客進入 /register"]) --> S1A
+    subgraph STEP1 [Step 1 基本資料]
+        S1A["選擇性別 甜爹/甜心"] --> S1B[填入暱稱]
+        S1B --> S1C[填入生日]
+        S1C --> AGE{年滿 18 歲?}
+        AGE -->|否| AGE_ERR[錯誤提示 未滿18歲無法加入]
+        AGE -->|是| S1D[下一步]
+    end
+    subgraph STEP2 [Step 2 帳號資料]
+        S2A[填入 Email] --> S2B[設定密碼]
+        S2B --> S2C[輸入手機號碼]
+        S2C --> S2D[勾選條款 + 成年確認]
+        S2D --> TERMS{兩項均勾?}
+        TERMS -->|否| S2D
+        TERMS -->|是| S2E[送出註冊]
+    end
+    subgraph STEP3 [Step 3 Email 驗證]
+        S3A[系統寄送驗證信] --> S3B[輸入 6 位 OTP]
+        S3B --> EMAIL_OK{驗證成功?}
+        EMAIL_OK -->|逾時失敗| S3C[重新發送 60秒冷卻]
+        S3C --> S3B
+        EMAIL_OK -->|成功| S3D[Email 驗證完成]
+    end
+    subgraph SMS [SMS 手機驗證]
+        SMS_A[發送簡訊驗證碼] --> SMS_B[輸入 6 位數]
+        SMS_B --> SMS_OK{驗證成功?}
+        SMS_OK -->|失敗| SMS_C[重新發送]
+        SMS_C --> SMS_B
+        SMS_OK -->|成功| SMS_D[手機驗證完成 升為 Lv1]
+    end
+    STEP1 --> STEP2 --> STEP3 --> SMS
+    SMS --> EXPLORE["跳轉 /app/explore"]
+    EXPLORE --> ADV{進行進階驗證?}
+    ADV -->|稍後| BASIC[以驗證會員使用]
+    ADV -->|是| GENDER{性別}
+    subgraph FEMALE [女性進階驗證]
+        FV1[顯示隨機 6 位數 有效 10 分鐘] --> FV2[拍攝手持驗證碼自拍]
+        FV2 --> FV3[上傳至後台審核]
+        FV3 --> FV4{管理員審核}
+        FV4 -->|通過| FV5[驗證完成 誠信分數 +15]
+        FV4 -->|不通過| FV6[通知原因 可重新提交]
+    end
+    subgraph MALE [男性進階驗證 信用卡]
+        MV1[跳轉綠界信用卡頁] --> MV2[輸入卡號 收費 NT100]
+        MV2 --> MV3{付款成功?}
+        MV3 -->|失敗| MV4[顯示失敗 引導重試]
+        MV3 -->|成功| MV5[驗證完成 誠信分數 +15]
+    end
+    GENDER -->|女性| FEMALE
+    GENDER -->|男性| MALE
+    FV5 --> LV2[升為進階驗證會員 Lv2]
+    MV5 --> LV2
+    style FV5 fill:#065f46,color:#fff
+    style MV5 fill:#065f46,color:#fff
+    style LV2 fill:#1e3a5f,color:#fff
+    style AGE_ERR fill:#7f1d1d,color:#fff
+    style SMS_D fill:#065f46,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-03 ═══ -->
+  <div id="page-uf03" class="dpage">
+    <div class="ph-top"><span class="pid">UF-03</span><h2 class="ptitle">登入與帳號狀態處理</h2></div>
+    <p class="pdesc">登入後的狀態分叉，含停權判斷（誠信分數降至 0 自動觸發）、申訴流程、連續錯誤 5 次 IP 冷卻、忘記密碼重設。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    START(["進入 /login"]) --> FILL[填入 Email 和密碼]
+    FILL --> SUBMIT[送出登入]
+    SUBMIT --> RES{驗證結果}
+    RES -->|帳號或密碼錯誤| ERR[Toast 帳號或密碼不正確]
+    ERR --> FILL
+    RES -->|連續錯誤 5 次| RATE[IP 冷卻封鎖 請稍後再試]
+    RES -->|成功| SCORE{誠信分數檢查}
+    SCORE -->|分數為 0 自動停權| SP1
+    SCORE -->|分數正常| MAIN["進入 /app/explore"]
+    subgraph SUSPEND [停權與申訴流程]
+        SP1["跳轉 /suspended"] --> SP2[顯示停權原因及申訴入口]
+        SP2 --> SP3[填寫申訴表單 可附圖]
+        SP3 --> SP4[申訴送出 等待審核]
+        SP4 --> SP5{管理員審核}
+        SP5 -->|駁回| SP6[維持停權 Email 通知]
+        SP5 -->|通過| SP7[補回分數至 30 分以上]
+        SP7 --> RESUME[恢復正常使用]
+    end
+    subgraph FORGOT [忘記密碼]
+        FP1[點忘記密碼] --> FP2[輸入註冊 Email]
+        FP2 --> FP3[寄送重設連結]
+        FP3 --> FP4[點連結進入重設頁]
+        FP4 --> FP5[輸入新密碼並確認]
+        FP5 --> FP6[密碼重設成功]
+        FP6 --> START
+    end
+    START -.->|忘記密碼| FORGOT
+    style SP7 fill:#065f46,color:#fff
+    style RESUME fill:#065f46,color:#fff
+    style SP6 fill:#7f1d1d,color:#fff
+    style RATE fill:#7f1d1d,color:#fff
+    style MAIN fill:#1e3a5f,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-04 ═══ -->
+  <div id="page-uf04" class="dpage">
+    <div class="ph-top"><span class="pid">UF-04</span><h2 class="ptitle">搜尋與探索流程</h2></div>
+    <p class="pdesc">用戶如何探索、篩選並查看其他用戶資料，包含誠信分數互動限制、收藏操作，及誰來看我的付費牆邏輯。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    ENTRY(["進入 /app/explore"]) --> LOAD[載入用戶列表 依誠信分數排序]
+    LOAD --> OPT{用戶選擇}
+    OPT -->|直接瀏覽| LIST[用戶列表 無限捲動]
+    OPT -->|輸入暱稱| SEARCH[即時搜尋結果]
+    OPT -->|地區標籤| QF[快速地區篩選]
+    OPT -->|漏斗 icon| ADV
+    subgraph ADV [進階篩選 Bottom Sheet]
+        AF1[年齡區間 18 至 50]
+        AF2[誠信分數區間]
+        AF3[地區多選]
+        AF4[最後上線時間]
+        AF5[套用篩選]
+    end
+    ADV --> LIST
+    SEARCH --> LIST
+    QF --> LIST
+    LIST --> TAP[點擊用戶卡片]
+    TAP --> PROFILE["個人資料頁 /app/profiles/:id"]
+    PROFILE --> LOG[自動記錄訪客 更新誰來看我]
+    PROFILE --> ACT{用戶操作}
+    ACT -->|收藏| FAV{已收藏?}
+    FAV -->|否| ADD[加入收藏 最多 500 人]
+    FAV -->|是| DEL[取消收藏]
+    ACT -->|傳送訊息| PAY{已付費?}
+    PAY -->|未付費| PROMPT[升級提示 Modal 引導至商城]
+    PAY -->|已付費| CHAT[建立對話 跳轉聊天頁]
+    ACT -->|更多| SHEET[Bottom Sheet]
+    SHEET --> BLOCK[封鎖此用戶]
+    SHEET --> REPORT[檢舉此用戶]
+    ACT -->|返回| LIST
+    subgraph VISITOR [誰來看我 /app/visitors]
+        VP1[90 天內訪客列表] --> VP2{身份}
+        VP2 -->|女性或付費男性| VP3[直接查看對方資料]
+        VP2 -->|未付費男性| VP4[升級提示 Modal]
+    end
+    style ADD fill:#065f46,color:#fff
+    style CHAT fill:#065f46,color:#fff
+    style PROMPT fill:#1e3a5f,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-05 ═══ -->
+  <div id="page-uf05" class="dpage">
+    <div class="ph-top"><span class="pid">UF-05</span><h2 class="ptitle">聊天與即時訊息流程</h2></div>
+    <p class="pdesc">從開啟對話列表到傳訊，涵蓋 WebSocket 連線、每日訊息配額（Lv0: 10則 / Lv1: 30則 / Lv3: 無限）、誠信分數發訊限制、已讀回執，及 QR 約會邀請入口。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    ENTRY(["進入 /app/messages"]) --> LIST[聊天列表 依最新訊息排序]
+    LIST --> OC{開啟對話}
+    OC -->|點擊 ChatCard| ROOM["對話頁 /app/messages/:id"]
+    OC -->|從個人頁傳訊| SC1
+    subgraph SC1 [建立對話前檢查]
+        C1{誠信分數允許發訊?}
+        C1 -->|分數不足| CBLK[提示 誠信分數不足]
+        C1 -->|可發訊| C2{已有對話?}
+        C2 -->|是| ROOM
+        C2 -->|否| NEW[建立新對話]
+        NEW --> ROOM
+    end
+    ROOM --> WS[WebSocket 連線 private-chat.userId]
+    ROOM --> MSG
+    subgraph MSG [傳送訊息]
+        MT{訊息類型}
+        MT -->|文字| QC1
+        MT -->|圖片 最大 5MB| QC1
+        MT -->|表情符號| QC1
+        QC1{會員等級配額}
+        QC1 -->|Lv0 今日已達 10 則| QBLK[達上限 引導升級]
+        QC1 -->|Lv1 今日已達 30 則| QBLK
+        QC1 -->|Lv3 無限制| SOK[送出訊息]
+        QC1 -->|Lv0 未達 10 則| SOK
+        QC1 -->|Lv1 未達 30 則| SOK
+        SOK --> DLVR[狀態 已送達]
+        DLVR --> RD{對方已讀?}
+        RD -->|是| RST[狀態 已讀 付費會員可見]
+    end
+    subgraph ACT [訊息操作]
+        LA[長按訊息] --> OP{操作}
+        OP -->|5 分鐘內未讀| RC[回收訊息]
+        OP -->|任何時間| CP[複製文字]
+    end
+    ROOM --> ACT
+    subgraph DATE [約會邀請入口]
+        DI1[點擊聊天框 QR icon]
+        DI2[雙方均為驗證會員才顯示]
+        DI1 --- DI2
+        DI2 --> DI3[發起約會邀請 Bottom Sheet]
+    end
+    ROOM --> DATE
+    subgraph BADGE [未讀 Badge 機制]
+        UB1[收到新訊息 WebSocket push] --> UB2[底部導覽訊息 icon 顯示角標]
+        UB2 --> UB3[進入對話閱讀 角標歸零]
+    end
+    WS -.->|推播| BADGE
+    style CBLK fill:#7f1d1d,color:#fff
+    style QBLK fill:#7f1d1d,color:#fff
+    style SOK fill:#065f46,color:#fff
+    style RST fill:#1e3a5f,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-06 ═══ -->
+  <div id="page-uf06" class="dpage">
+    <div class="ph-top"><span class="pid">UF-06</span><h2 class="ptitle">QR碼約會驗證流程</h2></div>
+    <p class="pdesc">平台核心差異化功能。從聊天中發起邀請到雙方掃碼完成驗證。QR Token 有效期為約會時間前後各 30 分鐘；GPS 驗證為選配，通過可獲額外加分。</p>
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:#065f46"></div>驗證成功</div>
+      <div class="leg"><div class="leg-dot" style="background:#1a3a1a"></div>GPS 加成</div>
+      <div class="leg"><div class="leg-dot" style="background:#7f1d1d"></div>失效失敗</div>
+      <div class="leg"><div class="leg-dot" style="background:#4b5563"></div>取消</div>
+    </div>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    START([用戶A 點聊天頁 QR icon]) --> FORM
+    subgraph FORM [發起邀請]
+        F1[填入約會日期時間] --> F2[填入地點名稱]
+        F2 --> F3[確認發送邀請]
+    end
+    F3 --> CREATE[建立約會記錄 生成唯一 QR Token]
+    CREATE --> PUSH[推播通知給用戶B]
+    PUSH --> RESP{用戶B 回應}
+    RESP -->|拒絕| CANCEL[約會取消 通知用戶A]
+    RESP -->|接受| ACCEPTED[約會狀態 進行中]
+    ACCEPTED --> WINDOW{進入有效掃碼時間窗}
+    WINDOW -->|未到時間| COUNT[App 顯示倒數計時]
+    COUNT --> WINDOW
+    WINDOW -->|超過 30 分鐘後| EXP[QR Token 失效 約會過期]
+    WINDOW -->|時間窗內| SCAN
+    subgraph SCAN [雙方就位掃碼]
+        SC1[進入約會頁面] --> SC2[點擊立即掃碼]
+        SC2 --> SC3[全螢幕相機掃碼]
+        SC3 --> SC4[掃描對方 QR Code]
+    end
+    SC4 --> VERIFY["POST /api/v1/dates/:id/verify"]
+    VERIFY --> TK{QR Token 有效?}
+    TK -->|無效或已使用| FAIL[驗證失敗]
+    TK -->|有效| GPS{提供 GPS?}
+    GPS -->|否| NOGPS[不影響成功 分數較低]
+    GPS -->|是| DIST{距離在 500 公尺內?}
+    DIST -->|超出| OUT[超出範圍 視同無 GPS]
+    DIST -->|在範圍內| GPASS[GPS 驗證通過]
+    GPASS --> SH[雙方各 +5 分 後台可調]
+    NOGPS --> SL[雙方各 +2 分]
+    OUT --> SL
+    SH --> OK[約會驗證完成]
+    SL --> OK
+    OK --> NOTIFY[推播通知雙方]
+    OK --> LOCK[防止重複驗證]
+    style OK fill:#065f46,color:#fff
+    style SH fill:#1a3a1a,color:#fff
+    style SL fill:#1e3a5f,color:#fff
+    style EXP fill:#7f1d1d,color:#fff
+    style FAIL fill:#7f1d1d,color:#fff
+    style CANCEL fill:#4b5563,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-07 ═══ -->
+  <div id="page-uf07" class="dpage">
+    <div class="ph-top"><span class="pid">UF-07</span><h2 class="ptitle">訂閱付費流程</h2></div>
+    <p class="pdesc">方案選擇（週/月/季/年 + 新手體驗價）→ 綠界付款 → Webhook 啟用訂閱，含自動續訂設定、到期降級、管理員審核取消訂閱。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    ENTRY(["進入 /app/shop"]) --> STATUS[載入目前會員狀態]
+    STATUS --> HAS{有有效訂閱?}
+    HAS -->|有| MY[顯示我的會員區塊 到期日 自動續訂 toggle]
+    HAS -->|無| PLANS[顯示方案選擇區]
+    MY --> PLANS
+    PLANS --> TRIAL{曾購買體驗方案?}
+    TRIAL -->|從未購買| SHOW[顯示新手體驗價 NT199 30天 不自動續費]
+    TRIAL -->|已購買| HIDE[不顯示體驗方案]
+    SHOW --> SEL[用戶選擇方案]
+    HIDE --> SEL
+    PLANS --> SEL
+    SEL --> MODAL[訂閱確認 Modal 方案名稱 金額 自動續訂勾選]
+    MODAL --> CO[建立綠界訂單]
+    CO --> ECPAY[跳轉綠界付款頁面]
+    ECPAY --> RES{付款結果}
+    RES -->|失敗或取消| PFAIL[返回商城 顯示失敗提示]
+    RES -->|成功| WH[綠界 Webhook 回呼 HMAC 驗證]
+    WH --> ACT[訂閱啟用 升為付費會員 Lv3]
+    ACT --> UNL[解鎖全功能 推播通知]
+    subgraph EXP [到期流程]
+        E1{到期前 7 天提醒}
+        E1 -->|自動續訂開| E2[系統自動扣款]
+        E1 -->|自動續訂關| E3[Email 提醒手動續訂]
+        E2 -->|成功| E4[訂閱續期]
+        E2 -->|失敗| E5[到期 降回 Lv1]
+        E3 --> E6{手動續訂?}
+        E6 -->|是| SEL
+        E6 -->|否| E5
+    end
+    UNL --> EXP
+    subgraph CAN [取消訂閱]
+        C1[問題回報 選取消訂閱] --> C2[填寫申請]
+        C2 --> C3[服務持續至到期日]
+        C3 --> C4[後台審核 停止扣款]
+        C4 --> C5[Email 通知]
+        C5 --> C6[到期後降回 Lv1]
+    end
+    MY -.->|取消訂閱| CAN
+    style ACT fill:#065f46,color:#fff
+    style UNL fill:#1a3a1a,color:#fff
+    style PFAIL fill:#7f1d1d,color:#fff
+    style E5 fill:#4b5563,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-08 ═══ -->
+  <div id="page-uf08" class="dpage">
+    <div class="ph-top"><span class="pid">UF-08</span><h2 class="ptitle">社群動態流程</h2></div>
+    <p class="pdesc">⚠️ Phase 2 功能。動態發布限制（每人最多 3 則 / 間隔 30 分鐘）、AI 自動審核加人工審核 Pipeline、點愛心、收藏對象動態分頁。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    ENTRY(["進入 /app/posts"]) --> TABS{Tab 切換}
+    TABS -->|最新動態| FEED[所有異性動態 依時間排序 誠信分數 30 以上才可見]
+    TABS -->|收藏對象動態| FAV[只顯示已收藏對象的動態]
+    FEED --> INT
+    FAV --> INT
+    subgraph INT [動態互動]
+        I1{操作}
+        I1 -->|點愛心| LIKE[送出愛心 即時更新]
+        I1 -->|點頭像| GOPROFILE[跳轉個人資料頁]
+        I1 -->|點私訊| GOPRIVATE[跳轉聊天對話]
+        I1 -->|更多| REPORT[檢舉此動態]
+    end
+    subgraph LMT [發布前限制檢查]
+        LM1{超出限制?}
+        LM1 -->|已有 3 則| LB1[提示 已達上限]
+        LM1 -->|距上則未滿 30 分鐘| LB2[提示 請等待冷卻]
+        LM1 -->|未超出| PUB
+    end
+    subgraph PUB [發布動態]
+        P1[上傳 1 至 3 張照片] --> P2[輸入說明文字 最多 200 字]
+        P2 --> P3[點擊發布]
+        P3 --> AI[AI 自動審核 敏感詞加圖片偵測]
+        AI --> AR{審核結果}
+        AR -->|通過| LIVE[動態上線 對所有異性可見]
+        AR -->|疑似違規| MQ[人工審核佇列 提示審核中]
+        MQ --> ADM{管理員}
+        ADM -->|通過| LIVE
+        ADM -->|不通過| REJ[通知用戶 動態已下架]
+    end
+    ENTRY -->|點 + 按鈕| LMT
+    subgraph MINE [我的動態管理]
+        M1[個人資料頁] --> M2[查看自己的動態]
+        M2 --> M3[點擊動態 選擇刪除]
+    end
+    ENTRY -.->|我的頁面| MINE
+    style LIVE fill:#065f46,color:#fff
+    style REJ fill:#7f1d1d,color:#fff
+    style LB1 fill:#7f1d1d,color:#fff
+    style LB2 fill:#7f1d1d,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-09 ═══ -->
+  <div id="page-uf09" class="dpage">
+    <div class="ph-top"><span class="pid">UF-09</span><h2 class="ptitle">安全與回報流程</h2></div>
+    <p class="pdesc">封鎖用戶、一般檢舉（送出即雙方各扣 10 分，屬實後補回）、問題回報（系統問題 / 一般檢舉 / 取消訂閱），及歷史案號追蹤。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    TRG{安全事件觸發}
+    TRG -->|不當用戶| BOR
+    TRG -->|系統問題| SRP
+    TRG -->|取消訂閱| CSB
+    subgraph BOR [封鎖或檢舉入口]
+        BR1[個人資料頁 點更多] --> BR2{選擇}
+        BR2 -->|封鎖| BF
+        BR2 -->|一般檢舉| RF
+    end
+    subgraph BF [封鎖流程]
+        BF1[確認對話框] --> BF2[確認封鎖]
+        BF2 --> BF3[對方消失 無法查看或傳訊]
+    end
+    subgraph RF [一般檢舉]
+        RF1["跳轉 /app/reports 類型 一般檢舉"]
+        RF2[填入標題說明 選填佐證圖片]
+        RF3[搜尋被檢舉用戶]
+        RF4[送出]
+        RF4 --> RF5[雙方各扣誠信分數 10 分]
+        RF5 --> RF6[建立案號 Toast 顯示案號]
+        RF1 --> RF2 --> RF3 --> RF4
+        RF6 --> ADM
+    end
+    subgraph SRP [系統問題回報]
+        SR1[類型 系統問題] --> SR2[填入說明 可上傳截圖]
+        SR2 --> SR3[送出 建立案號]
+        SR3 --> ADM
+    end
+    subgraph CSB [取消訂閱回報]
+        CS1[類型 取消訂閱] --> CS2[確認送出]
+        CS2 --> ADM
+    end
+    subgraph ADM [後台管理員處理]
+        A1[案件進入待處理佇列] --> A2[管理員查看 切換處理中]
+        A2 --> A3{處理結果}
+        A3 -->|不成立| A4[維持現狀 分數不補回]
+        A3 -->|成立| A5[被檢舉人懲罰 檢舉人補回 10 分]
+        A3 -->|系統問題確認| A6[酌情加分獎勵回報者]
+        A4 --> CLS[已處理 Email 通知用戶]
+        A5 --> CLS
+        A6 --> CLS
+    end
+    subgraph HST [歷史回報紀錄]
+        H1["/app/reports/history"] --> H2[案號列表 狀態 Badge]
+        H2 --> H3[點入詳情 查看管理員回覆]
+        H3 --> H4[補充說明 追加內容]
+    end
+    TRG -.->|查詢| HST
+    style RF5 fill:#7f1d1d,color:#fff
+    style A5 fill:#065f46,color:#fff
+    style CLS fill:#1e3a5f,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ UF-10 ═══ -->
+  <div id="page-uf10" class="dpage">
+    <div class="ph-top"><span class="pid">UF-10</span><h2 class="ptitle">後台管理員流程</h2></div>
+    <p class="pdesc">管理員日常操作全流程：用戶管理、女性進階驗證審核、回報與檢舉處理、系統公告、後台廣播、SEO 工具、系統參數設定、操作日誌稽核。</p>
+    <div class="dbox"><div class="mermaid">
+flowchart TD
+    ADMIN([管理員登入後台]) --> ROLE{角色權限}
+    ROLE -->|一般管理員| GEN[一般操作]
+    ROLE -->|高級管理員| ALL[全部操作 含刪除帳號]
+    GEN --> DB
+    ALL --> DB
+    DB[儀表板 新會員 活躍 付費 流量]
+    DB --> TASKS{任務選擇}
+    subgraph UM [用戶管理]
+        U1[會員列表 預設近 7 天新會員] --> U2[搜尋 UID 暱稱 Email]
+        U2 --> U3[查看個人頁]
+        U3 --> U4{操作}
+        U4 -->|調整分數| U5[加減分 即時生效]
+        U4 -->|調整等級| U6[手動覆蓋等級]
+        U4 -->|重新驗證| U7[強制重驗]
+        U4 -->|停權| U8[帳號停權]
+        U4 -->|刪除| U9[最高權限 永久刪除]
+    end
+    subgraph VR [女性進階驗證審核]
+        V1[待審核自拍照列表] --> V2[查看照片 對照驗證碼]
+        V2 --> V3{審核}
+        V3 -->|通過| V4[通過 分數加 15 升 Lv2]
+        V3 -->|拒絕| V5[拒絕 填原因 通知重提]
+    end
+    subgraph RM [回報處理]
+        R1[回報列表 待處理 處理中 已處理] --> R2[查看詳情]
+        R2 --> R3[切換處理中]
+        R3 --> R4{案件類型}
+        R4 -->|一般檢舉| R5[核實 調整分數]
+        R4 -->|系統問題| R6[標記修復 酌情加分]
+        R4 -->|取消訂閱| R7[停止下期扣款]
+        R5 --> R8[已處理 Email 通知]
+        R6 --> R8
+        R7 --> R8
+    end
+    subgraph SS [系統設定]
+        S1[誠信分數規則值]
+        S2[訂閱折扣設定]
+        S3[匿名訊息保留天數]
+        S4[自動續訂預設值]
+        S5[體驗方案金額]
+    end
+    subgraph SEO [SEO 行銷工具]
+        T1[編輯頁面 Meta Tags] --> T2[建立廣告短連結]
+        T2 --> T3[查看點擊轉換報表]
+    end
+    TASKS -->|會員管理| UM
+    TASKS -->|驗證審核| VR
+    TASKS -->|回報處理| RM
+    TASKS -->|系統設定| SS
+    TASKS -->|SEO 工具| SEO
+    style V4 fill:#065f46,color:#fff
+    style V5 fill:#7f1d1d,color:#fff
+    style U9 fill:#7f1d1d,color:#fff
+    style R8 fill:#1e3a5f,color:#fff
+    </div></div>
+  </div>
+
+  <!-- ═══ APPENDIX ═══ -->
+  <div id="page-appendix" class="dpage">
+    <div class="ph-top"><span class="pid">附錄</span><h2 class="ptitle">用戶等級 & 誠信分數規則</h2></div>
+    <p class="pdesc">所有流程的核心依據：用戶等級對照表與誠信分數加扣分規則速查。</p>
+    <div class="appendix">
+      <h3>用戶等級對照表</h3>
+      <table class="dt">
+        <thead><tr><th>等級</th><th>名稱</th><th>取得條件</th><th>聊天限制</th><th>特殊功能</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge bb">Lv0</span></td><td>註冊會員</td><td>完成基本資料填寫</td><td>每日 10 則</td><td>基礎瀏覽、有限搜尋</td></tr>
+          <tr><td><span class="badge bg">Lv1</span></td><td>驗證會員</td><td>Email + 手機驗證</td><td>每日 30 則</td><td>完整個人資料、進階驗證入口</td></tr>
+          <tr><td><span class="badge bo">Lv2</span></td><td>進階驗證會員</td><td>Lv1 + 身份驗證</td><td>每日 30 則</td><td>誠信分數更高、QR 邀請可見</td></tr>
+          <tr><td><span class="badge" style="background:#F0294E;color:#fff">Lv3</span></td><td>付費會員</td><td>購買任一訂閱方案</td><td>無限制</td><td>已讀回執、匿名聊天室（男）、VIP 隱身 / 廣播</td></tr>
+        </tbody>
+      </table>
+      <h3>誠信分數區間與發訊限制</h3>
+      <table class="dt">
+        <thead><tr><th>區間</th><th>等級</th><th>發訊限制</th><th>搜尋排序</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge bo">91–100</span></td><td>頂級用戶 👑</td><td>可向所有人發訊</td><td>最優先</td></tr>
+          <tr><td><span class="badge bg">61–90</span></td><td>優質用戶 ★</td><td>可向 61 分以下發訊</td><td>優先</td></tr>
+          <tr><td><span class="badge bb">31–60</span></td><td>普通用戶</td><td>可向同區間以下發訊</td><td>一般</td></tr>
+          <tr><td><span class="badge br">0–30</span></td><td>受限用戶 ⚠️</td><td>功能受限 無法主動發訊</td><td>末位</td></tr>
+        </tbody>
+      </table>
+      <h3>誠信分數加扣分規則</h3>
+      <table class="dt">
+        <thead><tr><th>事件</th><th>分數變化</th><th>備注</th></tr></thead>
+        <tbody>
+          <tr><td>完成 Email + SMS 驗證</td><td><span class="sp">+10</span></td><td>一次性</td></tr>
+          <tr><td>完成進階驗證</td><td><span class="sp">+15</span></td><td>一次性</td></tr>
+          <tr><td>QR 約會驗證成功（GPS 通過）</td><td><span class="sp">+5</span></td><td>後台可動態調整</td></tr>
+          <tr><td>QR 約會驗證成功（無 GPS）</td><td><span class="sp">+2</span></td><td>後台可動態調整</td></tr>
+          <tr><td>管理員手動獎勵</td><td><span class="sp">可變</span></td><td>回報系統問題等</td></tr>
+          <tr><td>一般檢舉送出（雙方同扣）</td><td><span class="sm">-10</span></td><td>屬實後檢舉人補回</td></tr>
+          <tr><td>匿名聊天室檢舉（雙方同扣）</td><td><span class="sm">-5</span></td><td>屬實後檢舉人補回</td></tr>
+          <tr><td>發布不當內容</td><td><span class="sm">-5</span></td><td>管理員審核後執行</td></tr>
+          <tr><td>惡意騷擾</td><td><span class="sm">-20</span></td><td>管理員核實後執行</td></tr>
+          <tr><td>管理員手動懲罰</td><td><span class="sm">可變</span></td><td></td></tr>
+          <tr style="background:#fef2f2"><td><strong>自動停權門檻</strong></td><td><span class="sm">0 分以下</span></td><td><strong>系統自動觸發 無需管理員操作</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<button id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+const pages = {
+  overview:  { title: '索引總覽', badge: '文件索引' },
+  uf01:      { title: 'UF-01 主用戶旅程', badge: 'MVP' },
+  uf02:      { title: 'UF-02 註冊與驗證', badge: 'MVP' },
+  uf03:      { title: 'UF-03 登入狀態', badge: 'MVP' },
+  uf04:      { title: 'UF-04 搜尋探索', badge: 'MVP' },
+  uf05:      { title: 'UF-05 聊天訊息', badge: 'MVP' },
+  uf06:      { title: 'UF-06 QR約會驗證', badge: '核心差異化' },
+  uf07:      { title: 'UF-07 訂閱付費', badge: 'MVP' },
+  uf08:      { title: 'UF-08 社群動態', badge: 'Phase 2' },
+  uf09:      { title: 'UF-09 安全回報', badge: 'MVP' },
+  uf10:      { title: 'UF-10 後台管理員', badge: '後台' },
+  appendix:  { title: '附錄 規則速查', badge: '參考資料' },
+};
+
+// Track which pages have been rendered
+const rendered = new Set();
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  securityLevel: 'loose',
+  themeVariables: {
+    primaryColor: '#1e293b',
+    primaryTextColor: '#f1f5f9',
+    primaryBorderColor: '#F0294E',
+    lineColor: '#94a3b8',
+    secondaryColor: '#334155',
+    tertiaryColor: '#0f172a',
+    mainBkg: '#1e293b',
+    nodeBorder: '#475569',
+    clusterBkg: '#1e293b',
+    clusterBorder: '#475569',
+    titleColor: '#f1f5f9',
+    edgeLabelBackground: '#334155',
+    fontFamily: 'system-ui, sans-serif',
+    fontSize: '14px',
+  },
+  flowchart: { curve: 'basis', padding: 16, useMaxWidth: true, htmlLabels: true }
+});
+
+async function renderPage(id) {
+  if (rendered.has(id) || id === 'overview' || id === 'appendix') return;
+  const page = document.getElementById('page-' + id);
+  if (!page) return;
+
+  // Temporarily make visible for rendering
+  const wasHidden = page.style.display === 'none' || !page.style.display;
+  page.style.visibility = 'hidden';
+  page.style.display = 'block';
+
+  try {
+    await mermaid.run({ nodes: page.querySelectorAll('.mermaid:not([data-processed])') });
+    rendered.add(id);
+  } catch(e) {
+    console.warn('Mermaid render error for', id, e.message);
+  }
+
+  if (wasHidden) {
+    page.style.display = 'none';
+    page.style.visibility = '';
+  } else {
+    page.style.visibility = '';
+  }
+}
+
+function showPage(id) {
+  // Hide all
+  document.querySelectorAll('.dpage, #page-overview').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+  // Show target
+  const target = document.getElementById('page-' + id);
+  if (target) target.style.display = 'block';
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(el => {
+    if (el.getAttribute('onclick')?.includes("'" + id + "'")) el.classList.add('active');
+  });
+
+  // Update topbar
+  const meta = pages[id] || { title: id, badge: '' };
+  document.getElementById('ttitle').textContent = meta.title;
+  document.getElementById('tbadge').textContent = meta.badge;
+
+  window.scrollTo(0, 0);
+
+  // Render diagram if not yet rendered
+  if (!rendered.has(id)) {
+    renderPage(id);
+  }
+}
+
+window.addEventListener('scroll', () => {
+  document.getElementById('scrollTop').classList.toggle('show', window.scrollY > 300);
+});
+
+// On load: show overview, pre-render first diagram in background
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.dpage').forEach(el => el.style.display = 'none');
+  document.getElementById('page-overview').style.display = 'block';
+
+  // Pre-render all diagrams in background after a short delay
+  setTimeout(async () => {
+    const ids = ['uf01','uf02','uf03','uf04','uf05','uf06','uf07','uf08','uf09','uf10'];
+    for (const id of ids) {
+      await renderPage(id);
+    }
+    console.log('All diagrams pre-rendered');
+  }, 500);
+});
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const l = document.getElementById('loading');
+    if (l) {
+      l.style.opacity = '0';
+      l.style.transition = 'opacity 0.4s';
+      setTimeout(() => l.remove(), 400);
+    }
+  }, 600);
+});
+</script>
+</body>
+</html>

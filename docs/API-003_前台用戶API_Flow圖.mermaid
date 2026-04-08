@@ -1,0 +1,135 @@
+---
+title: MiMeet 前台用戶 API Flow 圖（API-003）
+---
+
+flowchart TD
+    START([用戶開啟 App]) --> PUBLIC{是否已登入?}
+
+    %% ─────────────────────────────────────────
+    %% A. 未登入 / 公開流程
+    %% ─────────────────────────────────────────
+    PUBLIC -->|否| LANDING[首頁 Landing Page\n/]
+    LANDING --> AUTH_CHOICE{選擇動作}
+    AUTH_CHOICE -->|註冊| REGISTER_PAGE["/register"]
+    AUTH_CHOICE -->|登入| LOGIN_PAGE["/login"]
+    AUTH_CHOICE -->|SEO連結| SEO["GET /api/v1/seo/redirect/:slug\n公開跳轉連結"]
+
+    %% 註冊流程
+    REGISTER_PAGE --> REG_API["POST /api/v1/auth/register\n{ email, password, role, nickname }"]
+    REG_API --> REG_VERIFY["POST /api/v1/auth/verify-email\n{ token }"]
+    REG_VERIFY --> REG_SMS["POST /api/v1/auth/verify-phone/send\n手機驗證碼發送"]
+    REG_SMS --> REG_SMS2["POST /api/v1/auth/verify-phone/confirm\n{ code }"]
+    REG_SMS2 --> LOGGED_IN
+
+    %% 登入流程
+    LOGIN_PAGE --> LOGIN_API["POST /api/v1/auth/login\n{ email, password }"]
+    LOGIN_API --> LOGIN_FAIL{成功?}
+    LOGIN_FAIL -->|失敗| LOGIN_PAGE
+    LOGIN_FAIL -->|成功| LOGGED_IN
+
+    %% ─────────────────────────────────────────
+    %% B. 已登入 — 主流程分支
+    %% ─────────────────────────────────────────
+    PUBLIC -->|是| LOGGED_IN{{"✅ 已登入用戶\n(Sanctum Cookie + CSRF)"}}
+    LOGGED_IN --> SUSPENDED{誠信分數 ≥ 門檻?}
+    SUSPENDED -->|否 / 停權| SUSPEND_PAGE["/suspended\nGET /api/v1/users/me/status"]
+    SUSPEND_PAGE --> APPEAL["POST /api/v1/appeals\n申訴送出"]
+
+    SUSPENDED -->|是| MAIN_NAV{主要功能入口}
+
+    %% ─────────────────────────────────────────
+    %% C. 個人資料設定
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|設定| PROFILE["GET /api/v1/users/me\n取得個人資料"]
+    PROFILE --> PROFILE_UPDATE["PATCH /api/v1/users/me\n更新資料"]
+    PROFILE_UPDATE --> PHOTO["POST /api/v1/users/me/photos\n上傳照片 (multipart)"]
+    PHOTO --> VERIFY_ADV["POST /api/v1/users/me/verifications\n進階驗證 (照片 / 信用卡)"]
+
+    %% ─────────────────────────────────────────
+    %% D. 探索 / 搜尋
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|探索| EXPLORE["GET /api/v1/users/explore\n?role=&age_min=&age_max=&city=\n搜尋篩選列表"]
+    EXPLORE --> EXPLORE_REC["GET /api/v1/users/recommendations\n智能推薦列表"]
+    EXPLORE --> PROFILE_VIEW["GET /api/v1/users/:id\n查看他人資料"]
+    PROFILE_VIEW --> VISITOR_LOG["(自動) POST /api/v1/visitors\n記錄訪客"]
+    PROFILE_VIEW --> FAV_ADD["POST /api/v1/favorites/:id\n加入收藏"]
+    PROFILE_VIEW --> REPORT_USER["POST /api/v1/reports\n檢舉用戶"]
+    PROFILE_VIEW --> CHAT_INIT
+
+    %% ─────────────────────────────────────────
+    %% E. 即時聊天
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|訊息| CHAT_LIST["GET /api/v1/chats\n聊天列表"]
+    CHAT_LIST --> CHAT_ROOM["GET /api/v1/chats/:id/messages\n歷史訊息 (分頁)"]
+    CHAT_INIT["POST /api/v1/chats\n建立對話"] --> CHAT_ROOM
+    CHAT_ROOM --> WS_CONNECT[["🔌 WebSocket 連線\nLaravel Reverb\nprivate-chat.{user_id}"]]
+    WS_CONNECT --> WS_SEND["ws: sendMessage event\n{ chat_id, content, type }"]
+    WS_SEND --> WS_RECV["ws: newMessage event\n推播給對方"]
+    CHAT_ROOM --> MEDIA_MSG["POST /api/v1/chats/:id/messages\n傳送圖片/檔案"]
+
+    %% ─────────────────────────────────────────
+    %% F. 約會 QR 碼驗證
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|約會| DATE_LIST["GET /api/v1/dates\n約會列表"]
+    DATE_LIST --> DATE_CREATE["POST /api/v1/dates\n發起約會邀請"]
+    DATE_CREATE --> DATE_QR["GET /api/v1/dates/:id/qr\n產生 QR Code"]
+    DATE_QR --> DATE_SCAN["POST /api/v1/dates/:id/verify\n{ qr_token } 掃碼驗證"]
+    DATE_SCAN --> DATE_DONE["約會完成\n誠信分數 +加分"]
+
+    %% ─────────────────────────────────────────
+    %% G. 動態牆
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|動態| POST_FEED["GET /api/v1/posts\n動態列表 (分頁)"]
+    POST_FEED --> POST_CREATE["POST /api/v1/posts\n發布動態 (文字/圖片)"]
+    POST_FEED --> POST_LIKE["POST /api/v1/posts/:id/likes\n點讚"]
+    POST_FEED --> POST_COMMENT["POST /api/v1/posts/:id/comments\n留言"]
+
+    %% ─────────────────────────────────────────
+    %% H. 訂閱 / 付款
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|商城| SHOP["GET /api/v1/subscriptions/plans\n訂閱方案列表"]
+    SHOP --> SHOP_TRIAL["GET /api/v1/subscriptions/trial\n新手體驗方案"]
+    SHOP --> CHECKOUT["POST /api/v1/payments/checkout\n{ plan_id } 建立訂單"]
+    CHECKOUT --> ECPAY["🔗 導向綠界支付頁面"]
+    ECPAY --> WEBHOOK["(Server) POST /api/v1/payments/webhook\n綠界 HMAC 回呼"]
+    WEBHOOK --> PAY_DONE["訂閱啟用\n功能解鎖"]
+
+    %% ─────────────────────────────────────────
+    %% I. 通知系統
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|通知| NOTIFY_LIST["GET /api/v1/notifications\n站內通知列表"]
+    NOTIFY_LIST --> NOTIFY_READ["PATCH /api/v1/notifications/:id/read\n標記已讀"]
+    NOTIFY_WS[["🔌 WebSocket\nprivate-notify.{user_id}\n即時推播通知"]] -.->|推播| MAIN_NAV
+
+    %% ─────────────────────────────────────────
+    %% J. 其他功能
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|誰來看我| VISITOR_LIST["GET /api/v1/visitors\n訪客記錄列表"]
+    MAIN_NAV -->|我的收藏| FAV_LIST["GET /api/v1/favorites\n收藏列表"]
+    MAIN_NAV -->|問題回報| REPORT_CREATE["POST /api/v1/reports\n建立 Ticket"]
+    REPORT_CREATE --> REPORT_HIST["GET /api/v1/reports\n歷史回報記錄"]
+
+    %% ─────────────────────────────────────────
+    %% K. 登出
+    %% ─────────────────────────────────────────
+    MAIN_NAV -->|登出| LOGOUT["POST /api/v1/auth/logout\n撤銷 Sanctum Token"]
+    LOGOUT --> START
+
+    %% ─────────────────────────────────────────
+    %% 樣式設定
+    %% ─────────────────────────────────────────
+    classDef api fill:#1a1a2e,stroke:#F0294E,color:#fff
+    classDef page fill:#16213e,stroke:#FF5C7E,color:#fff
+    classDef ws fill:#0f3460,stroke:#4FC3F7,color:#fff
+    classDef gate fill:#2d1b69,stroke:#9C27B0,color:#fff,shape:diamond
+    classDef done fill:#1b3a1b,stroke:#4CAF50,color:#fff
+
+    class REG_API,REG_VERIFY,REG_SMS,REG_SMS2,LOGIN_API,PROFILE,PROFILE_UPDATE,PHOTO,VERIFY_ADV api
+    class EXPLORE,EXPLORE_REC,PROFILE_VIEW,FAV_ADD,FAV_LIST,REPORT_USER,VISITOR_LOG,VISITOR_LIST api
+    class CHAT_LIST,CHAT_ROOM,CHAT_INIT,MEDIA_MSG,DATE_LIST,DATE_CREATE,DATE_QR,DATE_SCAN api
+    class POST_FEED,POST_CREATE,POST_LIKE,POST_COMMENT,SHOP,SHOP_TRIAL,CHECKOUT,WEBHOOK api
+    class NOTIFY_LIST,NOTIFY_READ,REPORT_CREATE,REPORT_HIST,LOGOUT,APPEAL,SEO api
+    class WS_CONNECT,WS_SEND,WS_RECV,NOTIFY_WS ws
+    class LOGGED_IN,SUSPENDED,AUTH_CHOICE,PUBLIC,LOGIN_FAIL,MAIN_NAV gate
+    class DATE_DONE,PAY_DONE done
+    class LANDING,REGISTER_PAGE,LOGIN_PAGE,SUSPEND_PAGE page

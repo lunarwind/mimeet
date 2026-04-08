@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { Card, Form, Input, Button, Alert, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
@@ -16,8 +16,7 @@ export default function LoginPage() {
 
   // Already logged in
   if (isLoggedIn) {
-    navigate('/admin/members', { replace: true })
-    return null
+    return <Navigate to="/dashboard" replace />
   }
 
   const handleLogin = async (values: { email: string; password: string }) => {
@@ -36,19 +35,19 @@ export default function LoginPage() {
       // Mock login
       if (values.email === 'admin@mimeet.tw' && values.password === 'password') {
         login({ id: 1, name: '管理員', email: 'admin@mimeet.tw', role: 'super_admin' })
-        navigate('/admin/members', { replace: true })
+        navigate('/dashboard', { replace: true })
         setLoading(false)
         return
       }
       if (values.email === 'cs@mimeet.tw' && values.password === 'password') {
         login({ id: 2, name: '客服人員', email: 'cs@mimeet.tw', role: 'cs' })
-        navigate('/admin/tickets', { replace: true })
+        navigate('/tickets', { replace: true })
         setLoading(false)
         return
       }
       if (values.email === 'mod@mimeet.tw' && values.password === 'password') {
         login({ id: 3, name: '管理員B', email: 'mod@mimeet.tw', role: 'admin' })
-        navigate('/admin/members', { replace: true })
+        navigate('/dashboard', { replace: true })
         setLoading(false)
         return
       }
@@ -81,7 +80,7 @@ export default function LoginPage() {
         {attempts >= 5 && <Alert message="請稍後再試，您已嘗試過多次" type="warning" showIcon style={{ marginBottom: 16 }} />}
 
         <Form layout="vertical" onFinish={handleLogin} autoComplete="off">
-          <Form.Item name="email" rules={[{ required: true, message: '請輸入 Email' }, { type: 'email', message: '請輸入有效的 Email' }]}>
+          <Form.Item name="email" rules={[{ required: true, message: '請輸入 Email' }, { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '請輸入有效的 Email' }]}>
             <Input prefix={<MailOutlined />} placeholder="Email" size="large" />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: '請輸入密碼' }]}>
