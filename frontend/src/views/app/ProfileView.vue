@@ -696,9 +696,13 @@ function goBack() {
 }
 
 .profile-actions__btn--secondary {
-  background: #fff;
-  color: #334155;
-  border: 1.5px solid #E2E8F0;
+  background: transparent;
+  color: #374151;
+  border: 1.5px solid #E5E7EB;
+}
+.profile-actions__btn--secondary:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
 }
 
 .profile-actions__btn--fav-active {
