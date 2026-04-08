@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { verifyDateQR } from '@/api/dates'
+import { verifyDateQR, getCurrentPosition } from '@/api/dates'
 import jsQR from 'jsqr'
 
 const router = useRouter()
@@ -12,7 +12,8 @@ type ViewState = 'camera' | 'manual' | 'denied' | 'verifying' | 'success' | 'err
 const viewState = ref<ViewState>(isDev ? 'manual' : 'camera')
 const manualCode = ref('')
 const isVerifying = ref(false)
-const verifyResult = ref<{ success: boolean; credit: number } | null>(null)
+const verifyResult = ref<{ success: boolean; credit: number; gpsPassed: boolean; status: string } | null>(null)
+const gpsStatus = ref<'idle' | 'fetching' | 'got' | 'denied'>('idle')
 const errorMsg = ref('')
 const scanStatus = ref('') // 即時掃描狀態提示
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -98,15 +99,32 @@ function stopScanning() {
   }
 }
 
-// ── 驗證 ──────────────────────────────────────────────────
+// ── 驗證（含 GPS 定位）────────────────────────────────────
 async function handleVerify(code: string) {
   if (!code.trim() || isVerifying.value) return
   isVerifying.value = true
   viewState.value = 'verifying'
   try {
-    const res = await verifyDateQR(code)
-    verifyResult.value = { success: res.success, credit: res.creditScoreAwarded }
-    viewState.value = 'success'
+    // Step 1: Get GPS position (non-blocking — if denied, proceed without GPS)
+    gpsStatus.value = 'fetching'
+    const gps = await getCurrentPosition()
+    gpsStatus.value = gps ? 'got' : 'denied'
+
+    // Step 2: Verify with backend (pass GPS if available)
+    const res = await verifyDateQR(code, gps?.latitude ?? null, gps?.longitude ?? null)
+
+    if (res.status === 'waiting') {
+      verifyResult.value = { success: true, credit: 0, gpsPassed: false, status: 'waiting' }
+      viewState.value = 'success'
+    } else {
+      verifyResult.value = {
+        success: res.success,
+        credit: res.creditScoreAwarded,
+        gpsPassed: res.gpsPassed,
+        status: res.status,
+      }
+      viewState.value = 'success'
+    }
   } catch {
     errorMsg.value = '驗證失敗，請確認 QR Code 正確'
     viewState.value = 'error'
@@ -203,9 +221,20 @@ onUnmounted(stopCamera)
     <!-- 成功 -->
     <template v-if="viewState === 'success'">
       <div class="result-area">
-        <div class="result-icon result-icon--success">✅</div>
-        <h2 class="result-title">約會驗證成功！</h2>
-        <p class="result-text">誠信分數 +{{ verifyResult?.credit ?? 5 }}</p>
+        <template v-if="verifyResult?.status === 'waiting'">
+          <div class="result-icon">⏳</div>
+          <h2 class="result-title">已掃碼，等待對方</h2>
+          <p class="result-text">對方掃碼後驗證即完成</p>
+          <p v-if="gpsStatus === 'got'" class="result-gps result-gps--ok">📍 GPS 定位成功</p>
+          <p v-else class="result-gps result-gps--no">📍 GPS 未取得（驗證仍有效，但加分較少）</p>
+        </template>
+        <template v-else>
+          <div class="result-icon result-icon--success">✅</div>
+          <h2 class="result-title">約會驗證成功！</h2>
+          <p class="result-text">誠信分數 +{{ verifyResult?.credit ?? 0 }}</p>
+          <p v-if="verifyResult?.gpsPassed" class="result-gps result-gps--ok">📍 GPS 驗證通過（500m 內）</p>
+          <p v-else class="result-gps result-gps--no">📍 GPS 未通過（距離過遠或未授權）</p>
+        </template>
         <button class="result-btn" @click="goDates">返回約會列表</button>
       </div>
     </template>
@@ -270,6 +299,9 @@ onUnmounted(stopCamera)
 .result-icon { font-size:48px; margin-bottom:8px; }
 .result-title { font-size:20px; font-weight:700; }
 .result-text { font-size:14px; color:#9CA3AF; }
+.result-gps { font-size:13px; margin-top:4px; }
+.result-gps--ok { color:#10B981; }
+.result-gps--no { color:#F59E0B; }
 .result-btn { width:100%; max-width:260px; height:44px; border-radius:10px; border:none; background:#F0294E; color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
 
 .spinner { width:32px; height:32px; border-radius:50%; border:3px solid #374151; border-top-color:#F0294E; animation:spin 0.7s linear infinite; }

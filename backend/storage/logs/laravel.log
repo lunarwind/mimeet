@@ -2024,3 +2024,28 @@
 [2026-04-09 04:32:03] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260409043203AJOZ","amount":599,"itemName":"MiMeet 月方案"} 
 [2026-04-09 04:32:03] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"resolved"} 
 [2026-04-09 04:32:04] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"dismissed"} 
+[2026-04-09 05:32:02] local.INFO: [AdminLog] chat-logs/search {"admin_id":1,"keyword":"關鍵字","results":5} 
+[2026-04-09 05:32:02] local.INFO: [AdminLog] chat-logs/conversations {"admin_id":1,"user_a":2,"user_b":3} 
+[2026-04-09 05:32:02] local.INFO: [AdminLog] chat-logs/conversations {"admin_id":1,"user_a":2,"user_b":3} 
+[2026-04-09 05:32:02] local.INFO: [AdminLog] chat-logs/export {"admin_id":1,"user_a":2,"user_b":3,"message_count":2} 
+[2026-04-09 05:32:02] local.INFO: [AdminLog] members/chat-logs {"admin_id":1,"target_user_id":2} 
+[2026-04-09 05:32:03] local.INFO: [SystemControl] Mode switched: testing → production by admin #1  
+[2026-04-09 05:32:03] local.INFO: [SystemControl] Mail settings updated by admin #1  
+[2026-04-09 05:32:03] local.INFO: [SystemControl] SMS provider changed to mitake by admin #1  
+[2026-04-09 05:32:03] local.INFO: [SystemControl] SMS provider changed to disabled by admin #1  
+[2026-04-09 05:32:03] local.INFO: [Appeal] user #1 submitted appeal, report #1  
+[2026-04-09 05:32:03] local.INFO: [Appeal] user #1 submitted appeal, report #1  
+[2026-04-09 05:32:03] local.INFO: [AutoRestore] user #2 restored, score=35  
+[2026-04-09 05:32:03] local.INFO: [AutoSuspend] user #1 suspended, score=0  
+[2026-04-09 05:32:03] local.INFO: [AutoRestore] user #1 restored, score=35  
+[2026-04-09 05:32:03] local.INFO: [GDPR] User #1 requested deletion  
+[2026-04-09 05:32:04] local.INFO: [GDPR] User #1 cancelled deletion request  
+[2026-04-09 05:32:04] local.INFO: [GDPR] User #1 anonymized (original email: sunny.rath@example.org)  
+[2026-04-09 05:32:04] local.INFO: [GDPR] User #1 anonymized (original email: hassie.dickens@example.net)  
+[2026-04-09 05:32:04] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260409053204VQFS","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-09 05:32:04] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260409053204BBH0","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-09 05:32:04] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260409053204Y9EQ","amount":49,"itemName":"MiMeet 體驗方案"} 
+[2026-04-09 05:32:04] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260409053204MVGK","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-09 05:32:04] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM202604090532045UPD","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-09 05:32:04] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"resolved"} 
+[2026-04-09 05:32:04] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"dismissed"} 

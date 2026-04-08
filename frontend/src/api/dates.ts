@@ -24,11 +24,53 @@ export async function respondToDate(id: number, response: 'accepted' | 'rejected
   await client.patch(`/date-invitations/${id}/response`, { data: { response } })
 }
 
-export async function verifyDateQR(qrCode: string): Promise<{ success: boolean; creditScoreAwarded: number }> {
+export interface VerifyResult {
+  success: boolean
+  creditScoreAwarded: number
+  gpsPassed: boolean
+  status: 'completed' | 'waiting'
+}
+
+export async function verifyDateQR(
+  token: string,
+  latitude?: number | null,
+  longitude?: number | null,
+): Promise<VerifyResult> {
   if (USE_MOCK) {
     await delay(500)
-    return { success: true, creditScoreAwarded: 5 }
+    return { success: true, creditScoreAwarded: latitude ? 5 : 2, gpsPassed: !!latitude, status: 'completed' }
   }
-  const res = await client.post<{ data: { verification: { credit_score_awarded: number } } }>('/date-invitations/verify', { data: { qr_code: qrCode } })
-  return { success: true, creditScoreAwarded: res.data.data.verification.credit_score_awarded }
+
+  const body: Record<string, unknown> = { token }
+  if (latitude != null) body.latitude = latitude
+  if (longitude != null) body.longitude = longitude
+
+  const res = await client.post<{ data: { status: string; score_awarded?: number; gps_passed?: boolean } }>(
+    '/dates/verify',
+    body,
+  )
+  const d = res.data.data
+  return {
+    success: true,
+    creditScoreAwarded: d.score_awarded ?? 0,
+    gpsPassed: d.gps_passed ?? false,
+    status: d.status as 'completed' | 'waiting',
+  }
+}
+
+/**
+ * Get current GPS position (returns null if denied/unavailable)
+ */
+export function getCurrentPosition(): Promise<{ latitude: number; longitude: number } | null> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    )
+  })
 }
