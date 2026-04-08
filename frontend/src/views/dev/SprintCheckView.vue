@@ -408,6 +408,98 @@ const groups: CheckGroup[] = [
       { id: 's5-11-mock',     label: 'Mock 模式 1.5 秒後回傳假 URL' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 6
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S6-01/02/03 Admin 初始化 + Layout + 登入',
+    items: [
+      { id: 's6-01-open',     label: 'http://localhost:3001/#/admin/login 能正常開啟' },
+      { id: 's6-03-mock',     label: 'Mock 登入（admin@mimeet.tw / password）成功' },
+      { id: 's6-03-redirect', label: '登入後跳轉 /admin/members' },
+      { id: 's6-02-sidebar',  label: 'Sidebar 選單顯示' },
+      { id: 's6-02-super',    label: 'super_admin 登入：看到所有選單' },
+      { id: 's6-02-cs',       label: 'cs 角色（cs@mimeet.tw / password）：只看到 Ticket 回報' },
+    ],
+  },
+  {
+    title: 'S6-04/05 會員列表 + 詳情',
+    items: [
+      { id: 's6-04-load',     label: '/admin/members 顯示 50 筆資料' },
+      { id: 's6-04-search',   label: '搜尋暱稱有反應' },
+      { id: 's6-04-credit',   label: '篩選誠信等級有反應' },
+      { id: 's6-05-click',    label: '點擊會員進入詳情頁' },
+      { id: 's6-05-tabs',     label: '4 個 Tab 都能切換' },
+      { id: 's6-05-modal',    label: '調整分數 Modal 能開啟' },
+    ],
+  },
+  {
+    title: 'S6-06 Ticket 管理',
+    items: [
+      { id: 's6-06-load',     label: '/admin/tickets 正常顯示' },
+      { id: 's6-06-tabs',     label: 'Tab 三狀態切換' },
+      { id: 's6-06-drawer',   label: '點擊查看詳情 Drawer 滑入' },
+      { id: 's6-06-status',   label: '狀態變更按鈕可操作' },
+    ],
+  },
+  {
+    title: 'S6-07 支付記錄',
+    items: [
+      { id: 's6-07-load',     label: '/admin/payments 正常顯示' },
+      { id: 's6-07-cards',    label: '4 張統計卡片顯示' },
+      { id: 's6-07-filter',   label: '日期篩選有反應' },
+    ],
+  },
+  {
+    title: 'S6-08 系統設定',
+    items: [
+      { id: 's6-08-load',     label: '/admin/settings/system 正常顯示' },
+      { id: 's6-08-cs',       label: 'cs 角色無法進入（顯示無權限）' },
+      { id: 's6-08-save',     label: '修改數值後儲存有反應' },
+    ],
+  },
+  {
+    title: 'S6-09 Auth API',
+    items: [
+      { id: 's6-09-register', label: 'POST /api/v1/auth/register 回傳正確' },
+      { id: 's6-09-login',    label: 'POST /api/v1/auth/login 回傳 user + cookie' },
+      { id: 's6-09-me',       label: 'GET /api/v1/auth/me 需登入才能存取' },
+      { id: 's6-09-suspended',label: '停權用戶登入回傳 403' },
+    ],
+  },
+  {
+    title: 'S6-10 User API',
+    items: [
+      { id: 's6-10-search',   label: 'GET /api/v1/users/search 回傳列表' },
+      { id: 's6-10-me',       label: 'GET /api/v1/users/me 回傳個人資料' },
+      { id: 's6-10-update',   label: 'PATCH /api/v1/users/me 更新成功' },
+      { id: 's6-10-birth',    label: '嘗試修改 birth_date 回傳 422' },
+    ],
+  },
+  {
+    title: 'S6-11 Subscription API',
+    items: [
+      { id: 's6-11-plans',    label: 'GET /api/v1/subscriptions/plans 回傳方案' },
+      { id: 's6-11-me',       label: 'GET /api/v1/subscriptions/me 回傳訂閱資料' },
+      { id: 's6-11-guard',    label: '/api/v1/chats 需 Lv2（Lv1 應回傳 403）' },
+    ],
+  },
+  {
+    title: 'S6-12 CORS / CSRF',
+    items: [
+      { id: 's6-12-cors',     label: '前台登入不出現 CORS 錯誤' },
+      { id: 's6-12-cookie',   label: 'Cookie 正確設定' },
+      { id: 's6-12-csrf',     label: 'CSRF Token 附加正確' },
+    ],
+  },
+  {
+    title: 'S6-13 WebSocket',
+    items: [
+      { id: 's6-13-ws',       label: 'DevTools Network WS 看到連線建立' },
+      { id: 's6-13-mock',     label: 'Mock 模式每 3-8 秒收到假訊息' },
+      { id: 's6-13-unread',   label: '進入聊天頁未讀數歸零' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
@@ -466,7 +558,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3-5 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3-6 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">
