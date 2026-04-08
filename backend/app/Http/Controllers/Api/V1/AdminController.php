@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Models\Report;
+use App\Models\SystemSetting;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -19,8 +23,14 @@ class AdminController extends Controller
             'password' => 'required|string',
         ]);
 
-        // Mock admin login
-        $token = 'admin_token_' . Str::random(40);
+        $user = User::where('email', $request->email)->first();
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false, 'code' => 401, 'message' => 'Email 或密碼不正確',
+            ], 401);
+        }
+
+        $token = $user->createToken('admin-login')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -28,9 +38,9 @@ class AdminController extends Controller
             'message' => '管理員登入成功。',
             'data' => [
                 'admin' => [
-                    'id' => 'admin_001',
-                    'email' => $request->email,
-                    'name' => 'Admin',
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'name' => $user->nickname,
                     'role' => 'super_admin',
                 ],
                 'token' => $token,
@@ -50,31 +60,29 @@ class AdminController extends Controller
             'search' => 'sometimes|string',
         ]);
 
-        $mockMembers = [];
-        for ($i = 1; $i <= 10; $i++) {
-            $mockMembers[] = [
-                'id' => 'usr_member' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'email' => "user{$i}@test.com",
-                'nickname' => "User{$i}",
-                'gender' => $i % 2 === 0 ? 'female' : 'male',
-                'membership_level' => $i % 3,
-                'credit_score' => max(0, 100 - ($i * 5)),
-                'status' => $i === 10 ? 'suspended' : 'active',
-                'created_at' => now()->subDays($i * 10)->toISOString(),
-            ];
+        $query = User::query();
+        if ($request->filled('search')) {
+            $s = $request->input('search');
+            $query->where(fn ($q) => $q->where('nickname', 'like', "%{$s}%")->orWhere('email', 'like', "%{$s}%"));
         }
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $query->where('status', $request->input('status'));
+        }
+        $perPage = (int) $request->input('per_page', 20);
+        $members = $query->orderByDesc('created_at')->paginate($perPage);
 
         return response()->json([
-            'success' => true,
-            'code' => 'MEMBERS_LIST',
-            'message' => 'OK',
+            'success' => true, 'code' => 'MEMBERS_LIST', 'message' => 'OK',
             'data' => [
-                'members' => $mockMembers,
+                'members' => $members->map(fn (User $u) => [
+                    'id' => $u->id, 'email' => $u->email, 'nickname' => $u->nickname,
+                    'gender' => $u->gender, 'membership_level' => $u->membership_level,
+                    'credit_score' => $u->credit_score, 'status' => $u->status,
+                    'created_at' => $u->created_at?->toISOString(),
+                ]),
                 'pagination' => [
-                    'current_page' => (int) $request->input('page', 1),
-                    'per_page' => (int) $request->input('per_page', 20),
-                    'total' => 150,
-                    'last_page' => 8,
+                    'current_page' => $members->currentPage(), 'per_page' => $members->perPage(),
+                    'total' => $members->total(), 'last_page' => $members->lastPage(),
                 ],
             ],
         ]);
@@ -83,51 +91,33 @@ class AdminController extends Controller
     /**
      * Get single member detail.
      */
-    public function memberDetail(Request $request, string $id): JsonResponse
+    public function memberDetail(Request $request, int $id): JsonResponse
     {
-        $mockMember = [
-            'id' => $id,
-            'email' => 'member@test.com',
-            'nickname' => 'TestMember',
-            'gender' => 'female',
-            'birth_date' => '1997-05-20',
-            'bio' => '我是一位測試會員。',
-            'avatar_url' => null,
-            'photos' => [],
-            'location' => '台北',
-            'occupation' => '設計師',
-            'education' => 'bachelor',
-            'interests' => ['旅行', '音樂'],
-            'membership_level' => 1,
-            'credit_score' => 85,
-            'email_verified' => true,
-            'phone_verified' => true,
-            'status' => 'active',
-            'created_at' => now()->subDays(60)->toISOString(),
-            'last_active_at' => now()->subHours(2)->toISOString(),
-            'subscription' => [
-                'plan_name' => '月方案',
-                'status' => 'active',
-                'expires_at' => now()->addDays(20)->toISOString(),
-            ],
-            'reports_received' => 0,
-            'reports_made' => 1,
-        ];
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此會員'], 404);
+        }
 
         return response()->json([
-            'success' => true,
-            'code' => 'MEMBER_DETAIL',
-            'message' => 'OK',
-            'data' => [
-                'member' => $mockMember,
-            ],
+            'success' => true, 'code' => 'MEMBER_DETAIL', 'message' => 'OK',
+            'data' => ['member' => [
+                'id' => $user->id, 'email' => $user->email, 'nickname' => $user->nickname,
+                'gender' => $user->gender, 'birth_date' => $user->birth_date?->format('Y-m-d'),
+                'bio' => $user->bio, 'avatar_url' => $user->avatar_url, 'location' => $user->location,
+                'occupation' => $user->occupation, 'education' => $user->education,
+                'interests' => $user->interests, 'membership_level' => $user->membership_level,
+                'credit_score' => $user->credit_score, 'email_verified' => $user->email_verified,
+                'phone_verified' => $user->phone_verified, 'status' => $user->status,
+                'created_at' => $user->created_at?->toISOString(),
+                'last_active_at' => $user->last_active_at?->toISOString(),
+            ]],
         ]);
     }
 
     /**
      * Perform action on a member (adjust_score, suspend, unsuspend).
      */
-    public function memberAction(Request $request, string $id): JsonResponse
+    public function memberAction(Request $request, int $id): JsonResponse
     {
         $request->validate([
             'action' => 'required|string|in:adjust_score,suspend,unsuspend',
@@ -135,12 +125,21 @@ class AdminController extends Controller
             'reason' => 'sometimes|string|max:500',
         ]);
 
+        $user = User::findOrFail($id);
         $action = $request->input('action');
-        $messages = [
-            'adjust_score' => '信用分數已調整。',
-            'suspend' => '會員已停權。',
-            'unsuspend' => '會員已恢復。',
-        ];
+
+        if ($action === 'adjust_score') {
+            \App\Services\CreditScoreService::adjust(
+                $user, (int) $request->input('score_delta'),
+                'admin_adjust', $request->input('reason', '管理員手動調整'), $request->user()?->id
+            );
+        } elseif ($action === 'suspend') {
+            $user->update(['status' => 'suspended', 'suspended_at' => now()]);
+        } elseif ($action === 'unsuspend') {
+            $user->update(['status' => 'active']);
+        }
+
+        $messages = ['adjust_score' => '信用分數已調整。', 'suspend' => '會員已停權。', 'unsuspend' => '會員已恢復。'];
 
         return response()->json([
             'success' => true,
@@ -160,35 +159,25 @@ class AdminController extends Controller
             'status' => 'sometimes|string|in:open,in_progress,resolved,closed',
         ]);
 
-        $mockTickets = [];
-        $statuses = ['open', 'in_progress', 'resolved', 'closed'];
-        $types = ['report', 'cancel_subscription', 'feedback', 'bug'];
-
-        for ($i = 1; $i <= 5; $i++) {
-            $mockTickets[] = [
-                'id' => 'ticket_' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'type' => $types[$i % count($types)],
-                'status' => $statuses[$i % count($statuses)],
-                'subject' => '測試工單 #' . $i,
-                'description' => '這是一個測試工單的描述。',
-                'user_id' => 'usr_member' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'user_nickname' => 'User' . $i,
-                'created_at' => now()->subDays($i)->toISOString(),
-                'updated_at' => now()->subHours($i * 3)->toISOString(),
-            ];
-        }
+        $query = Report::with(['reporter:id,nickname', 'reportedUser:id,nickname']);
+        if ($request->filled('status')) $query->where('status', $request->input('status'));
+        if ($request->filled('type')) $query->where('type', $request->input('type'));
+        $perPage = (int) $request->input('per_page', 20);
+        $tickets = $query->orderByDesc('created_at')->paginate($perPage);
 
         return response()->json([
-            'success' => true,
-            'code' => 'TICKETS_LIST',
-            'message' => 'OK',
+            'success' => true, 'code' => 'TICKETS_LIST', 'message' => 'OK',
             'data' => [
-                'tickets' => $mockTickets,
+                'tickets' => $tickets->map(fn (Report $r) => [
+                    'id' => $r->id, 'uuid' => $r->uuid, 'type' => $r->type, 'status' => $r->status,
+                    'description' => $r->description,
+                    'reporter' => $r->reporter ? ['id' => $r->reporter->id, 'nickname' => $r->reporter->nickname] : null,
+                    'reported_user' => $r->reportedUser ? ['id' => $r->reportedUser->id, 'nickname' => $r->reportedUser->nickname] : null,
+                    'created_at' => $r->created_at?->toISOString(),
+                ]),
                 'pagination' => [
-                    'current_page' => (int) $request->input('page', 1),
-                    'per_page' => (int) $request->input('per_page', 20),
-                    'total' => 25,
-                    'last_page' => 2,
+                    'current_page' => $tickets->currentPage(), 'per_page' => $tickets->perPage(),
+                    'total' => $tickets->total(), 'last_page' => $tickets->lastPage(),
                 ],
             ],
         ]);
@@ -197,12 +186,20 @@ class AdminController extends Controller
     /**
      * Update a ticket status.
      */
-    public function updateTicket(Request $request, string $id): JsonResponse
+    public function updateTicket(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'status' => 'required|string|in:open,in_progress,resolved,closed',
+            'status' => 'required|string|in:pending,investigating,resolved,dismissed',
             'admin_note' => 'sometimes|string|max:1000',
         ]);
+
+        $report = Report::findOrFail($id);
+        $report->update(array_filter([
+            'status' => $request->input('status'),
+            'resolution_note' => $request->input('admin_note'),
+            'resolved_by' => in_array($request->input('status'), ['resolved', 'dismissed']) ? $request->user()?->id : null,
+            'resolved_at' => in_array($request->input('status'), ['resolved', 'dismissed']) ? now() : null,
+        ], fn ($v) => $v !== null));
 
         return response()->json([
             'success' => true,
@@ -210,8 +207,8 @@ class AdminController extends Controller
             'message' => '工單已更新。',
             'data' => [
                 'ticket' => [
-                    'id' => $id,
-                    'status' => $request->input('status'),
+                    'id' => $report->id,
+                    'status' => $report->fresh()->status,
                     'updated_at' => now()->toISOString(),
                 ],
             ],
@@ -229,36 +226,24 @@ class AdminController extends Controller
             'status' => 'sometimes|string|in:completed,pending,failed,refunded',
         ]);
 
-        $mockPayments = [];
-        $statuses = ['completed', 'completed', 'pending', 'failed', 'refunded'];
-
-        for ($i = 1; $i <= 8; $i++) {
-            $mockPayments[] = [
-                'id' => 'pay_' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'order_id' => 'order_' . Str::random(12),
-                'user_id' => 'usr_member' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'user_nickname' => 'User' . $i,
-                'plan_name' => $i % 2 === 0 ? '月方案' : '季方案',
-                'amount' => $i % 2 === 0 ? 599 : 1499,
-                'currency' => 'TWD',
-                'payment_method' => 'credit_card',
-                'status' => $statuses[$i % count($statuses)],
-                'paid_at' => now()->subDays($i * 3)->toISOString(),
-                'created_at' => now()->subDays($i * 3)->toISOString(),
-            ];
-        }
+        $query = Order::with(['user:id,nickname', 'plan:id,name']);
+        if ($request->filled('status')) $query->where('status', $request->input('status'));
+        $perPage = (int) $request->input('per_page', 20);
+        $payments = $query->orderByDesc('created_at')->paginate($perPage);
 
         return response()->json([
-            'success' => true,
-            'code' => 'PAYMENTS_LIST',
-            'message' => 'OK',
+            'success' => true, 'code' => 'PAYMENTS_LIST', 'message' => 'OK',
             'data' => [
-                'payments' => $mockPayments,
+                'payments' => $payments->map(fn (Order $o) => [
+                    'id' => $o->id, 'order_number' => $o->order_number,
+                    'user' => $o->user ? ['id' => $o->user->id, 'nickname' => $o->user->nickname] : null,
+                    'plan_name' => $o->plan?->name, 'amount' => $o->amount,
+                    'status' => $o->status, 'paid_at' => $o->paid_at?->toISOString(),
+                    'created_at' => $o->created_at?->toISOString(),
+                ]),
                 'pagination' => [
-                    'current_page' => (int) $request->input('page', 1),
-                    'per_page' => (int) $request->input('per_page', 20),
-                    'total' => 80,
-                    'last_page' => 4,
+                    'current_page' => $payments->currentPage(), 'per_page' => $payments->perPage(),
+                    'total' => $payments->total(), 'last_page' => $payments->lastPage(),
                 ],
             ],
         ]);
@@ -269,24 +254,21 @@ class AdminController extends Controller
      */
     public function getSettings(): JsonResponse
     {
+        $defaults = [
+            'credit_score_initial' => '60', 'credit_score_min' => '0',
+            'credit_score_report_deduction' => '10', 'credit_score_no_show_deduction' => '20',
+            'credit_score_suspend_threshold' => '0', 'max_photos_per_user' => '6',
+            'image_moderation_enabled' => '0', 'ecpay_is_sandbox' => '1',
+            'trial_plan_price' => '49', 'trial_plan_days' => '3',
+        ];
+        $settings = [];
+        foreach ($defaults as $k => $v) {
+            $settings[$k] = SystemSetting::get($k, $v);
+        }
+
         return response()->json([
-            'success' => true,
-            'code' => 'SYSTEM_SETTINGS',
-            'message' => 'OK',
-            'data' => [
-                'settings' => [
-                    'credit_score_initial' => 100,
-                    'credit_score_min' => 0,
-                    'credit_score_report_deduction' => 10,
-                    'credit_score_no_show_deduction' => 20,
-                    'credit_score_suspend_threshold' => 20,
-                    'max_photos_per_user' => 6,
-                    'image_moderation_enabled' => false,
-                    'ecpay_is_sandbox' => true,
-                    'trial_plan_price' => 49,
-                    'trial_plan_days' => 3,
-                ],
-            ],
+            'success' => true, 'code' => 'SYSTEM_SETTINGS', 'message' => 'OK',
+            'data' => ['settings' => $settings],
         ]);
     }
 
@@ -305,6 +287,11 @@ class AdminController extends Controller
             'trial_plan_price' => 'sometimes|integer|min:0',
             'trial_plan_days' => 'sometimes|integer|min:1|max:30',
         ]);
+
+        $admin = $request->user();
+        foreach ($request->except(['_token']) as $key => $value) {
+            SystemSetting::set($key, $value, $admin?->id);
+        }
 
         return response()->json([
             'success' => true,
