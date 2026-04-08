@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
 use App\Http\Controllers\Api\V1\Admin\SystemControlController;
+use App\Http\Controllers\Api\V1\Admin\DatasetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -178,6 +179,11 @@ Route::prefix('api/v1')->group(function () {
                 Route::post('sms/test', [SystemControlController::class, 'testSms']);
                 Route::patch('database', [SystemControlController::class, 'updateDatabase']);
                 Route::post('database/test', [SystemControlController::class, 'testDatabase']);
+
+                // Dataset management
+                Route::get('dataset/stats', [DatasetController::class, 'stats']);
+                Route::post('dataset/reset', [DatasetController::class, 'reset']);
+                Route::post('dataset/seed', [DatasetController::class, 'seed']);
             });
         });
     });
