@@ -705,14 +705,14 @@ function renderKPIs() {
       <div class="kpi-sub">共 ${s.total} 個任務</div>
     </div>
     <div class="kpi" style="--accent:var(--amber-mid)">
-      <div class="kpi-val">${sprintsDone}<span class="unit">/ 7</span></div>
+      <div class="kpi-val">${sprintsDone}<span class="unit">/ ${SPRINTS.length}</span></div>
       <div class="kpi-label">Sprint 完成數</div>
       <div class="kpi-sub">${activeSprint ? '進行中：' + activeSprint.label : '全部完成'}</div>
     </div>
     <div class="kpi" style="--accent:#8B5CF6">
-      <div class="kpi-val">14<span class="unit">週</span></div>
+      <div class="kpi-val">${SPRINTS.length * 2}<span class="unit">週</span></div>
       <div class="kpi-label">預計總工期</div>
-      <div class="kpi-sub">Phase 1 MVP</div>
+      <div class="kpi-sub">Phase 1 MVP（${SPRINTS.length} Sprints）</div>
     </div>
   `
 }
@@ -842,8 +842,8 @@ function updateLastUpdate() {
   } catch(e) {
     document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('zh-TW')
   }
-  document.getElementById('footerDate').textContent = '最後更新 2026-04-08'
-  // Sprint 7 completed 2026-04-08 (S7-01 ~ S7-09)
+  document.getElementById('footerDate').textContent = '最後更新 2026-04-09'
+  // Sprint 8 completed 2026-04-09 (S8-01 ~ S8-03) — MVP core complete
 }
 
 // ── Interactions ─────────────────────────────────
