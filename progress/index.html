@@ -497,6 +497,7 @@ const SPRINTS = [
   { id:'S5', label:'Sprint 5', weeks:'Week 9–10', sub:'訂閱付費 + 帳號設定' },
   { id:'S6', label:'Sprint 6', weeks:'Week 11–12', sub:'後台骨架 + API 對接' },
   { id:'S7', label:'Sprint 7', weeks:'Week 13–14', sub:'API 完善 + 金流串接' },
+  { id:'S8', label:'Sprint 8', weeks:'Week 15–16', sub:'待規劃' },
 ]
 
 const MILESTONES = [
@@ -507,6 +508,7 @@ const MILESTONES = [
   { id:'M5', label:'M5', title:'商業路徑完整', date:'Week 10 結束', criteria:'訂閱方案頁可顯示；付費牆升級引導可觸發；帳號設定頁完整', sprint:'S5' },
   { id:'M6', label:'M6', title:'前後端聯調', date:'Week 12 結束', criteria:'Auth / User / Subscription API 對接完成；後台會員管理功能可用', sprint:'S6' },
   { id:'M7', label:'M7', title:'API 完善', date:'Week 14 結束', criteria:'Chat / Date / Report / Notification API 完整；綠界金流測試環境串接', sprint:'S7' },
+  { id:'M8', label:'M8', title:'待規劃', date:'Week 16 結束', criteria:'待定', sprint:'S8' },
 ]
 
 const ALL_TASKS = {
@@ -604,6 +606,8 @@ S7:[
   {id:'S7-07',title:'綠界金流串接（訂閱付款 + Callback）',cat:'BE',status:'done'},
   {id:'S7-08',title:'E2E 測試基礎建設（Playwright）',cat:'TEST',status:'done'},
   {id:'S7-09',title:'後台聊天記錄查詢（BE Controller + FE 頁面 + 文件更新）',cat:'FULL',status:'done'},
+],
+S8:[
 ]
 }
 
@@ -836,7 +840,7 @@ function updateLastUpdate() {
     document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('zh-TW')
   }
   document.getElementById('footerDate').textContent = '最後更新 2026-04-08'
-  // Sprint 6 completed 2026-04-08
+  // Sprint 7 completed 2026-04-08 (S7-01 ~ S7-09)
 }
 
 // ── Interactions ─────────────────────────────────

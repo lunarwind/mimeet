@@ -569,12 +569,12 @@ const groups: CheckGroup[] = [
   {
     title: 'S7-07 綠界 ECPay 訂閱付款',
     items: [
-      { id: 's7-07-1', label: 'GET /api/v1/subscriptions/plans 回傳 4 個方案 + trial' },
-      { id: 's7-07-2', label: 'POST /subscriptions/orders 建立訂單回傳 payment_url' },
-      { id: 's7-07-3', label: 'Mock 付款後 orders.status=paid + subscription 建立' },
-      { id: 's7-07-4', label: '付款後 membership_level 升級為 2' },
-      { id: 's7-07-5', label: '體驗方案只能使用一次（第二次回傳 422）' },
-      { id: 's7-07-6', label: '付款成功後收到 subscription_activated 通知' },
+      { id: 's7-07-1', label: 'POST /api/v1/subscriptions/orders 回傳 order_url（201）' },
+      { id: 's7-07-2', label: 'Sandbox order_url 包含 payment-stage.ecpay.com.tw' },
+      { id: 's7-07-3', label: 'Webhook RtnCode=1 → user_subscriptions status=active' },
+      { id: 's7-07-4', label: '付款後 users.membership_level 升為 3' },
+      { id: 's7-07-5', label: '首次付費誠信分數 +30，第二次不再加' },
+      { id: 's7-07-6', label: '綠界測試信用卡付款流程完整走通' },
     ],
   },
   {
