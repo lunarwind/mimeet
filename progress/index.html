@@ -498,6 +498,7 @@ const SPRINTS = [
   { id:'S6', label:'Sprint 6', weeks:'Week 11–12', sub:'後台骨架 + API 對接' },
   { id:'S7', label:'Sprint 7', weeks:'Week 13–14', sub:'API 完善 + 金流串接' },
   { id:'S8', label:'Sprint 8', weeks:'Week 15–16', sub:'MVP 補完（申訴 + 隱私 + GDPR）' },
+  { id:'S10', label:'Sprint 10', weeks:'Week 19–20', sub:'後台系統控制中心' },
 ]
 
 const MILESTONES = [
@@ -509,6 +510,7 @@ const MILESTONES = [
   { id:'M6', label:'M6', title:'前後端聯調', date:'Week 12 結束', criteria:'Auth / User / Subscription API 對接完成；後台會員管理功能可用', sprint:'S6' },
   { id:'M7', label:'M7', title:'API 完善', date:'Week 14 結束', criteria:'Chat / Date / Report / Notification API 完整；綠界金流測試環境串接', sprint:'S7' },
   { id:'M8', label:'M8', title:'MVP 補完', date:'Week 16 結束', criteria:'申訴流程閉環；隱私設定 5 開關；GDPR 刪除冷靜期 + 匿名化排程', sprint:'S8' },
+  { id:'M10', label:'M10', title:'系統控制中心', date:'Week 20 結束', criteria:'後台系統模式切換；Email/SMS/DB 動態設定；SmsService 多服務商 Driver', sprint:'S10' },
 ]
 
 const ALL_TASKS = {
@@ -611,6 +613,13 @@ S8:[
   {id:'S8-01',title:'申訴流程完整閉環（停權申訴 + 後台審核 + 自動解停）',cat:'FULL',status:'done'},
   {id:'S8-02',title:'隱私設定（可見性控制，5 個開關）',cat:'FULL',status:'done'},
   {id:'S8-03',title:'帳號刪除 GDPR（冷靜期 7 天 + 資料匿名化排程）',cat:'FULL',status:'done'},
+],
+S10:[
+  {id:'S10-00',title:'前置：SystemSetting Model + Migration + Middleware',cat:'BE',status:'done'},
+  {id:'S10-02',title:'SmsService 重構（多服務商 Driver 架構）',cat:'BE',status:'done'},
+  {id:'S10-03',title:'SystemControlController（9 個端點）',cat:'BE',status:'done'},
+  {id:'S10-04',title:'後台系統設定頁（7 Tabs）',cat:'FE',status:'done'},
+  {id:'S10-05',title:'Feature Tests（10 個）',cat:'TEST',status:'done'},
 ]
 }
 
