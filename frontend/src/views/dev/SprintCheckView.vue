@@ -640,6 +640,20 @@ const groups: CheckGroup[] = [
       { id: 's8-03-8', label: '女性驗證照片匿名化後仍保留在 user_verifications' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  功能補強
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: '功能補強 — 個人資料頁約會入口',
+    items: [
+      { id: 'feat-date-01', label: '個人資料頁出現「邀請約會」按鈕（自己 Lv3 + 對方 Lv1+）' },
+      { id: 'feat-date-02', label: '自己 Lv0/1/2 或對方 Lv0 時「邀請約會」按鈕不顯示' },
+      { id: 'feat-date-03', label: '點擊後自動建立對話（無對話時），有對話時不重複建立' },
+      { id: 'feat-date-04', label: '約會邀請 Bottom Sheet 正常開啟，有日期/時間/地點三欄' },
+      { id: 'feat-date-05', label: '送出成功後顯示 Toast，不強制跳頁' },
+      { id: 'feat-date-06', label: '送出的約會邀請出現在 /app/dates 頁面' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)

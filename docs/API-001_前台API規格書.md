@@ -1338,6 +1338,12 @@ ws.onopen = function() {
 ### 5.1 約會邀請管理
 
 #### 5.1.1 創建約會邀請
+
+> **觸發場景（v1.3 更新）：**
+> 1. 聊天頁 QR icon（原有）
+> 2. 個人資料頁「📅 邀請約會」按鈕（v1.3 新增，自動建立對話後開啟 Bottom Sheet）
+> 兩個入口共用此 API，payload 格式相同。從個人資料頁發起時，latitude/longitude 傳 null。
+
 ```http
 POST /api/v1/date-invitations
 Authorization: Bearer {access_token}

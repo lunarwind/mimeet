@@ -396,6 +396,12 @@ Auto-grow：依內容自動延伸，最大 300px
       驗證徽章 row（Email/手機/進階）
   右：誠信分數徽章（見 3.5）
       收藏按鈕（心形 icon，已收藏為紅色）
+
+> **v1.3 更新 — 個人資料頁操作按鈕區**：
+> 按鈕並排佈局（flex row, gap 8px）：
+> ① 💬 傳訊息（Primary）② 📅 邀請約會（Secondary，條件：自己 Lv3 + 對方 Lv1+）③ ❤️ 收藏
+> 「邀請約會」點擊後開啟 Bottom Sheet（日期 + 時間 + 地點），送出 POST /api/v1/dates
+
 背景：白色
 圓角：14px（--radius-lg）
 陰影：--shadow-card
