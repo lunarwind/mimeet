@@ -24,9 +24,7 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        // Create test users
-        if (app()->environment('local')) {
-            \App\Models\User::factory(10)->create();
-        }
+        // Test users are created via factory in tests only — not in seeder
+        // To create test data manually: php artisan tinker → User::factory(10)->create()
     }
 }
