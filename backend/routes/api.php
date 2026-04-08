@@ -181,4 +181,16 @@ Route::prefix('api/v1')->group(function () {
             });
         });
     });
+
+    // ─── Dev endpoints (local only) ─────────────────────────────────
+    if (app()->environment('local')) {
+        Route::get('dev/test-accounts', function () {
+            return response()->json([
+                'success' => true,
+                'data' => \App\Models\User::where('email', 'like', '%@test.tw')
+                    ->select('id', 'email', 'nickname', 'gender', 'membership_level', 'credit_score', 'status')
+                    ->get(),
+            ]);
+        });
+    }
 });

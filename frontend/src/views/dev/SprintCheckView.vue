@@ -1,105 +1,69 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore, type AuthUser } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth'
+import { login as apiLogin } from '@/api/auth'
 import { getCreditLevel, CreditLevelLabel } from '@/types/user'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-// ── Dev 身份定義 ──────────────────────────────────────────
-interface DevIdentity {
+// ── Dev 測試帳號（對應 TestUsersSeeder，透過真實 API 登入）──
+interface TestAccount {
   key: string
   label: string
   description: string
-  user: AuthUser
-  memberLevel: string
-  suspended: string
+  email: string
 }
 
-const DEV_IDENTITIES: DevIdentity[] = [
-  {
-    key: 'lv1',
-    label: 'Lv1 驗證會員',
-    description: '普通誠信，僅Email驗證',
-    user: {
-      id: 99, email: 'lv1@test.com', nickname: '測試會員A', avatar: null,
-      gender: 'male', status: 'active', credit_score: 45, membership_level: 1, verified: '1',
-    },
-    memberLevel: '1', suspended: 'false',
-  },
-  {
-    key: 'lv2',
-    label: 'Lv2 進階驗證',
-    description: '優質誠信，三種驗證',
-    user: {
-      id: 98, email: 'lv2@test.com', nickname: '測試會員B', avatar: null,
-      gender: 'female', status: 'active', credit_score: 78, membership_level: 2, verified: '2',
-    },
-    memberLevel: '2', suspended: 'false',
-  },
-  {
-    key: 'lv3',
-    label: 'Lv3 付費會員',
-    description: '頂級誠信，全功能解鎖',
-    user: {
-      id: 97, email: 'lv3@test.com', nickname: '測試會員C', avatar: null,
-      gender: 'male', status: 'active', credit_score: 95, membership_level: 3, verified: '3',
-    },
-    memberLevel: '3', suspended: 'false',
-  },
-  {
-    key: 'limited',
-    label: '受限用戶',
-    description: '誠信 15 分，功能受限',
-    user: {
-      id: 96, email: 'limited@test.com', nickname: '測試會員D', avatar: null,
-      gender: 'male', status: 'active', credit_score: 15, membership_level: 1, verified: '1',
-    },
-    memberLevel: '1', suspended: 'false',
-  },
-  {
-    key: 'suspended',
-    label: '已停權',
-    description: '誠信 0 分，跳轉 /suspended',
-    user: {
-      id: 95, email: 'banned@test.com', nickname: '測試會員E', avatar: null,
-      gender: 'male', status: 'suspended', credit_score: 0, membership_level: 0, verified: '0',
-    },
-    memberLevel: '0', suspended: 'true',
-  },
+const TEST_ACCOUNTS: TestAccount[] = [
+  { key: 'f-lv1', label: '女 Lv1 驗證', description: '基本功能', email: 'female_lv1@test.tw' },
+  { key: 'f-lv2', label: '女 Lv2 進階', description: '進階驗證', email: 'female_lv2@test.tw' },
+  { key: 'f-lv3', label: '女 Lv3 付費', description: '全功能', email: 'female_lv3@test.tw' },
+  { key: 'm-lv0', label: '男 Lv0 一般', description: '未驗證', email: 'male_lv0@test.tw' },
+  { key: 'm-lv2', label: '男 Lv2 進階', description: '進階驗證', email: 'male_lv2@test.tw' },
+  { key: 'm-lv3', label: '男 Lv3 付費', description: '全功能', email: 'male_lv3@test.tw' },
+  { key: 'suspended', label: '停權帳號', description: '分數歸零', email: 'suspended@test.tw' },
+  { key: 'low', label: '低分(25分)', description: '功能受限', email: 'low_score@test.tw' },
 ]
 
-const isDevLoggedIn = ref(!!localStorage.getItem('auth_token'))
-const activeIdentityKey = ref<string | null>(localStorage.getItem('dev_identity_key'))
+const switchLoading = ref(false)
+const switchError = ref('')
+const activeAccountKey = ref<string | null>(localStorage.getItem('dev_identity_key'))
+
+const isDevLoggedIn = computed(() => authStore.isLoggedIn)
+const currentUser = computed(() => authStore.user)
 
 const activeIdentity = computed(() =>
-  DEV_IDENTITIES.find(i => i.key === activeIdentityKey.value) ?? null
+  TEST_ACCOUNTS.find(a => a.key === activeAccountKey.value) ?? null
 )
 
 const activeCreditLabel = computed(() => {
-  if (!activeIdentity.value) return ''
-  return CreditLevelLabel[getCreditLevel(activeIdentity.value.user.credit_score)]
+  if (!currentUser.value) return ''
+  return CreditLevelLabel[getCreditLevel(currentUser.value.credit_score)]
 })
 
-function switchIdentity(identity: DevIdentity) {
-  localStorage.setItem('auth_token', 'dev-mock-token')
-  localStorage.setItem('member_level', identity.memberLevel)
-  localStorage.setItem('is_suspended', identity.suspended)
-  localStorage.setItem('dev_identity_key', identity.key)
-  authStore.setDevUser(identity.user)
-  isDevLoggedIn.value = true
-  activeIdentityKey.value = identity.key
+async function switchIdentity(account: TestAccount) {
+  switchLoading.value = true
+  switchError.value = ''
+  try {
+    authStore.logout()
+    const data = await apiLogin({ email: account.email, password: 'Test1234!' })
+    authStore.setToken(data.token)
+    authStore.setUser(data.user)
+    activeAccountKey.value = account.key
+    localStorage.setItem('dev_identity_key', account.key)
+  } catch {
+    switchError.value = '登入失敗，請確認後端已執行 TestDataSeeder'
+  } finally {
+    switchLoading.value = false
+  }
 }
 
 function devLogout() {
-  localStorage.removeItem('auth_token')
-  localStorage.removeItem('member_level')
-  localStorage.removeItem('is_suspended')
-  localStorage.removeItem('dev_identity_key')
   authStore.logout()
-  isDevLoggedIn.value = false
-  activeIdentityKey.value = null
+  activeAccountKey.value = null
+  localStorage.removeItem('dev_identity_key')
 }
 
 // ── 檢核項目定義 ──────────────────────────────────────────
@@ -755,24 +719,26 @@ function groupPassCount(group: CheckGroup): number {
     <div class="id-switcher">
       <div class="id-switcher__label">
         <span class="id-switcher__dot" :class="isDevLoggedIn ? 'id-switcher__dot--on' : 'id-switcher__dot--off'" />
-        <span v-if="activeIdentity" class="id-switcher__current">
-          {{ activeIdentity.label }}
-          <span class="id-switcher__credit" :class="`id-switcher__credit--${getCreditLevel(activeIdentity.user.credit_score)}`">
-            {{ activeCreditLabel }}
+        <span v-if="currentUser" class="id-switcher__current">
+          {{ currentUser.nickname }} ({{ currentUser.email }})
+          <span class="id-switcher__credit" :class="`id-switcher__credit--${getCreditLevel(currentUser.credit_score)}`">
+            Lv{{ currentUser.membership_level }} · {{ activeCreditLabel }}
           </span>
         </span>
-        <span v-else class="id-switcher__hint">選擇測試身份</span>
+        <span v-else class="id-switcher__hint">選擇測試帳號（透過真實 API 登入）</span>
       </div>
+      <div v-if="switchError" style="color:#EF4444;font-size:12px;padding:4px 0">{{ switchError }}</div>
       <div class="id-switcher__btns">
         <button
-          v-for="identity in DEV_IDENTITIES"
-          :key="identity.key"
+          v-for="account in TEST_ACCOUNTS"
+          :key="account.key"
           class="id-btn"
-          :class="{ 'id-btn--active': activeIdentityKey === identity.key }"
-          :title="identity.description"
-          @click="switchIdentity(identity)"
+          :class="{ 'id-btn--active': activeAccountKey === account.key }"
+          :title="account.description + ' — ' + account.email"
+          :disabled="switchLoading"
+          @click="switchIdentity(account)"
         >
-          {{ identity.label }}
+          {{ switchLoading && activeAccountKey === account.key ? '...' : account.label }}
         </button>
         <button v-if="isDevLoggedIn" class="id-btn id-btn--logout" @click="devLogout">登出</button>
       </div>
