@@ -496,6 +496,7 @@ const SPRINTS = [
   { id:'S4', label:'Sprint 4', weeks:'Week 7–8', sub:'聊天 + QR碼約會驗證' },
   { id:'S5', label:'Sprint 5', weeks:'Week 9–10', sub:'訂閱付費 + 帳號設定' },
   { id:'S6', label:'Sprint 6', weeks:'Week 11–12', sub:'後台骨架 + API 對接' },
+  { id:'S7', label:'Sprint 7', weeks:'Week 13–14', sub:'API 完善 + 金流串接' },
 ]
 
 const MILESTONES = [
@@ -505,6 +506,7 @@ const MILESTONES = [
   { id:'M4', label:'M4', title:'聊天可互動', date:'Week 8 結束', criteria:'聊天列表可顯示；訊息 Bubble 正常；QR 約會頁面骨架完整', sprint:'S4' },
   { id:'M5', label:'M5', title:'商業路徑完整', date:'Week 10 結束', criteria:'訂閱方案頁可顯示；付費牆升級引導可觸發；帳號設定頁完整', sprint:'S5' },
   { id:'M6', label:'M6', title:'前後端聯調', date:'Week 12 結束', criteria:'Auth / User / Subscription API 對接完成；後台會員管理功能可用', sprint:'S6' },
+  { id:'M7', label:'M7', title:'API 完善', date:'Week 14 結束', criteria:'Chat / Date / Report / Notification API 完整；綠界金流測試環境串接', sprint:'S7' },
 ]
 
 const ALL_TASKS = {
@@ -578,19 +580,29 @@ S5:[
   {id:'S5-11',title:'useImageUpload composable（頭像 / 照片上傳）',cat:'FE',status:'done'},
 ],
 S6:[
-  {id:'S6-01',title:'React admin 初始化（Vite + TypeScript + Ant Design 5）',cat:'FE',status:'todo'},
-  {id:'S6-02',title:'後台 Layout（側邊欄 220px + Header + RBAC 選單）',cat:'FE',status:'todo'},
-  {id:'S6-03',title:'後台登入頁（/admin/login）',cat:'FE',status:'todo'},
-  {id:'S6-04',title:'會員列表（搜尋 / 篩選 / Table 排序）',cat:'FE',status:'todo'},
-  {id:'S6-05',title:'會員詳情（4 Tab：基本資料 / 分數紀錄 / 訂閱 / 操作）',cat:'FE',status:'todo'},
-  {id:'S6-06',title:'Ticket 回報管理（三狀態 + 案號查詢）',cat:'FE',status:'todo'},
-  {id:'S6-07',title:'支付記錄查閱（/admin/payments）',cat:'FE',status:'todo'},
-  {id:'S6-08',title:'系統參數設定（/admin/settings/system）',cat:'FE',status:'todo'},
-  {id:'S6-09',title:'Auth API 對接（Login / Register / Email Verify）',cat:'BE',status:'todo'},
-  {id:'S6-10',title:'User API 對接（Profile 讀取 / 更新）',cat:'BE',status:'todo'},
-  {id:'S6-11',title:'Subscription API 對接（狀態查詢 + 路由守衛）',cat:'BE',status:'todo'},
-  {id:'S6-12',title:'前後端 CORS / Cookie / CSRF 設定驗證',cat:'BE',status:'todo'},
-  {id:'S6-13',title:'WebSocket 連線認證（Sanctum Token）',cat:'BE',status:'todo'},
+  {id:'S6-01',title:'React admin 初始化（Vite + TypeScript + Ant Design 5）',cat:'FE',status:'done'},
+  {id:'S6-02',title:'後台 Layout（側邊欄 220px + Header + RBAC 選單）',cat:'FE',status:'done'},
+  {id:'S6-03',title:'後台登入頁（/admin/login）',cat:'FE',status:'done'},
+  {id:'S6-04',title:'會員列表（搜尋 / 篩選 / Table 排序）',cat:'FE',status:'done'},
+  {id:'S6-05',title:'會員詳情（4 Tab：基本資料 / 分數紀錄 / 訂閱 / 操作）',cat:'FE',status:'done'},
+  {id:'S6-06',title:'Ticket 回報管理（三狀態 + 案號查詢）',cat:'FE',status:'done'},
+  {id:'S6-07',title:'支付記錄查閱（/admin/payments）',cat:'FE',status:'done'},
+  {id:'S6-08',title:'系統參數設定（/admin/settings/system）',cat:'FE',status:'done'},
+  {id:'S6-09',title:'Auth API 對接（Login / Register / Email Verify）',cat:'BE',status:'done'},
+  {id:'S6-10',title:'User API 對接（Profile 讀取 / 更新）',cat:'BE',status:'done'},
+  {id:'S6-11',title:'Subscription API 對接（狀態查詢 + 路由守衛）',cat:'BE',status:'done'},
+  {id:'S6-12',title:'前後端 CORS / Cookie / CSRF 設定驗證',cat:'BE',status:'done'},
+  {id:'S6-13',title:'WebSocket 連線認證（Sanctum Token）',cat:'BE',status:'done'},
+],
+S7:[
+  {id:'S7-01',title:'後台儀表板（KPI 卡片 + 折線圖 + 圓餅圖）',cat:'FE',status:'todo'},
+  {id:'S7-02',title:'後台操作日誌頁面',cat:'FE',status:'todo'},
+  {id:'S7-03',title:'Chat API 對接（聊天記錄 CRUD）',cat:'BE',status:'todo'},
+  {id:'S7-04',title:'Date Invitation API 對接（約會 CRUD + QR 驗證）',cat:'BE',status:'todo'},
+  {id:'S7-05',title:'Report API 對接（檢舉 + 扣分邏輯）',cat:'BE',status:'todo'},
+  {id:'S7-06',title:'Notification API 對接（站內通知 + FCM）',cat:'BE',status:'todo'},
+  {id:'S7-07',title:'綠界金流串接（訂閱付款 + Callback）',cat:'BE',status:'todo'},
+  {id:'S7-08',title:'E2E 測試基礎建設（Playwright）',cat:'TEST',status:'todo'},
 ]
 }
 
@@ -685,12 +697,12 @@ function renderKPIs() {
       <div class="kpi-sub">共 ${s.total} 個任務</div>
     </div>
     <div class="kpi" style="--accent:var(--amber-mid)">
-      <div class="kpi-val">${sprintsDone}<span class="unit">/ 6</span></div>
+      <div class="kpi-val">${sprintsDone}<span class="unit">/ 7</span></div>
       <div class="kpi-label">Sprint 完成數</div>
       <div class="kpi-sub">${activeSprint ? '進行中：' + activeSprint.label : '全部完成'}</div>
     </div>
     <div class="kpi" style="--accent:#8B5CF6">
-      <div class="kpi-val">12<span class="unit">週</span></div>
+      <div class="kpi-val">14<span class="unit">週</span></div>
       <div class="kpi-label">預計總工期</div>
       <div class="kpi-sub">Phase 1 MVP</div>
     </div>
@@ -823,7 +835,7 @@ function updateLastUpdate() {
     document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('zh-TW')
   }
   document.getElementById('footerDate').textContent = '最後更新 2026-04-08'
-  // Sprint 5 completed 2026-04-08
+  // Sprint 6 completed 2026-04-08
 }
 
 // ── Interactions ─────────────────────────────────

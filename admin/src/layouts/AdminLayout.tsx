@@ -1,0 +1,143 @@
+import { useState } from 'react'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Layout, Menu, Avatar, Button, Tag, Typography, Result } from 'antd'
+import {
+  TeamOutlined,
+  FileTextOutlined,
+  DollarOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  DashboardOutlined,
+} from '@ant-design/icons'
+import { useAuthStore } from '../stores/authStore'
+import type { AdminRole } from '../types/admin'
+
+const { Header, Sider, Content } = Layout
+const { Text } = Typography
+
+interface MenuItem {
+  key: string
+  icon: React.ReactNode
+  label: string
+  path: string
+  roles: AdminRole[]
+}
+
+const MENU_ITEMS: MenuItem[] = [
+  { key: 'members', icon: <TeamOutlined />, label: '會員管理', path: '/admin/members', roles: ['super_admin', 'admin'] },
+  { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/admin/tickets', roles: ['super_admin', 'admin', 'cs'] },
+  { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/admin/payments', roles: ['super_admin', 'admin'] },
+  { key: 'settings', icon: <SettingOutlined />, label: '系統設定', path: '/admin/settings/system', roles: ['super_admin'] },
+]
+
+const ROLE_COLORS: Record<AdminRole, string> = {
+  super_admin: 'red',
+  admin: 'blue',
+  cs: 'green',
+}
+
+const ROLE_LABELS: Record<AdminRole, string> = {
+  super_admin: '超級管理員',
+  admin: '一般管理員',
+  cs: '客服人員',
+}
+
+export default function AdminLayout() {
+  const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
+  const hasPermission = useAuthStore((s) => s.hasPermission)
+
+  const visibleItems = MENU_ITEMS.filter((item) => hasPermission(item.roles))
+
+  const selectedKey = visibleItems.find((item) => location.pathname.startsWith(item.path))?.key || ''
+
+  const handleLogout = () => {
+    logout()
+    navigate('/admin/login')
+  }
+
+  // Check if current route is allowed
+  const currentMenuItem = MENU_ITEMS.find((item) => location.pathname.startsWith(item.path))
+  if (currentMenuItem && !hasPermission(currentMenuItem.roles)) {
+    return (
+      <Layout style={{ minHeight: '100vh' }}>
+        <Content style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Result status="403" title="無權限" subTitle="您沒有權限存取此頁面" extra={<Button onClick={() => navigate('/admin/tickets')}>返回</Button>} />
+        </Content>
+      </Layout>
+    )
+  }
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        width={220}
+        style={{ background: '#001529' }}
+      >
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          {!collapsed ? (
+            <Text strong style={{ color: '#fff', fontSize: 18 }}>
+              <span style={{ color: '#F0294E' }}>Mi</span>Meet Admin
+            </Text>
+          ) : (
+            <Text strong style={{ color: '#F0294E', fontSize: 20 }}>M</Text>
+          )}
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          onClick={({ key }) => {
+            const item = visibleItems.find((i) => i.key === key)
+            if (item) navigate(item.path)
+          }}
+          items={visibleItems.map((item) => ({
+            key: item.key,
+            icon: item.icon,
+            label: item.label,
+          }))}
+        />
+      </Sider>
+      <Layout>
+        <Header
+          style={{
+            background: '#fff',
+            padding: '0 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #f0f0f0',
+            height: 64,
+          }}
+        >
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar style={{ background: '#F0294E' }}>{user?.name?.[0] || 'A'}</Avatar>
+            <Text strong>{user?.name}</Text>
+            {user?.role && <Tag color={ROLE_COLORS[user.role]}>{ROLE_LABELS[user.role]}</Tag>}
+            <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout}>
+              登出
+            </Button>
+          </div>
+        </Header>
+        <Content style={{ margin: 24, background: '#f5f5f5', borderRadius: 8 }}>
+          <div style={{ padding: 24, background: '#fff', borderRadius: 8, minHeight: 'calc(100vh - 112px)' }}>
+            <Outlet />
+          </div>
+        </Content>
+      </Layout>
+    </Layout>
+  )
+}
