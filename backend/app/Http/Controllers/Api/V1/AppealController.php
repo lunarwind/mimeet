@@ -18,7 +18,7 @@ class AppealController extends Controller
         $request->validate([
             'reason' => 'required|string|max:500',
             'images' => 'nullable|array|max:3',
-            'images.*' => 'image|max:5120',
+            'images.*' => 'image|mimes:jpeg,png,gif,webp|max:5120',
         ]);
 
         try {

@@ -47,6 +47,11 @@ class ReportService
 
     public function resolveReport(Report $report, int $adminId, string $action, string $note): Report
     {
+        // Prevent double-resolution
+        if (in_array($report->status, ['resolved', 'dismissed'])) {
+            return $report;
+        }
+
         $reportedUser = User::find($report->reported_user_id);
         $reporter = User::find($report->reporter_id);
         $reporterScoreChange = 0;
