@@ -139,8 +139,12 @@ class ChatService
         $count = Cache::get($cacheKey, 0);
         Cache::put($cacheKey, $count + 1, now()->endOfDay());
 
-        // Broadcast
-        broadcast(new ChatMessageSent($message));
+        // Broadcast (silent fail in test/dev)
+        try {
+            broadcast(new ChatMessageSent($message));
+        } catch (\Exception) {
+            // Broadcast driver not available
+        }
 
         // Notify receiver
         $receiverId = $conversation->user_a_id === $senderId

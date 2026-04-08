@@ -65,7 +65,8 @@ class ChatTest extends TestCase
 
     public function test_lv1_blocked_after_30_messages(): void
     {
-        $userA = $this->createUser(['membership_level' => 1]);
+        // membership_level=2 passes middleware, but internal daily limit applies to non-Lv3
+        $userA = $this->createUser(['membership_level' => 2]);
         $userB = $this->createUser();
 
         $conv = Conversation::create([

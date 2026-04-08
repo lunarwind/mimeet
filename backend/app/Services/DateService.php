@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\DateInvitation;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Cache;
 
 class DateService
 {
@@ -139,12 +139,7 @@ class DateService
         $cooldownKey = "date_score:{$minId}:{$maxId}";
 
         $score = 0;
-        try {
-            $alreadyScored = Redis::get($cooldownKey);
-        } catch (\Exception) {
-            // Redis not available — use cache fallback
-            $alreadyScored = \Illuminate\Support\Facades\Cache::get($cooldownKey);
-        }
+        $alreadyScored = Cache::get($cooldownKey);
 
         if (!$alreadyScored) {
             $score = $gpsPassed
@@ -161,11 +156,7 @@ class DateService
                 CreditScoreService::adjust($invitee, $score, 'date_verified', 'QR約會驗證');
             }
 
-            try {
-                Redis::setex($cooldownKey, 86400, 1);
-            } catch (\Exception) {
-                \Illuminate\Support\Facades\Cache::put($cooldownKey, 1, 86400);
-            }
+            Cache::put($cooldownKey, 1, 86400);
         }
 
         $inv->update([

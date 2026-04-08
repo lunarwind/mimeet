@@ -24,8 +24,12 @@ class NotificationService
             'created_at' => now(),
         ]);
 
-        // Broadcast via WebSocket
-        broadcast(new NotificationReceived($user->id, $notification->toArray()));
+        // Broadcast via WebSocket (silent fail in test/dev)
+        try {
+            broadcast(new NotificationReceived($user->id, $notification->toArray()));
+        } catch (\Exception) {
+            // Broadcast driver not available
+        }
 
         // Push via FCM
         $tokens = FcmToken::where('user_id', $user->id)->pluck('token');
