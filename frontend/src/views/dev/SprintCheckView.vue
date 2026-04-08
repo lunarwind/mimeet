@@ -414,7 +414,7 @@ const groups: CheckGroup[] = [
   {
     title: 'S6-01/02/03 Admin 初始化 + Layout + 登入',
     items: [
-      { id: 's6-01-open',     label: 'http://localhost:3001/#/admin/login 能正常開啟' },
+      { id: 's6-01-open',     label: 'http://localhost:5174/#/admin/login 能正常開啟' },
       { id: 's6-03-mock',     label: 'Mock 登入（admin@mimeet.tw / password）成功' },
       { id: 's6-03-redirect', label: '登入後跳轉 /admin/members' },
       { id: 's6-02-sidebar',  label: 'Sidebar 選單顯示' },
