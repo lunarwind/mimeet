@@ -3074,38 +3074,61 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 10.8 停權申訴 API
+### 10.8 停權申訴 API（Sprint 8 更新）
 
-UI-001 §4.3 定義申訴頁面（`/suspended/appeal`），對應後端端點如下。
-
+#### 10.8.1 提交申訴
 ```http
 POST /api/v1/me/appeal
 Authorization: Bearer {access_token}
-Content-Type: application/json
+Content-Type: multipart/form-data
 ```
+middleware: auth:sanctum（停權用戶也可呼叫）
 
-**請求參數：**
-```json
-{
-  "reason": "我認為此停權決定有誤，原因如下：..."
-}
-```
+**請求參數（multipart/form-data）：**
+- `reason`: string（必填，max:500）
+- `images[]`: file（選填，最多 3 張，每張 max 5MB，jpg/png/webp）
 
 **成功回應 (201)：**
 ```json
 {
   "success": true,
-  "message": "申訴已送出，我們將在 3 個工作天內回覆。",
-  "data": { "ticket_number": "A2025011500001" }
+  "data": {
+    "ticket_no": "A202600001",
+    "message": "申訴已送出，我們將在 3 個工作天內回覆"
+  }
 }
 ```
 
-**非停權用戶送出 (422)：**
+**錯誤回應：**
 ```json
-{ "success": false, "error": { "code": "2040", "message": "帳號目前非停權狀態" } }
+// 非停權用戶
+{ "success": false, "error": { "code": "NOT_SUSPENDED", "message": "帳號目前非停權狀態" } }
+
+// 同一停權期間重複提交
+{ "success": false, "error": { "code": "APPEAL_EXISTS", "message": "此停權期間已有進行中的申訴" } }
 ```
 
-> **業務規則：** 申訴建立後在 `reports` 表以 `type = 'appeal'` 儲存，並觸發 Admin 後台通知。同一停權期間限提交一次申訴。
+#### 10.8.2 取得我的申訴狀態
+```http
+GET /api/v1/me/appeal/current
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": {
+    "ticket_no": "A202600001",
+    "status": "pending",
+    "submitted_at": "2026-04-08T10:00:00Z",
+    "admin_reply": null,
+    "replied_at": null
+  }
+}
+```
+
+> **業務規則：** 申訴建立後在 `reports` 表以 `type = 'appeal'` 儲存，reporter_id = reported_user_id = 自己。觸發 Admin 後台通知。同一停權期間限提交一次申訴。
 
 ---
 
@@ -3133,6 +3156,101 @@ Content-Type: application/json
 **非付費會員 (403)：**
 ```json
 { "success": false, "error": { "code": "4032", "message": "無有效訂閱" } }
+```
+
+---
+
+### 10.10 隱私設定 API（Sprint 8 新增）
+
+#### 10.10.1 取得隱私設定
+```http
+GET /api/v1/me/privacy
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": {
+    "show_online_status": true,
+    "allow_profile_visits": true,
+    "show_in_search": true,
+    "show_last_active": true,
+    "allow_stranger_message": true
+  }
+}
+```
+
+#### 10.10.2 更新隱私設定（單項）
+```http
+PATCH /api/v1/me/privacy
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+**請求參數：**
+```json
+{ "key": "show_in_search", "value": false }
+```
+key 可選值：`show_online_status` / `allow_profile_visits` / `show_in_search` / `show_last_active` / `allow_stranger_message`
+
+**成功回應 (200)：**
+```json
+{ "success": true, "data": { "key": "show_in_search", "value": false } }
+```
+
+---
+
+### 10.11 帳號刪除 API（Sprint 8 補完）
+
+#### 10.11.1 提交刪除申請
+```http
+POST /api/v1/me/delete-account
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+**請求參數：**
+```json
+{ "password": "用戶當前密碼（用於驗證身份）" }
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "pending_deletion",
+    "delete_at": "2026-04-15T03:00:00Z",
+    "message": "您的帳號將於 7 天後永久刪除，期間可隨時取消"
+  }
+}
+```
+
+**錯誤回應：**
+```json
+// 密碼錯誤
+{ "success": false, "error": { "code": "PASSWORD_INCORRECT", "message": "密碼不正確" } }
+
+// 已有進行中申請
+{ "success": false, "error": { "code": "DELETION_PENDING", "message": "已有待執行的刪除申請" } }
+```
+
+#### 10.11.2 取消刪除申請
+```http
+DELETE /api/v1/me/delete-account
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+```json
+{ "success": true, "data": { "status": "active", "message": "刪除申請已取消，帳號恢復正常" } }
+```
+
+**錯誤回應：**
+```json
+{ "success": false, "error": { "code": "NO_PENDING_DELETION", "message": "目前沒有待執行的刪除申請" } }
 ```
 
 ---
