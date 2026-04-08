@@ -16,6 +16,11 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
+    /**
+     * WARNING: Fillable includes admin-only fields (credit_score, status, membership_level).
+     * Controllers MUST NOT pass unvalidated user input to update().
+     * Use $request->only([...]) or explicit field lists in controllers.
+     */
     protected $fillable = [
         'email',
         'password',

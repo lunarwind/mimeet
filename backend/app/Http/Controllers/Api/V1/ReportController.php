@@ -24,7 +24,7 @@ class ReportController extends Controller
             'type' => 'required|in:fake_photo,harassment,spam,scam,inappropriate,other',
             'description' => 'nullable|string|max:2000',
             'images' => 'nullable|array|max:3',
-            'images.*' => 'image|max:5120',
+            'images.*' => 'image|mimes:jpeg,png,gif,webp|max:5120',
         ]);
 
         $userId = $request->user()->id;

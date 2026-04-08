@@ -44,6 +44,10 @@ class GdprService
 
     public function anonymizeUser(User $user): void
     {
+        if ($user->status === 'deleted') {
+            return; // Already anonymized
+        }
+
         $email = $user->email;
 
         DB::transaction(function () use ($user) {

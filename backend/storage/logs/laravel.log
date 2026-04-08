@@ -1845,3 +1845,24 @@
 [2026-04-08 16:29:36] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260408162936QHXO","amount":599,"itemName":"MiMeet 月方案"} 
 [2026-04-08 16:29:36] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"resolved"} 
 [2026-04-08 16:29:36] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"dismissed"} 
+[2026-04-08 18:48:51] local.INFO: [AdminLog] chat-logs/search {"admin_id":1,"keyword":"關鍵字","results":5} 
+[2026-04-08 18:48:51] local.INFO: [AdminLog] chat-logs/conversations {"admin_id":1,"user_a":2,"user_b":3} 
+[2026-04-08 18:48:51] local.INFO: [AdminLog] chat-logs/conversations {"admin_id":1,"user_a":2,"user_b":3} 
+[2026-04-08 18:48:51] local.INFO: [AdminLog] chat-logs/export {"admin_id":1,"user_a":2,"user_b":3,"message_count":2} 
+[2026-04-08 18:48:51] local.INFO: [AdminLog] members/chat-logs {"admin_id":1,"target_user_id":2} 
+[2026-04-08 18:48:51] local.INFO: [Appeal] user #1 submitted appeal, report #1  
+[2026-04-08 18:48:51] local.INFO: [Appeal] user #1 submitted appeal, report #1  
+[2026-04-08 18:48:51] local.INFO: [AutoRestore] user #2 restored, score=35  
+[2026-04-08 18:48:51] local.INFO: [AutoSuspend] user #1 suspended, score=0  
+[2026-04-08 18:48:51] local.INFO: [AutoRestore] user #1 restored, score=35  
+[2026-04-08 18:48:52] local.INFO: [GDPR] User #1 requested deletion  
+[2026-04-08 18:48:52] local.INFO: [GDPR] User #1 cancelled deletion request  
+[2026-04-08 18:48:52] local.INFO: [GDPR] User #1 anonymized (original email: raphaelle.cormier@example.com)  
+[2026-04-08 18:48:52] local.INFO: [GDPR] User #1 anonymized (original email: noble89@example.net)  
+[2026-04-08 18:48:52] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260408184852YRYJ","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-08 18:48:52] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260408184852AK0V","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-08 18:48:52] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260408184852LZYD","amount":49,"itemName":"MiMeet 體驗方案"} 
+[2026-04-08 18:48:52] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM20260408184852A0W1","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-08 18:48:52] local.INFO: [ECPay SANDBOX] Payment created {"merchantTradeNo":"MM202604081848524Z4I","amount":599,"itemName":"MiMeet 月方案"} 
+[2026-04-08 18:48:52] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"resolved"} 
+[2026-04-08 18:48:52] local.INFO: [ReportService] 結案通知 email 預留 {"report_id":1,"action":"dismissed"} 

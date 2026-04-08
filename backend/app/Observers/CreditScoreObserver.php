@@ -18,8 +18,8 @@ class CreditScoreObserver
         $oldScore = $user->getOriginal('credit_score');
         $newScore = $user->credit_score;
 
-        // Auto-suspend: score dropped to 0
-        if ($newScore <= 0 && $oldScore > 0 && $user->status !== 'auto_suspended') {
+        // Auto-suspend: score dropped to 0 (don't overwrite manual suspension)
+        if ($newScore <= 0 && $oldScore > 0 && !in_array($user->status, ['auto_suspended', 'suspended', 'deleted'])) {
             DB::table('users')->where('id', $user->id)->update([
                 'status' => 'auto_suspended',
                 'suspended_at' => now(),

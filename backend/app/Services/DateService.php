@@ -17,7 +17,7 @@ class DateService
     {
         $dateTime = Carbon::parse($data['date_time']);
 
-        return DateInvitation::create([
+        $invitation = DateInvitation::create([
             'inviter_id' => $inviter->id,
             'invitee_id' => $data['invitee_id'],
             'date_time' => $dateTime,
@@ -70,7 +70,10 @@ class DateService
      */
     public function verifyQrToken(string $token, User $scanner, ?float $lat, ?float $lng): array
     {
-        $inv = DateInvitation::where('qr_token', $token)->first();
+        // Use lockForUpdate to prevent race condition when both users scan simultaneously
+        $inv = \Illuminate\Support\Facades\DB::transaction(function () use ($token) {
+            return DateInvitation::where('qr_token', $token)->lockForUpdate()->first();
+        }) ?? DateInvitation::where('qr_token', $token)->first();
 
         if (!$inv) {
             throw new \Exception('TOKEN_NOT_FOUND');
