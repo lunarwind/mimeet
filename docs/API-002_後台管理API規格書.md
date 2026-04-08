@@ -1390,6 +1390,258 @@ POST /api/v1/admin/settings/admins
 
 ---
 
+### 10.8 取得系統控制中心設定（分類）
+
+```
+GET /api/v1/admin/settings/system-control
+```
+
+> 所需權限：`super_admin`（硬編碼，不走 RBAC 權限節點）
+> 此端點一次回傳所有系統控制設定，依類別分組
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "app_mode": {
+      "mode": "testing",
+      "maintenance_mode": false,
+      "version": "1.0.0",
+      "mode_switched_at": "2026-04-08T10:00:00Z",
+      "mode_switched_by": "Super Admin"
+    },
+    "mail": {
+      "host": "smtp.sendgrid.net",
+      "port": 587,
+      "encryption": "tls",
+      "username": "apikey",
+      "password": "****",
+      "from_address": "noreply@mimeet.tw",
+      "from_name": "MiMeet 平台",
+      "enabled": false
+    },
+    "sms": {
+      "provider": "disabled",
+      "enabled": false,
+      "providers_available": ["mitake", "twilio", "every8d", "disabled"]
+    },
+    "database": {
+      "host": "mimeet_mysql",
+      "port": 3306,
+      "database": "mimeet",
+      "username": "mimeet_user",
+      "password": "****",
+      "connection_status": "connected"
+    }
+  }
+}
+```
+
+> **安全規則：** password / auth_token / api_key 等敏感欄位永遠回傳 `****`，不回傳明文。前端只允許「覆寫」，不允許「讀取」密碼。
+
+---
+
+### 10.9 更新系統運作模式
+
+```
+PATCH /api/v1/admin/settings/app-mode
+```
+
+> 所需權限：`super_admin`
+> 切換模式時需再次驗證管理員密碼（二次確認）
+
+**請求參數：**
+```json
+{
+  "mode": "production",
+  "confirm_password": "管理員當前密碼"
+}
+```
+
+`mode` 可選值：`testing` | `production`
+
+**行為說明：**
+- `testing` → Email/SMS 只寫 Log，ECPay 用 Sandbox
+- `production` → Email/SMS 實際發送，ECPay 用正式環境
+- 切換後立即寫入 `system_settings`（`app.mode` 鍵），服務即時生效
+- 自動記錄到 `admin_operation_logs`（不記錄密碼）
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "mode": "production",
+    "message": "系統已切換為正式模式，Email 與 SMS 服務已啟用"
+  }
+}
+```
+
+**密碼錯誤 422：**
+```json
+{ "success": false, "error": { "code": "PASSWORD_INCORRECT", "message": "密碼驗證失敗" } }
+```
+
+---
+
+### 10.10 更新 Email（SMTP）設定
+
+```
+PATCH /api/v1/admin/settings/mail
+```
+
+> 所需權限：`super_admin`
+
+**請求參數（部分更新，只傳要修改的欄位）：**
+```json
+{
+  "host": "smtp.sendgrid.net",
+  "port": 587,
+  "encryption": "tls",
+  "username": "apikey",
+  "password": "SG.新的API_Key（選填，不傳則保留現有密碼）",
+  "from_address": "noreply@mimeet.tw",
+  "from_name": "MiMeet 平台"
+}
+```
+
+**行為：** 密碼 AES-256 加密後存 `.env`；非敏感欄位存 `system_settings`。寫入後 `config()->set()` 即時生效。
+
+**成功回應 200：**
+```json
+{ "success": true, "data": { "message": "Email 設定已更新" } }
+```
+
+---
+
+### 10.10.1 發送 Email 測試信
+
+```
+POST /api/v1/admin/settings/mail/test
+```
+
+> 所需權限：`super_admin`
+
+**請求參數：**
+```json
+{ "test_email": "admin@example.com" }
+```
+
+**成功 200：**
+```json
+{ "success": true, "data": { "message": "測試信已發送至 admin@example.com" } }
+```
+
+**失敗 422：**
+```json
+{ "success": false, "error": { "code": "MAIL_SEND_FAILED", "message": "SMTP 連線失敗：認證錯誤" } }
+```
+
+---
+
+### 10.11 更新 SMS 服務設定
+
+```
+PATCH /api/v1/admin/settings/sms
+```
+
+> 所需權限：`super_admin`
+
+**請求參數：**
+```json
+{ "provider": "mitake", "mitake": { "username": "your_account", "password": "選填" } }
+```
+
+或停用：`{ "provider": "disabled" }`
+
+**行為：** provider 存 `system_settings`；密碼 AES-256 加密後存 `.env`。
+
+**成功 200：**
+```json
+{ "success": true, "data": { "provider": "mitake", "message": "SMS 服務已切換為三竹簡訊" } }
+```
+
+---
+
+### 10.11.1 發送 SMS 測試簡訊
+
+```
+POST /api/v1/admin/settings/sms/test
+```
+
+> 所需權限：`super_admin`
+
+**請求參數：**
+```json
+{ "phone": "0912345678" }
+```
+
+**成功 200：**
+```json
+{ "success": true, "data": { "message": "測試簡訊已發送至 0912345678" } }
+```
+
+---
+
+### 10.12 更新資料庫連線設定
+
+```
+PATCH /api/v1/admin/settings/database
+```
+
+> 所需權限：`super_admin`
+> ⚠️ 高風險操作，需再次輸入管理員密碼確認
+
+**請求參數：**
+```json
+{
+  "host": "mimeet_mysql",
+  "port": 3306,
+  "database": "mimeet",
+  "username": "mimeet_user",
+  "password": "新密碼（選填）",
+  "confirm_password": "管理員當前登入密碼（必填）"
+}
+```
+
+**行為：** 儲存前先以新設定測試連線（失敗則 422 不儲存）。⚠️ 變更後需重啟容器。
+
+**成功 200：**
+```json
+{
+  "success": true,
+  "data": { "message": "資料庫設定已更新。注意：完整生效需重啟應用容器", "restart_required": true }
+}
+```
+
+---
+
+### 10.12.1 測試資料庫連線
+
+```
+POST /api/v1/admin/settings/database/test
+```
+
+> 所需權限：`super_admin`
+
+**請求參數：**
+```json
+{ "host": "mimeet_mysql", "port": 3306, "database": "mimeet", "username": "mimeet_user", "password": "待測試的密碼" }
+```
+
+**成功 200：**
+```json
+{ "success": true, "data": { "status": "connected", "response_ms": 24, "server_version": "8.0.32" } }
+```
+
+**失敗 422：**
+```json
+{ "success": false, "error": { "code": "DB_CONNECTION_FAILED", "message": "無法連線：Access denied" } }
+```
+
+---
+
 ## 11. 操作日誌 API
 
 > 所需權限：所有管理員角色均可查自己的日誌；`super_admin` 可查全部
@@ -1691,6 +1943,30 @@ PATCH /api/v1/admin/settings/system/{key}
 
 ---
 
+### 14.3 取得 app.mode 目前狀態
+
+```
+GET /api/v1/admin/settings/system/app-mode
+```
+
+> 所需權限：`super_admin`
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "mode": "testing",
+    "mail_enabled": false,
+    "sms_enabled": false,
+    "ecpay_sandbox": true,
+    "description": "測試模式：Email/SMS 只寫 Log，綠界使用 Sandbox"
+  }
+}
+```
+
+---
+
 ## 15. 後台 API 速查表（最終版）
 
 | 功能模組 | 端點 | Method | 所需權限 |
@@ -1748,7 +2024,16 @@ PATCH /api/v1/admin/settings/system/{key}
 | 建立廣播 | `/broadcasts` | POST | admin+ |
 | 廣播詳情 | `/broadcasts/{id}` | GET | admin+ |
 | 發送廣播 | `/broadcasts/{id}/send` | POST | admin+ |
+| 系統控制中心總覽 | `/settings/system-control` | GET | super_admin |
+| 切換系統模式 | `/settings/app-mode` | PATCH | super_admin |
+| Email 設定 | `/settings/mail` | PATCH | super_admin |
+| 發送測試信 | `/settings/mail/test` | POST | super_admin |
+| SMS 設定 | `/settings/sms` | PATCH | super_admin |
+| 發送測試簡訊 | `/settings/sms/test` | POST | super_admin |
+| 資料庫設定 | `/settings/database` | PATCH | super_admin |
+| 測試 DB 連線 | `/settings/database/test` | POST | super_admin |
+| app.mode 狀態 | `/settings/system/app-mode` | GET | super_admin |
 
 ---
 
-*本文件涵蓋後台所有 API 端點（共 52 個）。前台用戶 API 請參閱 API-001。*
+*本文件涵蓋後台所有 API 端點（共 61 個）。前台用戶 API 請參閱 API-001。*
