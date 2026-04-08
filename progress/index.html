@@ -497,7 +497,7 @@ const SPRINTS = [
   { id:'S5', label:'Sprint 5', weeks:'Week 9–10', sub:'訂閱付費 + 帳號設定' },
   { id:'S6', label:'Sprint 6', weeks:'Week 11–12', sub:'後台骨架 + API 對接' },
   { id:'S7', label:'Sprint 7', weeks:'Week 13–14', sub:'API 完善 + 金流串接' },
-  { id:'S8', label:'Sprint 8', weeks:'Week 15–16', sub:'待規劃' },
+  { id:'S8', label:'Sprint 8', weeks:'Week 15–16', sub:'MVP 補完（申訴 + 隱私 + GDPR）' },
 ]
 
 const MILESTONES = [
@@ -508,7 +508,7 @@ const MILESTONES = [
   { id:'M5', label:'M5', title:'商業路徑完整', date:'Week 10 結束', criteria:'訂閱方案頁可顯示；付費牆升級引導可觸發；帳號設定頁完整', sprint:'S5' },
   { id:'M6', label:'M6', title:'前後端聯調', date:'Week 12 結束', criteria:'Auth / User / Subscription API 對接完成；後台會員管理功能可用', sprint:'S6' },
   { id:'M7', label:'M7', title:'API 完善', date:'Week 14 結束', criteria:'Chat / Date / Report / Notification API 完整；綠界金流測試環境串接', sprint:'S7' },
-  { id:'M8', label:'M8', title:'待規劃', date:'Week 16 結束', criteria:'待定', sprint:'S8' },
+  { id:'M8', label:'M8', title:'MVP 補完', date:'Week 16 結束', criteria:'申訴流程閉環；隱私設定 5 開關；GDPR 刪除冷靜期 + 匿名化排程', sprint:'S8' },
 ]
 
 const ALL_TASKS = {
@@ -608,6 +608,9 @@ S7:[
   {id:'S7-09',title:'後台聊天記錄查詢（BE Controller + FE 頁面 + 文件更新）',cat:'FULL',status:'done'},
 ],
 S8:[
+  {id:'S8-01',title:'申訴流程完整閉環（停權申訴 + 後台審核 + 自動解停）',cat:'FULL',status:'done'},
+  {id:'S8-02',title:'隱私設定（可見性控制，5 個開關）',cat:'FULL',status:'done'},
+  {id:'S8-03',title:'帳號刪除 GDPR（冷靜期 7 天 + 資料匿名化排程）',cat:'FULL',status:'done'},
 ]
 }
 

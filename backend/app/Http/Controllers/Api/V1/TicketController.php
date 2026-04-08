@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\ReportFollowup;
+use App\Models\User;
+use App\Services\CreditScoreService;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,13 +22,18 @@ class TicketController extends Controller
      */
     public function updateStatus(Request $request, int $id): JsonResponse
     {
+        $report = Report::findOrFail($id);
+        $adminId = $request->user()->id;
+
+        // Handle appeal-specific actions
+        if ($report->type === 'appeal') {
+            return $this->handleAppealAction($request, $report, $adminId);
+        }
+
         $request->validate([
             'status' => 'required|in:resolved,dismissed',
             'note' => 'required|string|max:500',
         ]);
-
-        $report = Report::findOrFail($id);
-        $adminId = $request->user()->id;
 
         $report = $this->reportService->resolveReport(
             $report,
@@ -35,7 +42,6 @@ class TicketController extends Controller
             $request->input('note'),
         );
 
-        // Calculate affected score changes for response
         $reporterChange = $report->reporter_score_change ?? 0;
         $reportedChange = $request->input('status') === 'resolved' ? -5 : 0;
 
@@ -50,6 +56,61 @@ class TicketController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function handleAppealAction(Request $request, Report $report, int $adminId): JsonResponse
+    {
+        $action = $request->input('action', $request->input('status'));
+        $user = User::find($report->reported_user_id);
+
+        if ($action === 'approve_appeal') {
+            $request->validate([
+                'restore_score' => 'required|integer|min:30|max:100',
+                'admin_reply' => 'required|string|max:500',
+            ]);
+
+            $restoreScore = (int) $request->input('restore_score');
+
+            if ($user) {
+                CreditScoreService::adjust($user, $restoreScore, 'appeal_approved', $request->input('admin_reply'), $adminId);
+                // Observer will auto-restore if score >= 30
+            }
+
+            $report->update([
+                'status' => 'resolved',
+                'resolution_note' => $request->input('admin_reply'),
+                'resolved_by' => $adminId,
+                'resolved_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'code' => 200,
+                'message' => '申訴已核准，用戶分數已補回',
+                'data' => ['restore_score' => $restoreScore],
+            ]);
+        }
+
+        if ($action === 'reject_appeal' || $action === 'dismissed') {
+            $request->validate([
+                'admin_reply' => 'required|string|max:500',
+            ]);
+
+            $report->update([
+                'status' => 'dismissed',
+                'resolution_note' => $request->input('admin_reply'),
+                'resolved_by' => $adminId,
+                'resolved_at' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'code' => 200,
+                'message' => '申訴已駁回',
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Invalid action'], 422);
     }
 
     /**

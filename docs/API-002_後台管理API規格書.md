@@ -760,7 +760,7 @@ GET /api/v1/admin/tickets
 | 參數 | 類型 | 說明 |
 |------|------|------|
 | `status` | string | `pending`（預設）/ `processing` / `resolved` / `all` |
-| `type` | string | `system`（系統問題）/ `report`（一般檢舉）/ `anon_report`（匿名聊天檢舉）/ `unsubscribe`（取消訂閱） |
+| `type` | string | `system`（系統問題）/ `report`（一般檢舉）/ `anon_report`（匿名聊天檢舉）/ `unsubscribe`（取消訂閱）/ `appeal`（停權申訴，Sprint 8 新增） |
 | `keyword` | string | 搜尋案號（R 開頭）/ 暱稱 |
 | `page` | int | 頁碼 |
 
@@ -833,6 +833,21 @@ GET /api/v1/admin/tickets/{ticket_id}
 }
 ```
 
+> **Sprint 8 新增**：當 `type = "appeal"` 時，回應額外包含：
+```json
+{
+  "appeal_info": {
+    "suspended_at": "2026-04-08T09:00:00Z",
+    "suspension_reason": "誠信分數歸零（最後一筆記錄：被檢舉 -10 分）",
+    "credit_score_at_suspension": 0,
+    "credit_score_history": [
+      { "delta": -10, "reason": "被檢舉 (Ticket R20260408001)", "created_at": "..." },
+      { "delta": -10, "reason": "被檢舉 (Ticket R20260401002)", "created_at": "..." }
+    ]
+  }
+}
+```
+
 ---
 
 ### 6.3 更新 Ticket 狀態 / 回覆
@@ -856,6 +871,25 @@ PATCH /api/v1/admin/tickets/{ticket_id}
 ```
 
 > `credit_adjustments` 為選填。若填寫，後端自動對對應用戶執行誠信分數調整並記錄。
+
+> **Sprint 8 新增** — 申訴專用 action（當 type=appeal 時使用）：
+```json
+// 申訴核准
+{
+  "status": "resolved",
+  "action": "approve_appeal",
+  "restore_score": 35,
+  "admin_reply": "申訴審核通過，已補回誠信分數，請注意未來行為。"
+}
+
+// 申訴駁回
+{
+  "status": "dismissed",
+  "action": "reject_appeal",
+  "admin_reply": "申訴理由不充分，維持停權決定。"
+}
+```
+> `restore_score` 最低值 30（系統強制驗證），低於 30 無法自動解停。
 
 **成功回應 200：**
 ```json
@@ -1684,6 +1718,8 @@ PATCH /api/v1/admin/settings/system/{key}
 | Ticket列表 | `/tickets` | GET | reports.view |
 | Ticket詳情 | `/tickets/{id}` | GET | reports.view |
 | 處理Ticket | `/tickets/{id}` | PATCH | reports.process |
+| 申訴列表 | `/tickets?type=appeal` | GET | reports.view |
+| 處理申訴 | `/tickets/{id}` | PATCH | reports.process |
 | 聊天搜尋 | `/chat-logs/search` | GET | chat.view |
 | 兩人對話 | `/chat-logs/conversations` | GET | chat.view |
 | 全站對話匯出 | `/chat-logs/export` | GET | chat.view |

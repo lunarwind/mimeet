@@ -17,14 +17,18 @@ export default function TicketsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [newStatus, setNewStatus] = useState<number | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string>('all')
 
   const filtered = useMemo(() => {
     let data = MOCK_TICKETS.filter((t) => String(t.status) === activeTab)
     if (search) {
       data = data.filter((t) => t.ticket_number.includes(search) || t.title.includes(search))
     }
+    if (typeFilter !== 'all') {
+      data = data.filter((t) => String(t.type) === typeFilter || t.type_label === typeFilter)
+    }
     return data
-  }, [activeTab, search])
+  }, [activeTab, search, typeFilter])
 
   const openDetail = (ticket: Ticket) => {
     setSelectedTicket(ticket)
@@ -79,7 +83,7 @@ export default function TicketsPage() {
     <div>
       <Title level={4} style={{ marginBottom: 16 }}>Ticket 回報管理</Title>
 
-      <div style={{ marginBottom: 16 }}>
+      <Space style={{ marginBottom: 16 }}>
         <Input
           placeholder="搜尋案號或標題"
           prefix={<SearchOutlined />}
@@ -88,7 +92,14 @@ export default function TicketsPage() {
           style={{ width: 280 }}
           allowClear
         />
-      </div>
+        <Select value={typeFilter} onChange={setTypeFilter} style={{ width: 160 }}>
+          <Select.Option value="all">全部類型</Select.Option>
+          <Select.Option value="1">一般檢舉</Select.Option>
+          <Select.Option value="2">系統問題</Select.Option>
+          <Select.Option value="3">匿名聊天檢舉</Select.Option>
+          <Select.Option value="appeal">停權申訴</Select.Option>
+        </Select>
+      </Space>
 
       <Tabs
         activeKey={activeTab}

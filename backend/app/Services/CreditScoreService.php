@@ -30,10 +30,7 @@ class CreditScoreService
             ]);
         });
 
-        // Auto-suspend when score reaches zero
-        if ($after === 0 && $before > 0) {
-            $user->update(['status' => 'suspended']);
-        }
+        // Auto-suspend/restore is handled by CreditScoreObserver
     }
 
     /**

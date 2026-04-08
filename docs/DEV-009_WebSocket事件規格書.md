@@ -514,20 +514,21 @@ location /app/ {
 ## 10. MVP 實作優先序
 
 ```
-Sprint 1（必須）：
+Sprint 6（已完成）：
   [x] Laravel Reverb 基礎設定與 Nginx 代理
   [x] 頻道授權（channels.php）
-  [x] private-chat.{id}：MessageSent + MessageRead
-  [x] private-user.{id}：UnreadCountUpdated
   [x] 前端 Echo 初始化 + 全域訂閱（App.vue）
 
-Sprint 2（應有）：
+Sprint 7（已完成 2026-04-08）：
+  [x] private-chat.{id}：ChatMessageSent（S7-03 ChatService）
+  [x] private-user.{id}：NotificationReceived（S7-06 NotificationService）
+  [x] 廣播 try/catch 防護（測試環境無 Reverb 時靜默失敗）
+
+待實作：
   [ ] private-chat.{id}：MessageRecalled
-  [ ] private-user.{id}：NotificationCreated + CreditScoreChanged
+  [ ] private-user.{id}：CreditScoreChanged
   [ ] presence-online（在線狀態）
   [ ] 斷線重連 + Message Catch-up
-
-Sprint 3（可延後）：
   [ ] private-user.{id}：SubscriptionStatusChanged
   [ ] private-anon-chat.{id}（Phase 2 功能）
 ```

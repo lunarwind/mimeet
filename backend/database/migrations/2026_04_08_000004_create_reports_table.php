@@ -13,7 +13,7 @@ return new class extends Migration
             $table->char('uuid', 36)->unique()->default(\Illuminate\Support\Facades\DB::raw('(UUID())'));
             $table->unsignedBigInteger('reporter_id');
             $table->unsignedBigInteger('reported_user_id');
-            $table->enum('type', ['fake_photo', 'harassment', 'spam', 'scam', 'inappropriate', 'other']);
+            $table->enum('type', ['fake_photo', 'harassment', 'spam', 'scam', 'inappropriate', 'other', 'appeal']);
             $table->text('description')->nullable();
             $table->enum('status', ['pending', 'investigating', 'resolved', 'dismissed'])->default('pending');
             $table->unsignedBigInteger('resolved_by')->nullable();
