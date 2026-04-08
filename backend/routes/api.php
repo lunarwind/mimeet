@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\Admin\ChatLogController;
+use App\Http\Controllers\Api\V1\AppealController;
+use App\Http\Controllers\Api\V1\PrivacyController;
+use App\Http\Controllers\Api\V1\DeleteAccountController;
 
 /*
 |--------------------------------------------------------------------------
@@ -114,6 +117,24 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/', [ReportController::class, 'index']);
         Route::get('/history', [ReportController::class, 'history']);
         Route::delete('/{id}', [ReportController::class, 'destroy']);
+    });
+
+    // ─── Appeal (authenticated — suspended users can access) ─────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('me/appeal', [AppealController::class, 'store']);
+        Route::get('me/appeal/current', [AppealController::class, 'current']);
+    });
+
+    // ─── Privacy (authenticated) ────────────────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('me/privacy', [PrivacyController::class, 'index']);
+        Route::patch('me/privacy', [PrivacyController::class, 'update']);
+    });
+
+    // ─── Account Deletion (authenticated) ───────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('me/delete-account', [DeleteAccountController::class, 'store']);
+        Route::delete('me/delete-account', [DeleteAccountController::class, 'cancel']);
     });
 
     // ─── Notifications (authenticated) ───────────────────────────────

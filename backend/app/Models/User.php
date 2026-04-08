@@ -35,7 +35,13 @@ class User extends Authenticatable
         'phone',
         'phone_verified',
         'status',
+        'privacy_settings',
+        'preferences',
+        'profile',
         'last_active_at',
+        'suspended_at',
+        'delete_requested_at',
+        'deleted_at',
     ];
 
     /**
@@ -61,7 +67,23 @@ class User extends Authenticatable
         'credit_score' => 'integer',
         'height' => 'integer',
         'interests' => 'array',
+        // privacy_settings handled by custom accessor (getPrivacySettingsAttribute)
         'last_active_at' => 'datetime',
+        'suspended_at' => 'datetime',
+        'delete_requested_at' => 'datetime',
+        'deleted_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function getPrivacySettingsAttribute($value): array
+    {
+        $defaults = [
+            'show_online_status' => true,
+            'allow_profile_visits' => true,
+            'show_in_search' => true,
+            'show_last_active' => true,
+            'allow_stranger_message' => true,
+        ];
+        return array_merge($defaults, $value ? (is_string($value) ? json_decode($value, true) : $value) : []);
+    }
 }

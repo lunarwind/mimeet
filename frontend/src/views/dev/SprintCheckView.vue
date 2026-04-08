@@ -600,6 +600,46 @@ const groups: CheckGroup[] = [
       { id: 's7-09-8', label: '查詢操作自動寫入 admin_operation_logs' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 8 — MVP 補完（申訴 + 隱私 + GDPR）
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S8-01 申訴流程完整閉環',
+    items: [
+      { id: 's8-01-1', label: '停權用戶自動跳轉 /suspended 頁' },
+      { id: 's8-01-2', label: 'POST /api/v1/me/appeal 建立申訴成功（201）' },
+      { id: 's8-01-3', label: '同一停權期間重複申訴回傳 422 APPEAL_EXISTS' },
+      { id: 's8-01-4', label: 'GET /api/v1/me/appeal/current 回傳申訴狀態' },
+      { id: 's8-01-5', label: '誠信分數歸零觸發 auto_suspended + suspended_at 記錄' },
+      { id: 's8-01-6', label: '後台核准申訴（restore_score ≥ 30）→ 用戶自動解停' },
+      { id: 's8-01-7', label: '後台駁回申訴 → 用戶維持停權' },
+      { id: 's8-01-8', label: '後台 Ticket 類型篩選包含「停權申訴」' },
+    ],
+  },
+  {
+    title: 'S8-02 隱私設定（5 個可見性開關）',
+    items: [
+      { id: 's8-02-1', label: '設定頁出現「隱私設定」分頁' },
+      { id: 's8-02-2', label: 'GET /api/v1/me/privacy 回傳 5 個設定（預設全 true）' },
+      { id: 's8-02-3', label: 'PATCH /api/v1/me/privacy 更新單一設定即時生效' },
+      { id: 's8-02-4', label: 'show_in_search=false 後不出現在搜尋結果' },
+      { id: 's8-02-5', label: 'allow_profile_visits=false 後不記錄訪客' },
+      { id: 's8-02-6', label: 'allow_stranger_message=false 後陌生人傳訊回傳 403' },
+    ],
+  },
+  {
+    title: 'S8-03 帳號刪除 GDPR 完整閉環',
+    items: [
+      { id: 's8-03-1', label: '刪除帳號三步驟流程正常顯示' },
+      { id: 's8-03-2', label: 'POST /api/v1/me/delete-account 正確密碼 → status=pending_deletion' },
+      { id: 's8-03-3', label: '錯誤密碼回傳 422 PASSWORD_INCORRECT' },
+      { id: 's8-03-4', label: 'DELETE /api/v1/me/delete-account 取消刪除 → status=active' },
+      { id: 's8-03-5', label: 'pending_deletion 用戶登入後顯示橙色倒數 Banner' },
+      { id: 's8-03-6', label: 'php artisan gdpr:process-deletions 執行資料匿名化' },
+      { id: 's8-03-7', label: '匿名化後 email 改為 deleted_{id}@removed.mimeet' },
+      { id: 's8-03-8', label: '女性驗證照片匿名化後仍保留在 user_verifications' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
@@ -658,7 +698,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3-7 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3-8 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">

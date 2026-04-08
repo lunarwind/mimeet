@@ -27,10 +27,16 @@ return new class extends Migration
             $table->boolean('phone_verified')->default(false);
             $table->tinyInteger('membership_level')->default(0);
             $table->tinyInteger('credit_score')->unsigned()->default(60);
-            $table->enum('status', ['active', 'suspended', 'pending_deletion'])->default('active');
+            $table->string('status', 20)->default('active');
+            $table->json('privacy_settings')->nullable();
+            $table->json('preferences')->nullable();
+            $table->json('profile')->nullable();
             $table->timestamp('last_active_at')->nullable();
+            $table->timestamp('suspended_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->timestamp('deleted_at')->nullable();
+            $table->timestamp('delete_requested_at')->nullable();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
