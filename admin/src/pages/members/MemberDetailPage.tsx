@@ -5,7 +5,6 @@ import {
   Space, Typography, Statistic, Row, Col, message, Image, Result,
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
-import { getMemberDetail, getMemberScoreRecords, getMemberSubscriptions } from '../../mocks/members'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
@@ -24,17 +23,28 @@ export default function MemberDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const uid = Number(id)
-  const member = getMemberDetail(uid)
-  const scoreRecords = getMemberScoreRecords(uid)
-  const subscriptions = getMemberSubscriptions(uid)
 
+  const [member, setMember] = useState<Record<string, unknown> | null>(null)
+  const [scoreRecords, setScoreRecords] = useState<Record<string, unknown>[]>([])
+  const [loading, setLoading] = useState(true)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false)
   const [adjustValue, setAdjustValue] = useState<number>(0)
   const [adjustReason, setAdjustReason] = useState('')
 
+  useEffect(() => {
+    setLoading(true)
+    apiClient.get(`/admin/members/${uid}`).then(res => {
+      setMember(res.data.data.member)
+    }).catch(() => setMember(null)).finally(() => setLoading(false))
+  }, [uid])
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>載入中...</div>
   if (!member) {
     return <Result status="404" title="找不到此會員" extra={<Button onClick={() => navigate('/members')}>返回列表</Button>} />
   }
+
+  // Subscriptions placeholder (no separate API yet)
+  const subscriptions: Record<string, unknown>[] = []
 
   const creditLevel = getCreditLevel(member.credit_score)
 

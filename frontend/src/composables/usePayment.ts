@@ -19,46 +19,7 @@ function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// ── Mock 資料 ──────────────────────────────────────────────
-const MOCK_PLANS: SubscriptionPlan[] = [
-  {
-    id: 1,
-    type: 'weekly',
-    name: '週費方案',
-    price: 199,
-    originalPrice: null,
-    durationDays: 7,
-    features: ['無限聊天', '已讀回執', '進階搜尋'],
-  },
-  {
-    id: 2,
-    type: 'monthly',
-    name: '月費方案',
-    price: 499,
-    originalPrice: null,
-    durationDays: 30,
-    features: ['無限聊天', '已讀回執', '進階搜尋', 'QR 約會驗證', '動態發布'],
-    isPopular: true,
-  },
-  {
-    id: 3,
-    type: 'quarterly',
-    name: '季費方案',
-    price: 1199,
-    originalPrice: 1497,
-    durationDays: 90,
-    features: ['無限聊天', '已讀回執', '進階搜尋', 'QR 約會驗證', '動態發布', '隱身模式'],
-  },
-  {
-    id: 4,
-    type: 'yearly',
-    name: '年費方案',
-    price: 3999,
-    originalPrice: 5988,
-    durationDays: 365,
-    features: ['所有功能解鎖', '專屬客服', '優先推薦曝光'],
-  },
-]
+// Plans are fetched from API (GET /subscriptions/plans)
 
 export function usePayment() {
   const authStore = useAuthStore()
@@ -81,11 +42,6 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      if (USE_MOCK) {
-        await delay(300)
-        plans.value = MOCK_PLANS
-        return MOCK_PLANS
-      }
       const res = await client.get<{ data: { plans: SubscriptionPlan[] } }>('/subscriptions/plans')
       plans.value = res.data.data.plans
       return plans.value
