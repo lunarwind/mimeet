@@ -8,14 +8,15 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // System data (all environments)
         $this->call(SubscriptionPlanSeeder::class);
 
-        // Create admin user
+        // Admin account (from .env or defaults)
         \App\Models\User::firstOrCreate(
-            ['email' => 'admin@mimeet.tw'],
+            ['email' => env('ADMIN_EMAIL', 'admin@mimeet.tw')],
             [
-                'password' => bcrypt('password'),
-                'nickname' => '管理員',
+                'password' => bcrypt(env('ADMIN_PASSWORD', 'ChangeMe@2026')),
+                'nickname' => env('ADMIN_NAME', 'Super Admin'),
                 'gender' => 'male',
                 'membership_level' => 3,
                 'credit_score' => 100,
@@ -24,7 +25,9 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        // Test users are created via factory in tests only — not in seeder
-        // To create test data manually: php artisan tinker → User::factory(10)->create()
+        // Test data (local/staging only)
+        if (app()->environment(['local', 'staging'])) {
+            $this->call(TestDataSeeder::class);
+        }
     }
 }
