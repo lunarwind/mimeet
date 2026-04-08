@@ -50,7 +50,7 @@ export default function MembersPage() {
       render: (_: string, record: MemberListItem) => (
         <Space>
           <Avatar src={record.avatar} size={36} />
-          <a onClick={() => navigate(`/admin/members/${record.uid}`)}>{record.nickname}</a>
+          <a onClick={() => navigate(`/members/${record.uid}`)}>{record.nickname}</a>
         </Space>
       ),
     },
@@ -118,7 +118,7 @@ export default function MembersPage() {
       key: 'actions',
       width: 80,
       render: (_: unknown, record: MemberListItem) => (
-        <Button type="link" size="small" onClick={() => navigate(`/admin/members/${record.uid}`)}>
+        <Button type="link" size="small" onClick={() => navigate(`/members/${record.uid}`)}>
           查看
         </Button>
       ),

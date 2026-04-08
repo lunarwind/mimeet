@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
@@ -7,9 +7,18 @@ import {
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import { getMemberDetail, getMemberScoreRecords, getMemberSubscriptions } from '../../mocks/members'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
+import { useAuthStore } from '../../stores/authStore'
+import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
+
+interface ChatLogEntry {
+  conversation_id: number
+  counterpart: { id: number; nickname: string; avatar_url?: string } | null
+  last_message: { content: string; sent_at: string } | null
+  total_messages: number
+}
 
 export default function MemberDetailPage() {
   const { id } = useParams()
@@ -24,7 +33,7 @@ export default function MemberDetailPage() {
   const [adjustReason, setAdjustReason] = useState('')
 
   if (!member) {
-    return <Result status="404" title="找不到此會員" extra={<Button onClick={() => navigate('/admin/members')}>返回列表</Button>} />
+    return <Result status="404" title="找不到此會員" extra={<Button onClick={() => navigate('/members')}>返回列表</Button>} />
   }
 
   const creditLevel = getCreditLevel(member.credit_score)
@@ -67,7 +76,7 @@ export default function MemberDetailPage() {
 
   return (
     <div>
-      <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate('/admin/members')} style={{ padding: 0, marginBottom: 16 }}>
+      <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate('/members')} style={{ padding: 0, marginBottom: 16 }}>
         返回會員列表
       </Button>
 
@@ -165,6 +174,12 @@ export default function MemberDetailPage() {
               ? <Table dataSource={subscriptions} columns={subColumns} rowKey="id" pagination={false} size="small" />
               : <Text type="secondary">無訂閱記錄</Text>,
           },
+          // Chat logs tab — only for admin/super_admin with chat.view
+          ...(useAuthStore.getState().user?.role !== 'cs' ? [{
+            key: 'chat-logs',
+            label: '聊天記錄',
+            children: <MemberChatLogsTab userId={uid} />,
+          }] : []),
           {
             key: 'operations',
             label: '操作紀錄',
@@ -206,5 +221,57 @@ export default function MemberDetailPage() {
         </div>
       </Modal>
     </div>
+  )
+}
+
+function MemberChatLogsTab({ userId }: { userId: number }) {
+  const navigate = useNavigate()
+  const [chatLogs, setChatLogs] = useState<ChatLogEntry[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    apiClient.get(`/admin/members/${userId}/chat-logs`)
+      .then((res) => setChatLogs(res.data.data ?? []))
+      .catch(() => setChatLogs([]))
+      .finally(() => setLoading(false))
+  }, [userId])
+
+  const columns = [
+    {
+      title: '對方暱稱', key: 'counterpart', width: 160,
+      render: (_: unknown, r: ChatLogEntry) => r.counterpart ? (
+        <a onClick={() => navigate(`/members/${r.counterpart!.id}`)}>{r.counterpart.nickname}</a>
+      ) : '-',
+    },
+    {
+      title: '最後訊息', key: 'last_message',
+      render: (_: unknown, r: ChatLogEntry) => r.last_message?.content ?? '-',
+    },
+    {
+      title: '最後時間', key: 'last_time', width: 160,
+      render: (_: unknown, r: ChatLogEntry) => r.last_message ? dayjs(r.last_message.sent_at).format('YYYY/MM/DD HH:mm') : '-',
+    },
+    { title: '訊息總數', dataIndex: 'total_messages', key: 'total_messages', width: 100 },
+    {
+      title: '操作', key: 'action', width: 100,
+      render: (_: unknown, r: ChatLogEntry) => r.counterpart ? (
+        <Button size="small" type="link" onClick={() => navigate(`/chat-logs?user_a=${userId}&user_b=${r.counterpart!.id}`)}>
+          查看對話
+        </Button>
+      ) : null,
+    },
+  ]
+
+  return (
+    <Table
+      dataSource={chatLogs}
+      columns={columns}
+      rowKey="conversation_id"
+      loading={loading}
+      pagination={{ pageSize: 20 }}
+      size="small"
+      locale={{ emptyText: '無聊天記錄' }}
+    />
   )
 }

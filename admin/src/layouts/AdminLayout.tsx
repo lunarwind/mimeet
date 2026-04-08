@@ -10,6 +10,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   DashboardOutlined,
+  AuditOutlined,
+  MessageOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import type { AdminRole } from '../types/admin'
@@ -26,10 +28,13 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { key: 'members', icon: <TeamOutlined />, label: '會員管理', path: '/admin/members', roles: ['super_admin', 'admin'] },
-  { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/admin/tickets', roles: ['super_admin', 'admin', 'cs'] },
-  { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/admin/payments', roles: ['super_admin', 'admin'] },
-  { key: 'settings', icon: <SettingOutlined />, label: '系統設定', path: '/admin/settings/system', roles: ['super_admin'] },
+  { key: 'dashboard', icon: <DashboardOutlined />, label: '儀表板', path: '/dashboard', roles: ['super_admin', 'admin', 'cs'] },
+  { key: 'members', icon: <TeamOutlined />, label: '會員管理', path: '/members', roles: ['super_admin', 'admin'] },
+  { key: 'chat-logs', icon: <MessageOutlined />, label: '聊天記錄', path: '/chat-logs', roles: ['super_admin', 'admin'] },
+  { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/tickets', roles: ['super_admin', 'admin', 'cs'] },
+  { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/payments', roles: ['super_admin', 'admin'] },
+  { key: 'settings', icon: <SettingOutlined />, label: '系統設定', path: '/settings/system', roles: ['super_admin'] },
+  { key: 'logs', icon: <AuditOutlined />, label: '操作日誌', path: '/logs', roles: ['super_admin'] },
 ]
 
 const ROLE_COLORS: Record<AdminRole, string> = {
@@ -58,7 +63,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     logout()
-    navigate('/admin/login')
+    navigate('/login')
   }
 
   // Check if current route is allowed
@@ -67,7 +72,7 @@ export default function AdminLayout() {
     return (
       <Layout style={{ minHeight: '100vh' }}>
         <Content style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Result status="403" title="無權限" subTitle="您沒有權限存取此頁面" extra={<Button onClick={() => navigate('/admin/tickets')}>返回</Button>} />
+          <Result status="403" title="無權限" subTitle="您沒有權限存取此頁面" extra={<Button onClick={() => navigate('/tickets')}>返回</Button>} />
         </Content>
       </Layout>
     )

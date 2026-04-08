@@ -35,7 +35,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
-      window.location.hash = '#/admin/login'
+      window.location.hash = '#/login'
     }
     if (error.response?.status === 403) {
       console.error('Permission denied')

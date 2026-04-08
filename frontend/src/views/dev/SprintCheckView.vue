@@ -414,7 +414,7 @@ const groups: CheckGroup[] = [
   {
     title: 'S6-01/02/03 Admin 初始化 + Layout + 登入',
     items: [
-      { id: 's6-01-open',     label: 'http://localhost:5174/#/admin/login 能正常開啟' },
+      { id: 's6-01-open',     label: 'http://localhost:5174/#/login 能正常開啟' },
       { id: 's6-03-mock',     label: 'Mock 登入（admin@mimeet.tw / password）成功' },
       { id: 's6-03-redirect', label: '登入後跳轉 /admin/members' },
       { id: 's6-02-sidebar',  label: 'Sidebar 選單顯示' },
@@ -500,6 +500,106 @@ const groups: CheckGroup[] = [
       { id: 's6-13-unread',   label: '進入聊天頁未讀數歸零' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 7
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S7-01 儀表板 DashboardPage',
+    items: [
+      { id: 's7-01-1', label: '後台儀表板：http://localhost:5174/#/dashboard 正常開啟' },
+      { id: 's7-01-2', label: '4 張 KPI 卡片數字正確顯示' },
+      { id: 's7-01-3', label: '折線圖可切換「今日 / 近30天」' },
+      { id: 's7-01-4', label: '圓餅圖顯示 Lv0~Lv3 分佈' },
+      { id: 's7-01-5', label: 'pending_tickets > 10 顯示紅色警示' },
+    ],
+  },
+  {
+    title: 'S7-02 操作日誌 ActivityLogsPage',
+    items: [
+      { id: 's7-02-1', label: '後台操作日誌：http://localhost:5174/#/logs 正常開啟' },
+      { id: 's7-02-2', label: 'admin/cs 角色被擋，顯示 403 畫面' },
+      { id: 's7-02-3', label: 'super_admin 可看到 100 筆日誌' },
+      { id: 's7-02-4', label: '日期範圍篩選有效' },
+      { id: 's7-02-5', label: '操作類型 Select 篩選有效' },
+    ],
+  },
+  {
+    title: 'S7-03 聊天 API（Chat CRUD + WebSocket）',
+    items: [
+      { id: 's7-03-1', label: 'GET /api/v1/chats 回傳對話列表' },
+      { id: 's7-03-2', label: 'POST /api/v1/chats 建立對話（已存在時回傳既有）' },
+      { id: 's7-03-3', label: 'Lv1 超過 30 則訊息回傳 429 + MSG_LIMIT_EXCEEDED' },
+      { id: 's7-03-4', label: '未登入呼叫任何 chats API 回傳 401' },
+      { id: 's7-03-5', label: '非參與者讀取訊息回傳 403' },
+      { id: 's7-03-6', label: 'PATCH /read 後 unread_count 歸零' },
+    ],
+  },
+  {
+    title: 'S7-04 約會邀請 API（QR + GPS 驗證 + 加分）',
+    items: [
+      { id: 's7-04-1', label: 'GET /api/v1/dates 回傳約會列表（依���態分類）' },
+      { id: 's7-04-2', label: 'POST /api/v1/dates 建立邀請並生成 qr_token' },
+      { id: 's7-04-3', label: 'PATCH /dates/{id}/accept 狀態改為 accepted' },
+      { id: 's7-04-4', label: 'POST /dates/verify GPS ≤ 500m 雙方各得 +5 分' },
+      { id: 's7-04-5', label: 'POST /dates/verify 無 GPS 或超距離雙方各得 +2 分' },
+      { id: 's7-04-6', label: '24 小時內同一對用戶重複驗證不再加分' },
+    ],
+  },
+  {
+    title: 'S7-05 檢舉 API + CreditScoreService + Ticket 結案',
+    items: [
+      { id: 's7-05-1', label: 'POST /api/v1/reports 建立檢舉成功（201）' },
+      { id: 's7-05-2', label: '送出後檢舉者 -10 分、被檢舉者 -10 分' },
+      { id: 's7-05-3', label: 'resolved 結案：被檢舉者再 -5 分' },
+      { id: 's7-05-4', label: 'dismissed 結案：退還檢舉者 +10 分' },
+      { id: 's7-05-5', label: 'CreditScoreHistory 每次調分都有記錄' },
+      { id: 's7-05-6', label: '分數歸零觸發 users.status=suspended' },
+    ],
+  },
+  {
+    title: 'S7-06 通知 API + NotificationService + FCM Stub',
+    items: [
+      { id: 's7-06-1', label: 'GET /api/v1/notifications 回傳列表含 unread_count' },
+      { id: 's7-06-2', label: 'PATCH /notifications/read-all 未讀數歸零' },
+      { id: 's7-06-3', label: '發送訊息後自動建立 new_message 通知' },
+      { id: 's7-06-4', label: 'FCM Stub 在非 production 環境只寫 log' },
+      { id: 's7-06-5', label: 'QR 驗證完成後雙方各收到 date_verified 通知' },
+    ],
+  },
+  {
+    title: 'S7-07 綠界 ECPay 訂閱付款',
+    items: [
+      { id: 's7-07-1', label: 'GET /api/v1/subscriptions/plans 回傳 4 個方案 + trial' },
+      { id: 's7-07-2', label: 'POST /subscriptions/orders 建立訂單回傳 payment_url' },
+      { id: 's7-07-3', label: 'Mock 付款後 orders.status=paid + subscription 建立' },
+      { id: 's7-07-4', label: '付款後 membership_level 升級為 2' },
+      { id: 's7-07-5', label: '體驗方案只能使用一次（第二次回傳 422）' },
+      { id: 's7-07-6', label: '付款成功後收到 subscription_activated 通知' },
+    ],
+  },
+  {
+    title: 'S7-08 Playwright E2E 測試',
+    items: [
+      { id: 's7-08-1', label: 'npx playwright test 全數通過或失敗 < 3' },
+      { id: 's7-08-2', label: 'auth.spec.ts 通過' },
+      { id: 's7-08-3', label: 'explore.spec.ts 通過' },
+      { id: 's7-08-4', label: 'dev-check.spec.ts 通過（含 Sprint 7 項目驗證）' },
+      { id: 's7-08-5', label: 'Playwright HTML Report 已生成（playwright-report/）' },
+    ],
+  },
+  {
+    title: 'S7-09 後台聊天記錄查詢',
+    items: [
+      { id: 's7-09-1', label: '後台聊天記錄頁：http://localhost:5174/#/chat-logs 正常開啟' },
+      { id: 's7-09-2', label: 'GET /api/v1/admin/chat-logs/search?keyword=xx 回傳結果' },
+      { id: 's7-09-3', label: 'GET /api/v1/admin/chat-logs/conversations?user_a=&user_b= 回傳對話' },
+      { id: 's7-09-4', label: 'GET /api/v1/admin/chat-logs/export 回應 Content-Type: text/csv' },
+      { id: 's7-09-5', label: 'cs 角色無法訪問聊天記錄頁（403 或隱藏 Sidebar）' },
+      { id: 's7-09-6', label: '收回的訊息顯示「[已收回]」佔位符，不顯示原始內容' },
+      { id: 's7-09-7', label: '會員詳情頁出現「聊天記錄」分頁（admin 角色可見）' },
+      { id: 's7-09-8', label: '查詢操作自動寫入 admin_operation_logs' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
@@ -558,7 +658,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3-6 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3-7 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">

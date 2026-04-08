@@ -6,9 +6,13 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DateInvitationController;
+use App\Http\Controllers\Api\V1\DateController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\AdminController;
+use App\Http\Controllers\Api\V1\TicketController;
+use App\Http\Controllers\Api\V1\PaymentCallbackController;
+use App\Http\Controllers\Api\Admin\ChatLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,20 +74,38 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/trial/purchase', [SubscriptionController::class, 'trialPurchase']);
     });
 
-    // ─── Chats (authenticated + membership level 2) ──────────────────
-    Route::prefix('chats')->middleware(['auth:sanctum', 'membership:2'])->group(function () {
-        Route::get('/', [ChatController::class, 'index']);
+    // ─── Chats (authenticated) ─────────────────────────────────────────
+    Route::prefix('chats')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [ChatController::class, 'index'])->middleware('membership:2');
+        Route::post('/', [ChatController::class, 'store'])->middleware('membership:2');
         Route::get('/{id}/messages', [ChatController::class, 'messages']);
-        Route::post('/{id}/messages', [ChatController::class, 'sendMessage']);
-        Route::patch('/{id}/messages/read', [ChatController::class, 'markRead']);
+        Route::post('/{id}/messages', [ChatController::class, 'sendMessage'])->middleware('membership:2');
+        Route::patch('/{id}/read', [ChatController::class, 'markRead']);
+        Route::delete('/{id}', [ChatController::class, 'destroy']);
     });
 
-    // ─── Date Invitations (authenticated + membership level 2) ───────
+    // ─── Date Invitations (legacy) ─────────────────────────────────────
     Route::prefix('date-invitations')->middleware(['auth:sanctum', 'membership:2'])->group(function () {
         Route::post('/', [DateInvitationController::class, 'store']);
         Route::get('/', [DateInvitationController::class, 'index']);
         Route::patch('/{id}/response', [DateInvitationController::class, 'respond']);
         Route::post('/verify', [DateInvitationController::class, 'verify']);
+    });
+
+    // ─── Dates (authenticated) ──────────────────────────────────────────
+    Route::prefix('dates')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [DateController::class, 'index'])->middleware('membership:2');
+        Route::post('/', [DateController::class, 'store'])->middleware('membership:2');
+        Route::patch('/{id}/accept', [DateController::class, 'accept']);
+        Route::patch('/{id}/decline', [DateController::class, 'decline']);
+        Route::post('/verify', [DateController::class, 'verify']);
+    });
+
+    // ─── Payment Callbacks (public — ECPay server-to-server) ──────────
+    Route::prefix('payments/ecpay')->group(function () {
+        Route::post('/notify', [PaymentCallbackController::class, 'notify']);
+        Route::get('/return', [PaymentCallbackController::class, 'returnUrl']);
+        Route::get('/mock', [PaymentCallbackController::class, 'mock']);
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────
@@ -95,10 +117,10 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── Notifications (authenticated) ───────────────────────────────
-    Route::prefix('me/notifications')->middleware('auth:sanctum')->group(function () {
-        Route::get('/', [NotificationController::class, 'index']);
-        Route::post('/read-all', [NotificationController::class, 'readAll']);
-        Route::patch('/{id}/read', [NotificationController::class, 'markRead']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::patch('notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::patch('notifications/{id}/read', [NotificationController::class, 'markRead']);
     });
 
     // ─── Admin ───────────────────────────────────────────────────────
@@ -111,9 +133,17 @@ Route::prefix('api/v1')->group(function () {
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction']);
             Route::get('/tickets', [AdminController::class, 'tickets']);
             Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket']);
+            Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
+            Route::post('/tickets/{id}/reply', [TicketController::class, 'reply']);
             Route::get('/payments', [AdminController::class, 'payments']);
             Route::get('/settings', [AdminController::class, 'getSettings']);
             Route::patch('/settings', [AdminController::class, 'updateSettings']);
+
+            // Chat logs (admin only)
+            Route::get('/chat-logs/search', [ChatLogController::class, 'search']);
+            Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations']);
+            Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
+            Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
         });
     });
 });
