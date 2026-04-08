@@ -240,7 +240,7 @@ function goLogin() {
 
 <style scoped>
 /* ── Variables ──────────────────────────────── */
-:root {
+.verify-root {
   --p: #F0294E; --pd: #D01A3C; --pl: #FFF5F7; --p50: #FFE4EA;
   --t1: #111827; --t2: #6B7280; --t3: #9CA3AF;
   --surf: #F9F9FB; --bdr: #E5E7EB; --err: #EF4444;
