@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
+use App\Http\Controllers\Api\V1\Admin\SystemControlController;
 
 /*
 |--------------------------------------------------------------------------
@@ -165,6 +166,19 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations']);
             Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
             Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
+
+            // System Control (super_admin only)
+            Route::middleware('check.super_admin')->prefix('settings')->group(function () {
+                Route::get('system-control', [SystemControlController::class, 'index']);
+                Route::patch('app-mode', [SystemControlController::class, 'updateAppMode']);
+                Route::get('system/app-mode', [SystemControlController::class, 'getAppMode']);
+                Route::patch('mail', [SystemControlController::class, 'updateMail']);
+                Route::post('mail/test', [SystemControlController::class, 'testMail']);
+                Route::patch('sms', [SystemControlController::class, 'updateSms']);
+                Route::post('sms/test', [SystemControlController::class, 'testSms']);
+                Route::patch('database', [SystemControlController::class, 'updateDatabase']);
+                Route::post('database/test', [SystemControlController::class, 'testDatabase']);
+            });
         });
     });
 });

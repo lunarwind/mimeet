@@ -654,6 +654,26 @@ const groups: CheckGroup[] = [
       { id: 'feat-date-06', label: '送出的約會邀請出現在 /app/dates 頁面' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 10 — 系統控制中心
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S10 系統控制中心',
+    items: [
+      { id: 's10-01-1', label: '設定頁顯示「管理員帳號」Tab，可新增/編輯管理員' },
+      { id: 's10-01-2', label: 'super_admin 才能看到系統模式/資料庫/Email/SMS Tab' },
+      { id: 's10-02-1', label: 'AppModeTab：顯示目前系統模式（testing/production）' },
+      { id: 's10-02-2', label: '切換系統模式需輸入管理員密碼確認' },
+      { id: 's10-02-3', label: '切換為 production 後 SmsService 使用真實 driver' },
+      { id: 's10-03-1', label: 'DatabaseTab：[測試連線] 回傳連線狀態和回應時間' },
+      { id: 's10-03-2', label: '資料庫密碼欄位後台永遠顯示 ****' },
+      { id: 's10-04-1', label: 'MailTab：[SendGrid] 快捷鍵自動填入 SMTP 設定' },
+      { id: 's10-04-2', label: '發送測試信成功（MAIL_MAILER=log 時查 log 確認）' },
+      { id: 's10-05-1', label: 'SmsTab：切換服務商顯示對應設定欄位' },
+      { id: 's10-05-2', label: '切換為 disabled 後 SmsService 使用 LogDriver' },
+      { id: 's10-05-3', label: 'GET /api/v1/admin/settings/system-control 回傳分類設定' },
+    ],
+  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
