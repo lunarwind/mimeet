@@ -8,12 +8,13 @@ const router = useRouter()
 const isDev = import.meta.env.DEV
 
 // ── 狀態 ──────────────────────────────────────────────────
-type ViewState = 'camera' | 'manual' | 'denied' | 'verifying' | 'success' | 'error'
+type ViewState = 'camera' | 'manual' | 'denied' | 'gps-prompt' | 'verifying' | 'success' | 'error'
 const viewState = ref<ViewState>(isDev ? 'manual' : 'camera')
 const manualCode = ref('')
 const isVerifying = ref(false)
 const verifyResult = ref<{ success: boolean; credit: number; gpsPassed: boolean; status: string } | null>(null)
 const gpsStatus = ref<'idle' | 'fetching' | 'got' | 'denied'>('idle')
+const pendingToken = ref('')  // QR code scanned but not yet verified
 const errorMsg = ref('')
 const scanStatus = ref('') // 即時掃描狀態提示
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -99,38 +100,57 @@ function stopScanning() {
   }
 }
 
-// ── 驗證（含 GPS 定位）────────────────────────────────────
-async function handleVerify(code: string) {
-  if (!code.trim() || isVerifying.value) return
+// ── 掃碼成功 → 顯示 GPS 授權說明 ─────────────────────────
+function handleVerify(code: string) {
+  if (!code.trim()) return
+  pendingToken.value = code
+  viewState.value = 'gps-prompt'
+}
+
+// ── 用戶選擇「允許 GPS」→ 取得定位後送出驗證 ──────────────
+async function submitWithGps() {
   isVerifying.value = true
   viewState.value = 'verifying'
+  gpsStatus.value = 'fetching'
   try {
-    // Step 1: Get GPS position (non-blocking — if denied, proceed without GPS)
-    gpsStatus.value = 'fetching'
     const gps = await getCurrentPosition()
     gpsStatus.value = gps ? 'got' : 'denied'
-
-    // Step 2: Verify with backend (pass GPS if available)
-    const res = await verifyDateQR(code, gps?.latitude ?? null, gps?.longitude ?? null)
-
-    if (res.status === 'waiting') {
-      verifyResult.value = { success: true, credit: 0, gpsPassed: false, status: 'waiting' }
-      viewState.value = 'success'
-    } else {
-      verifyResult.value = {
-        success: res.success,
-        credit: res.creditScoreAwarded,
-        gpsPassed: res.gpsPassed,
-        status: res.status,
-      }
-      viewState.value = 'success'
-    }
+    await doVerify(gps?.latitude ?? null, gps?.longitude ?? null)
   } catch {
     errorMsg.value = '驗證失敗，請確認 QR Code 正確'
     viewState.value = 'error'
   } finally {
     isVerifying.value = false
   }
+}
+
+// ── 用戶選擇「跳過 GPS」→ 不取得定位直接送出 ──────────────
+async function submitWithoutGps() {
+  isVerifying.value = true
+  viewState.value = 'verifying'
+  gpsStatus.value = 'denied'
+  try {
+    await doVerify(null, null)
+  } catch {
+    errorMsg.value = '驗證失敗，請確認 QR Code 正確'
+    viewState.value = 'error'
+  } finally {
+    isVerifying.value = false
+  }
+}
+
+// ── 實際送出驗證 API ─────────────────────────────────────
+async function doVerify(lat: number | null, lng: number | null) {
+  const res = await verifyDateQR(pendingToken.value, lat, lng)
+  if (res.status === 'waiting') {
+    verifyResult.value = { success: true, credit: 0, gpsPassed: false, status: 'waiting' }
+  } else {
+    verifyResult.value = {
+      success: res.success, credit: res.creditScoreAwarded,
+      gpsPassed: res.gpsPassed, status: res.status,
+    }
+  }
+  viewState.value = 'success'
 }
 
 function handleManualSubmit() {
@@ -210,11 +230,36 @@ onUnmounted(stopCamera)
       </div>
     </template>
 
+    <!-- GPS 授權說明（掃碼成功後、驗證前顯示） -->
+    <template v-if="viewState === 'gps-prompt'">
+      <div class="gps-prompt-area">
+        <div class="gps-prompt-icon">📍</div>
+        <h2 class="gps-prompt-title">開啟定位可獲得更高分數</h2>
+        <div class="gps-prompt-card">
+          <div class="gps-prompt-row">
+            <span class="gps-prompt-badge gps-prompt-badge--high">+5 分</span>
+            <span>允許 GPS 定位，且在約定地點 500m 內</span>
+          </div>
+          <div class="gps-prompt-row">
+            <span class="gps-prompt-badge gps-prompt-badge--low">+2 分</span>
+            <span>不提供 GPS 或距離超過 500m</span>
+          </div>
+        </div>
+        <p class="gps-prompt-note">系統將在您按下按鈕後請求定位權限，您可以隨時拒絕。</p>
+        <button class="gps-prompt-btn gps-prompt-btn--allow" @click="submitWithGps">
+          📍 允許定位並驗證（推薦）
+        </button>
+        <button class="gps-prompt-btn gps-prompt-btn--skip" @click="submitWithoutGps">
+          跳過定位，直接驗證
+        </button>
+      </div>
+    </template>
+
     <!-- 驗證中 -->
     <template v-if="viewState === 'verifying'">
       <div class="result-area">
         <span class="spinner" />
-        <p>驗證中…</p>
+        <p>{{ gpsStatus === 'fetching' ? '正在取得 GPS 定位…' : '驗證中…' }}</p>
       </div>
     </template>
 
@@ -299,6 +344,21 @@ onUnmounted(stopCamera)
 .result-icon { font-size:48px; margin-bottom:8px; }
 .result-title { font-size:20px; font-weight:700; }
 .result-text { font-size:14px; color:#9CA3AF; }
+/* ── GPS Prompt ─────────────────────────────────────────── */
+.gps-prompt-area { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 20px; gap:16px; text-align:center; }
+.gps-prompt-icon { font-size:48px; margin-bottom:4px; }
+.gps-prompt-title { font-size:20px; font-weight:700; }
+.gps-prompt-card { background:#1F2937; border-radius:12px; padding:16px; width:100%; max-width:300px; }
+.gps-prompt-row { display:flex; align-items:center; gap:10px; padding:8px 0; font-size:14px; color:#D1D5DB; }
+.gps-prompt-row + .gps-prompt-row { border-top:1px solid #374151; }
+.gps-prompt-badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:13px; font-weight:700; flex-shrink:0; }
+.gps-prompt-badge--high { background:#065F46; color:#A7F3D0; }
+.gps-prompt-badge--low { background:#78350F; color:#FDE68A; }
+.gps-prompt-note { font-size:12px; color:#6B7280; max-width:280px; line-height:1.5; }
+.gps-prompt-btn { width:100%; max-width:300px; height:48px; border-radius:10px; border:none; font-size:15px; font-weight:600; cursor:pointer; }
+.gps-prompt-btn--allow { background:#F0294E; color:#fff; }
+.gps-prompt-btn--skip { background:transparent; color:#9CA3AF; border:1.5px solid #374151; }
+
 .result-gps { font-size:13px; margin-top:4px; }
 .result-gps--ok { color:#10B981; }
 .result-gps--no { color:#F59E0B; }
