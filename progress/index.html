@@ -448,9 +448,9 @@ body {
 <main class="page">
 
   <div class="hero">
-    <div class="hero-eyebrow">MiMeet · Phase 1 MVP · Week 1–12</div>
+    <div class="hero-eyebrow" id="heroEyebrow">MiMeet · Phase 1 MVP</div>
     <h1 class="hero-title">開發進度追蹤</h1>
-    <p class="hero-sub">前端先行策略 — 由單一開發者執行，共 6 個 Sprint，86 個任務，預計 12 週完成 MVP。</p>
+    <p class="hero-sub" id="heroSub">載入中...</p>
   </div>
 
   <!-- KPIs -->
@@ -822,7 +822,15 @@ function renderMilestones() {
   }).join('')
 }
 
+function renderHero() {
+  const totalTasks = Object.values(ALL_TASKS).flat().length
+  const totalWeeks = SPRINTS.length * 2
+  document.getElementById('heroEyebrow').textContent = `MiMeet · Phase 1 MVP · Week 1–${totalWeeks}`
+  document.getElementById('heroSub').textContent = `前端先行策略 — 由單一開發者執行，共 ${SPRINTS.length} 個 Sprint，${totalTasks} 個任務，預計 ${totalWeeks} 週完成 MVP。`
+}
+
 function renderAll() {
+  renderHero()
   renderKPIs()
   renderOverallBar()
   renderSprints()
