@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { Card, Form, Input, Button, Alert, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
+import apiClient from '../../api/client'
 
 const { Title, Text } = Typography
 
@@ -31,30 +32,18 @@ export default function LoginPage() {
     // Simulate network delay
     await new Promise((r) => setTimeout(r, 500))
 
-    if (import.meta.env.DEV) {
-      // Mock login
-      if (values.email === 'admin@mimeet.tw' && values.password === 'password') {
-        login({ id: 1, name: '管理員', email: 'admin@mimeet.tw', role: 'super_admin' })
-        navigate('/dashboard', { replace: true })
-        setLoading(false)
-        return
-      }
-      if (values.email === 'cs@mimeet.tw' && values.password === 'password') {
-        login({ id: 2, name: '客服人員', email: 'cs@mimeet.tw', role: 'cs' })
-        navigate('/tickets', { replace: true })
-        setLoading(false)
-        return
-      }
-      if (values.email === 'mod@mimeet.tw' && values.password === 'password') {
-        login({ id: 3, name: '管理員B', email: 'mod@mimeet.tw', role: 'admin' })
-        navigate('/dashboard', { replace: true })
-        setLoading(false)
-        return
-      }
+    try {
+      const res = await apiClient.post('/admin/auth/login', {
+        email: values.email,
+        password: values.password,
+      })
+      const { admin, token } = res.data.data
+      login({ id: admin.id, name: admin.name, email: admin.email, role: admin.role }, token)
+      navigate('/dashboard', { replace: true })
+    } catch {
+      setAttempts((a) => a + 1)
+      setError('Email 或密碼不正確')
     }
-
-    setAttempts((a) => a + 1)
-    setError('Email 或密碼不正確')
     setLoading(false)
   }
 
@@ -95,13 +84,9 @@ export default function LoginPage() {
 
         {import.meta.env.DEV && (
           <div style={{ marginTop: 16, padding: 12, background: '#FFFBEB', borderRadius: 8, fontSize: 12 }}>
-            <Text strong style={{ color: '#92400E' }}>DEV Mock 帳號：</Text>
+            <Text strong style={{ color: '#92400E' }}>管理員帳號：</Text>
             <br />
-            <Text style={{ color: '#92400E' }}>super_admin: admin@mimeet.tw / password</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>admin: mod@mimeet.tw / password</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>cs: cs@mimeet.tw / password</Text>
+            <Text style={{ color: '#92400E' }}>admin@mimeet.tw / ChangeMe@2026</Text>
           </div>
         )}
       </Card>

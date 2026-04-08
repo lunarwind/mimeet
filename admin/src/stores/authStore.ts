@@ -4,7 +4,7 @@ import type { AdminUser, AdminRole } from '../types/admin'
 interface AuthState {
   user: AdminUser | null
   isLoggedIn: boolean
-  login: (user: AdminUser) => void
+  login: (user: AdminUser, token?: string) => void
   logout: () => void
   hasPermission: (requiredRoles: AdminRole[]) => boolean
 }
@@ -24,9 +24,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: savedUser,
   isLoggedIn: !!savedUser,
 
-  login: (user: AdminUser) => {
+  login: (user: AdminUser, token?: string) => {
     localStorage.setItem('admin_user', JSON.stringify(user))
-    localStorage.setItem('admin_token', 'admin-mock-token')
+    localStorage.setItem('admin_token', token || '')
     set({ user, isLoggedIn: true })
   },
 
