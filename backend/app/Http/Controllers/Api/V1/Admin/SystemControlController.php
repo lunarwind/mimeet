@@ -160,20 +160,20 @@ class SystemControlController extends Controller
         if ($request->provider === 'mitake' && $request->has('mitake')) {
             $m = $request->input('mitake');
             if (!empty($m['username'])) SystemSetting::set('sms.mitake.username', $m['username'], $admin->id);
-            if (!empty($m['password'])) $this->writeEnv('SMS_MITAKE_PASSWORD', $m['password']);
+            if (!empty($m['password'])) SystemSetting::set('sms.mitake.password_encrypted', Crypt::encryptString($m['password']), $admin->id);
         }
 
         if ($request->provider === 'twilio' && $request->has('twilio')) {
             $t = $request->input('twilio');
             if (!empty($t['account_sid'])) SystemSetting::set('sms.twilio.account_sid', $t['account_sid'], $admin->id);
-            if (!empty($t['auth_token'])) $this->writeEnv('SMS_TWILIO_AUTH_TOKEN', $t['auth_token']);
+            if (!empty($t['auth_token'])) SystemSetting::set('sms.twilio.auth_token_encrypted', Crypt::encryptString($t['auth_token']), $admin->id);
             if (!empty($t['from_number'])) SystemSetting::set('sms.twilio.from_number', $t['from_number'], $admin->id);
         }
 
         if ($request->provider === 'every8d' && $request->has('every8d')) {
             $e = $request->input('every8d');
             if (!empty($e['username'])) SystemSetting::set('sms.every8d.username', $e['username'], $admin->id);
-            if (!empty($e['password'])) $this->writeEnv('SMS_EVERY8D_PASSWORD', $e['password']);
+            if (!empty($e['password'])) SystemSetting::set('sms.every8d.password_encrypted', Crypt::encryptString($e['password']), $admin->id);
         }
 
         $labels = ['mitake' => '三竹簡訊', 'twilio' => 'Twilio', 'every8d' => '每日簡訊', 'disabled' => '停用'];

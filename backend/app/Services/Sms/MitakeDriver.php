@@ -31,9 +31,13 @@ class MitakeDriver implements SmsDriverInterface
 
     private function getPassword(): string
     {
-        $encrypted = env('SMS_MITAKE_PASSWORD', '');
-        if (!$encrypted) return '';
-        try { return Crypt::decryptString($encrypted); } catch (\Exception) { return $encrypted; }
+        $fromDb = SystemSetting::get('sms.mitake.password_encrypted', '');
+        if ($fromDb) {
+            try { return Crypt::decryptString($fromDb); } catch (\Exception) { return $fromDb; }
+        }
+        $fromEnv = env('SMS_MITAKE_PASSWORD', '');
+        if (!$fromEnv) return '';
+        try { return Crypt::decryptString($fromEnv); } catch (\Exception) { return $fromEnv; }
     }
 
     private function formatPhone(string $phone): string

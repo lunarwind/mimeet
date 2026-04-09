@@ -35,8 +35,15 @@ class TwilioDriver implements SmsDriverInterface
 
     private function getToken(): string
     {
-        $encrypted = env('SMS_TWILIO_AUTH_TOKEN', '');
-        if (!$encrypted) return '';
-        try { return Crypt::decryptString($encrypted); } catch (\Exception) { return $encrypted; }
+        // Try system_settings first (encrypted), then .env fallback
+        $fromDb = SystemSetting::get('sms.twilio.auth_token_encrypted', '');
+        if ($fromDb) {
+            try { return Crypt::decryptString($fromDb); } catch (\Exception) { return $fromDb; }
+        }
+
+        // Fallback to .env
+        $fromEnv = env('SMS_TWILIO_AUTH_TOKEN', '');
+        if (!$fromEnv) return '';
+        try { return Crypt::decryptString($fromEnv); } catch (\Exception) { return $fromEnv; }
     }
 }
