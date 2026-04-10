@@ -24,9 +24,32 @@ export default function MemberDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const uid = Number(id)
-  const member = getMemberDetail(uid)
-  const scoreRecords = getMemberScoreRecords(uid)
-  const subscriptions = getMemberSubscriptions(uid)
+
+  // State for API data with mock fallback
+  const [member, setMember] = useState(getMemberDetail(uid))
+  const [scoreRecords, setScoreRecords] = useState(getMemberScoreRecords(uid))
+  const [subscriptions, setSubscriptions] = useState(getMemberSubscriptions(uid))
+
+  useEffect(() => {
+    // Try real API first, fall back to mock data on failure
+    apiClient.get(`/admin/members/${uid}`)
+      .then((res) => {
+        if (res.data?.data) setMember(res.data.data)
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get(`/admin/members/${uid}/score-records`)
+      .then((res) => {
+        if (res.data?.data?.records) setScoreRecords(res.data.data.records)
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get(`/admin/members/${uid}/subscriptions`)
+      .then((res) => {
+        if (res.data?.data?.subscriptions) setSubscriptions(res.data.data.subscriptions)
+      })
+      .catch(() => { /* keep mock data */ })
+  }, [uid])
 
   const [adjustModalOpen, setAdjustModalOpen] = useState(false)
   const [adjustValue, setAdjustValue] = useState<number>(0)
