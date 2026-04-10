@@ -24,3 +24,7 @@ Broadcast::channel('chat.{conversationId}', function ($user, $conversationId) {
 Broadcast::channel('user.{userId}', function ($user, $userId) {
     return (string) $user->id === (string) $userId;
 });
+
+Broadcast::channel('presence.online', function ($user) {
+    return ['id' => $user->id, 'nickname' => $user->nickname];
+});

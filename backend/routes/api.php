@@ -34,6 +34,12 @@ use App\Http\Controllers\Admin\AdminUserController;
 |--------------------------------------------------------------------------
 */
 
+// ─── Signed Media URL (outside versioned prefix) ─────────────
+Route::get('/media/{path}', [UserController::class, 'serveMedia'])
+    ->where('path', '.*')
+    ->name('media.serve')
+    ->middleware('signed');
+
 Route::prefix('api/v1')->group(function () {
 
     // ─── Auth (public, rate-limited) ────────────────────────────────────

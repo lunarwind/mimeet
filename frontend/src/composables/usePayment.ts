@@ -91,7 +91,7 @@ export function usePayment() {
       return plans.value
     } catch (e) {
       error.value = '載入方案失敗'
-      console.error('[usePayment] fetchPlans error:', e)
+      // Error handled via error ref
       return []
     } finally {
       isLoading.value = false
@@ -123,7 +123,7 @@ export function usePayment() {
       return currentSubscription.value
     } catch (e) {
       error.value = '載入訂閱狀態失敗'
-      console.error('[usePayment] fetchCurrentSubscription error:', e)
+      // Error handled via error ref
       return null
     } finally {
       isLoading.value = false
@@ -147,7 +147,7 @@ export function usePayment() {
       return res.data.data
     } catch (e) {
       error.value = '建立訂單失敗'
-      console.error('[usePayment] createOrder error:', e)
+      // Error handled via error ref
       return null
     } finally {
       isLoading.value = false
@@ -166,7 +166,7 @@ export function usePayment() {
       return true
     } catch (e) {
       error.value = '取消訂閱失敗'
-      console.error('[usePayment] cancelSubscription error:', e)
+      // Error handled via error ref
       return false
     } finally {
       isLoading.value = false
@@ -191,7 +191,7 @@ export function usePayment() {
       trialInfo.value = res.data.data
       return trialInfo.value
     } catch (e) {
-      console.error('[usePayment] fetchTrialInfo error:', e)
+      // Error silently handled
       return null
     } finally {
       isLoading.value = false
@@ -231,7 +231,7 @@ export function usePayment() {
       if (currentSubscription.value) currentSubscription.value.autoRenew = value
       return true
     } catch (e) {
-      console.error('[usePayment] toggleAutoRenew error:', e)
+      // Error silently handled
       return false
     }
   }

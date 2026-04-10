@@ -7,6 +7,8 @@ use App\Models\UserVerification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
@@ -154,6 +156,7 @@ class UserController extends Controller
 
     /**
      * Upload a photo for the current user.
+     * Stores on private disk; serves via signed URL.
      */
     public function uploadPhoto(Request $request): JsonResponse
     {
@@ -162,22 +165,81 @@ class UserController extends Controller
             'is_primary' => 'sometimes|boolean',
         ]);
 
-        $mockPhoto = [
-            'id' => 'photo_' . Str::random(12),
-            'url' => 'https://placeholder.example.com/photos/' . Str::random(8) . '.jpg',
-            'is_primary' => $request->boolean('is_primary', false),
-            'status' => 'pending_review',
-            'created_at' => now()->toISOString(),
-        ];
+        $file = $request->file('photo');
+
+        // Magic bytes validation — reject files whose bytes don't match declared type
+        if (!$this->validateMagicBytes($file)) {
+            return response()->json([
+                'success' => false,
+                'code' => 'INVALID_FILE_TYPE',
+                'message' => '檔案格式驗證失敗，僅支援 JPEG、PNG、WebP。',
+            ], 422);
+        }
+
+        $user = $request->user();
+        $path = $file->store("users/{$user->id}/photos", 'private');
+
+        $signedUrl = URL::temporarySignedRoute(
+            'media.serve',
+            now()->addMinutes(60),
+            ['path' => $path],
+        );
 
         return response()->json([
             'success' => true,
             'code' => 'PHOTO_UPLOADED',
             'message' => '照片已上傳，審核中。',
             'data' => [
-                'photo' => $mockPhoto,
+                'photo' => [
+                    'id' => 'photo_' . Str::random(12),
+                    'url' => $signedUrl,
+                    'path' => $path,
+                    'is_primary' => $request->boolean('is_primary', false),
+                    'status' => 'pending_review',
+                    'created_at' => now()->toISOString(),
+                ],
             ],
         ], 201);
+    }
+
+    /**
+     * Serve a private media file via signed URL.
+     */
+    public function serveMedia(Request $request, string $path): \Symfony\Component\HttpFoundation\Response
+    {
+        if (!$request->hasValidSignature()) {
+            abort(403, 'Invalid or expired signature.');
+        }
+
+        $disk = Storage::disk('private');
+
+        if (!$disk->exists($path)) {
+            abort(404, 'File not found.');
+        }
+
+        return response()->file($disk->path($path));
+    }
+
+    /**
+     * Validate file magic bytes to ensure actual file type matches.
+     * Supports JPEG, PNG, and WebP.
+     */
+    private function validateMagicBytes($file): bool
+    {
+        $handle = fopen($file->getPathname(), 'rb');
+        $bytes = fread($handle, 8);
+        fclose($handle);
+
+        $hex = bin2hex($bytes);
+
+        // JPEG: FF D8 FF
+        if (str_starts_with($hex, 'ffd8ff')) return true;
+        // PNG: 89 50 4E 47
+        if (str_starts_with($hex, '89504e47')) return true;
+        // WebP: 52 49 46 46 ... 57 45 42 50 (bytes 8-11 are file size, bytes 8+ contain WEBP)
+        if (str_starts_with($hex, '52494646') && strlen($hex) >= 24 && substr($hex, 16, 8) === '57454250') return true;
+
+        return false;
     }
 
     /**

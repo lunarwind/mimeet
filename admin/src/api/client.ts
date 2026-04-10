@@ -38,7 +38,7 @@ apiClient.interceptors.response.use(
       window.location.hash = '#/login'
     }
     if (error.response?.status === 403) {
-      console.error('Permission denied')
+      // 403 Permission denied — handled by UI layer
     }
     return Promise.reject(error)
   },
