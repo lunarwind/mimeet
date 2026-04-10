@@ -12,6 +12,7 @@ class Order extends Model
         'payment_method', 'status', 'ecpay_trade_no', 'ecpay_merchant_trade_no',
         'invoice_no', 'ecpay_payment_type', 'payment_date',
         'paid_at', 'expires_at',
+        'carrier_type', 'carrier_num', 'love_code', 'ecpay_invoice_no',
     ];
 
     protected $casts = [
