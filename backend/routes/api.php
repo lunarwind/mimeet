@@ -72,6 +72,14 @@ Route::prefix('api/v1')->group(function () {
     // ─── Me (authenticated) — blocked users ──────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me/blocked-users', [UserController::class, 'blockedUsers']);
+
+        // Verification (S11-21) - user-facing
+        Route::prefix('me/verification')->group(function () {
+            Route::get('/status', [UserController::class, 'verificationStatus']);
+            Route::get('/photo-code', [UserController::class, 'verificationPhotoCode']);
+            Route::post('/apply', [UserController::class, 'verificationApply']);
+            Route::post('/photo', [UserController::class, 'verificationApply']); // alias for frontend VerifyView.vue
+        });
     });
 
     // ─── Subscriptions (authenticated) ───────────────────────────────
@@ -166,6 +174,8 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/members', [AdminController::class, 'members']);
             Route::get('/members/{id}', [AdminController::class, 'memberDetail']);
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction']);
+            Route::patch('/members/{id}/permissions', [AdminController::class, 'updateMemberPermissions']);
+            Route::patch('/members/{id}/profile', [AdminController::class, 'updateMemberProfile']);
             Route::get('/tickets', [AdminController::class, 'tickets']);
             Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket']);
             Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
@@ -173,6 +183,8 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/payments', [AdminController::class, 'payments']);
             Route::get('/settings', [AdminController::class, 'getSettings']);
             Route::patch('/settings', [AdminController::class, 'updateSettings']);
+            Route::get('/settings/ecpay', [AdminController::class, 'getEcpaySettings']);
+            Route::patch('/settings/ecpay', [AdminController::class, 'updateEcpaySettings']);
 
             // Chat logs (admin only)
             Route::get('/chat-logs/search', [ChatLogController::class, 'search']);

@@ -13,10 +13,10 @@ class ECPayService
 
     public function __construct()
     {
-        $this->merchantId = config('services.ecpay.merchant_id', env('ECPAY_MERCHANT_ID', '3002607'));
-        $this->hashKey = config('services.ecpay.hash_key', env('ECPAY_HASH_KEY', 'pwFHCqoQZGmho4w6'));
-        $this->hashIv = config('services.ecpay.hash_iv', env('ECPAY_HASH_IV', 'EkRm7iFT261dpevs'));
-        $this->isSandbox = (bool) env('ECPAY_IS_SANDBOX', true);
+        $this->merchantId = \App\Models\SystemSetting::getValue('ecpay.merchant_id', config('services.ecpay.merchant_id', env('ECPAY_MERCHANT_ID', '3002607')));
+        $this->hashKey = \App\Models\SystemSetting::getValue('ecpay.hash_key', config('services.ecpay.hash_key', env('ECPAY_HASH_KEY', 'pwFHCqoQZGmho4w6')));
+        $this->hashIv = \App\Models\SystemSetting::getValue('ecpay.hash_iv', config('services.ecpay.hash_iv', env('ECPAY_HASH_IV', 'EkRm7iFT261dpevs')));
+        $this->isSandbox = (bool) \App\Models\SystemSetting::getValue('ecpay.is_sandbox', env('ECPAY_IS_SANDBOX', true));
     }
 
     /**

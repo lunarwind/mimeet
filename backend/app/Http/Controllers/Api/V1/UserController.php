@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserVerification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class UserController extends Controller
@@ -316,5 +318,132 @@ class UserController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Get current user's verification status.
+     */
+    public function verificationStatus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Fetch the latest pending or approved verification
+        $pending = UserVerification::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->latest('submitted_at')
+            ->first();
+
+        $approved = UserVerification::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->latest('reviewed_at')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'code' => 'VERIFICATION_STATUS',
+            'message' => 'OK',
+            'data' => [
+                'membership_level' => $user->membership_level ?? 0,
+                'pending_verification' => $pending ? [
+                    'id' => $pending->id,
+                    'type' => $pending->type,
+                    'status' => $pending->status,
+                    'submitted_at' => $pending->submitted_at?->toISOString(),
+                ] : null,
+                'last_approved' => $approved ? [
+                    'id' => $approved->id,
+                    'type' => $approved->type,
+                    'reviewed_at' => $approved->reviewed_at?->toISOString(),
+                ] : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Generate a 6-digit verification photo code, cached for 10 minutes.
+     */
+    public function verificationPhotoCode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $cacheKey = "verification_photo_code:{$user->id}";
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(10);
+
+        Cache::put($cacheKey, $code, $expiresAt);
+
+        return response()->json([
+            'success' => true,
+            'code' => 'PHOTO_CODE_GENERATED',
+            'message' => 'OK',
+            'data' => [
+                'code' => $code,
+                'expires_at' => $expiresAt->toISOString(),
+            ],
+        ]);
+    }
+
+    /**
+     * Apply for advanced verification (photo or card).
+     */
+    public function verificationApply(Request $request): JsonResponse
+    {
+        $request->validate([
+            'type' => 'required|in:photo,card',
+            'photo_url' => 'required_if:type,photo|string|url',
+            'photo_code' => 'required_if:type,photo|string|size:6',
+        ]);
+
+        $user = $request->user();
+
+        // Check for existing pending verification
+        $existing = UserVerification::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success' => false,
+                'code' => 'VERIFICATION_PENDING',
+                'message' => '您已有一筆待審核的驗證申請。',
+            ], 422);
+        }
+
+        // For photo type, validate the photo code against cache
+        if ($request->type === 'photo') {
+            $cacheKey = "verification_photo_code:{$user->id}";
+            $cachedCode = Cache::get($cacheKey);
+
+            if (!$cachedCode || $cachedCode !== $request->photo_code) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'INVALID_PHOTO_CODE',
+                    'message' => '驗證碼無效或已過期，請重新取得。',
+                ], 422);
+            }
+
+            // Clear the code after use
+            Cache::forget($cacheKey);
+        }
+
+        $verification = UserVerification::create([
+            'user_id' => $user->id,
+            'type' => $request->type,
+            'status' => 'pending',
+            'photo_url' => $request->photo_url,
+            'random_code' => $request->photo_code,
+            'submitted_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'code' => 'VERIFICATION_APPLIED',
+            'message' => '驗證申請已提交，審核通常在 24 小時內完成。',
+            'data' => [
+                'verification_id' => $verification->id,
+                'status' => 'pending',
+                'submitted_at' => $verification->submitted_at->toISOString(),
+            ],
+        ], 201);
     }
 }
