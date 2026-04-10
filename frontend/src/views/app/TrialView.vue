@@ -14,7 +14,7 @@ onMounted(() => { fetchTrialInfo() })
 async function handlePurchase() {
   const result = await purchaseTrial()
   if (result) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
       showSuccess.value = true
     } else {
       window.location.href = result.orderUrl

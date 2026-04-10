@@ -5,7 +5,7 @@ import { verifyDateQR } from '@/api/dates'
 import jsQR from 'jsqr'
 
 const router = useRouter()
-const isDev = import.meta.env.DEV
+const isDev = import.meta.env.VITE_USE_MOCK === 'true'
 
 // ── 狀態 ──────────────────────────────────────────────────
 type ViewState = 'camera' | 'manual' | 'denied' | 'verifying' | 'success' | 'error'

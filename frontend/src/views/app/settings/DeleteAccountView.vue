@@ -9,7 +9,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 
-const USE_MOCK = import.meta.env.DEV
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const understood = ref(false)
 const deleteText = ref('')

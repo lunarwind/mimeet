@@ -20,7 +20,7 @@ export function useChat() {
   function connect(conversationId: number) {
     activeConversationId = conversationId
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
       // Mock 模式：模擬連線，定時發送假訊息
       isConnected.value = true
       startMockInterval()

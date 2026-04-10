@@ -5,7 +5,7 @@
 import client from './client'
 import type { Conversation, Message } from '@/types/chat'
 
-const USE_MOCK = import.meta.env.DEV
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 function delay(ms: number) {
   return new Promise(r => setTimeout(r, ms))

@@ -43,7 +43,7 @@ async function confirmPurchase() {
   const result = await createOrder(selectedPlan.value.type)
   showConfirmModal.value = false
   if (result) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
       showPaymentSuccess.value = true
     } else {
       window.location.href = result.orderUrl
