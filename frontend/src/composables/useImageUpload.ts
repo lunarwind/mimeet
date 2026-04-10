@@ -97,7 +97,6 @@ export function useImageUpload() {
       }
     } catch (e) {
       error.value = '上傳失敗，請稍後再試'
-      console.error('[useImageUpload] upload error:', e)
       return null
     } finally {
       isUploading.value = false

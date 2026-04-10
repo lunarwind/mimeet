@@ -169,7 +169,7 @@ class PaymentService
             // Upgrade membership level
             $user = User::find($order->user_id);
             if ($user && $user->membership_level < $plan->membership_level) {
-                $user->update(['membership_level' => $plan->membership_level]);
+                $user->forceFill(['membership_level' => $plan->membership_level])->save();
             }
 
             // Notify user

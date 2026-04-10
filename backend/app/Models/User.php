@@ -18,9 +18,9 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     /**
-     * WARNING: Fillable includes admin-only fields (credit_score, status, membership_level).
-     * Controllers MUST NOT pass unvalidated user input to update().
-     * Use $request->only([...]) or explicit field lists in controllers.
+     * User-editable fields only.
+     * Admin-only fields (credit_score, status, membership_level) are managed
+     * via CreditScoreService::adjust() and explicit $user->update() in admin controllers.
      */
     protected $fillable = [
         'email',
@@ -35,20 +35,18 @@ class User extends Authenticatable
         'occupation',
         'education',
         'interests',
-        'membership_level',
-        'credit_score',
         'email_verified',
         'phone',
         'phone_verified',
-        'status',
         'privacy_settings',
         'preferences',
         'profile',
         'last_active_at',
-        'suspended_at',
-        'delete_requested_at',
-        'deleted_at',
     ];
+
+    // Admin-only fields (credit_score, status, membership_level, suspended_at,
+    // delete_requested_at, deleted_at) are NOT in $fillable.
+    // Admin controllers use $user->forceFill([...])->save() for these fields.
 
     /**
      * The attributes that should be hidden for serialization.
@@ -79,6 +77,7 @@ class User extends Authenticatable
         'delete_requested_at' => 'datetime',
         'deleted_at' => 'datetime',
         'password' => 'hashed',
+        'phone' => 'encrypted',
     ];
 
     public function getPrivacySettingsAttribute($value): array

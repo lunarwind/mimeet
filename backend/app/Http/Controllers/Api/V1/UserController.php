@@ -114,7 +114,19 @@ class UserController extends Controller
     {
         $request->validate(['photo' => 'required|image|mimes:jpeg,png,gif,webp|max:5120']);
 
-        $path = Storage::disk('public')->put('photos/' . $request->user()->id, $request->file('photo'));
+        // S13-10: Magic bytes validation (not just extension)
+        $file = $request->file('photo');
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $realMime = finfo_file($finfo, $file->getRealPath());
+        finfo_close($finfo);
+        $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($realMime, $allowed, true)) {
+            return response()->json([
+                'success' => false, 'code' => 422, 'message' => '檔案格式不合法（偽裝 MIME 偵測）',
+            ], 422);
+        }
+
+        $path = Storage::disk('public')->put('photos/' . $request->user()->id, $file);
 
         UserActivityLogService::logPhotoChange($request->user()->id, 'upload', $request);
 

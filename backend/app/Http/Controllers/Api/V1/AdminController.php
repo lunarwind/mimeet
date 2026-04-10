@@ -146,9 +146,9 @@ class AdminController extends Controller
                 'admin_adjust', $request->input('reason', '管理員手動調整'), $request->user()?->id
             );
         } elseif ($action === 'suspend') {
-            $user->update(['status' => 'suspended', 'suspended_at' => now()]);
+            $user->forceFill(['status' => 'suspended', 'suspended_at' => now()])->save();
         } elseif ($action === 'unsuspend') {
-            $user->update(['status' => 'active']);
+            $user->forceFill(['status' => 'active'])->save();
         }
 
         $messages = ['adjust_score' => '信用分數已調整。', 'suspend' => '會員已停權。', 'unsuspend' => '會員已恢復。'];
@@ -194,7 +194,7 @@ class AdminController extends Controller
             $newLevel = (float) $request->input('membership_level');
             if ((float) $user->membership_level !== $newLevel) {
                 $changes[] = "membership_level: {$user->membership_level} → {$newLevel}";
-                $user->update(['membership_level' => $newLevel]);
+                $user->forceFill(['membership_level' => $newLevel])->save();
             }
         }
 

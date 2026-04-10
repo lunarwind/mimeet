@@ -39,7 +39,6 @@ export function useInfiniteScroll<T>(options: UseInfiniteScrollOptions<T>) {
       hasMore.value = result.hasMore
     } catch (e) {
       error.value = '載入失敗，請稍後再試'
-      console.error('[useInfiniteScroll] fetchFirst error:', e)
     } finally {
       isLoading.value = false
     }
@@ -56,7 +55,6 @@ export function useInfiniteScroll<T>(options: UseInfiniteScrollOptions<T>) {
       currentPage.value = nextPage
       hasMore.value = result.hasMore
     } catch (e) {
-      console.error('[useInfiniteScroll] fetchMore error:', e)
     } finally {
       isLoadingMore.value = false
     }

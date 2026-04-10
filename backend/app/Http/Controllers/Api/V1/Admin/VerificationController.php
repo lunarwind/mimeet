@@ -86,7 +86,7 @@ class VerificationController extends Controller
             // Upgrade to Lv1.5 and add credit
             $user = $verification->user;
             if ($user) {
-                $user->update(['membership_level' => 1.5]);
+                $user->forceFill(['membership_level' => 1.5])->save();
                 CreditScoreService::adjust($user, 15, 'verification_approved', '女性驗證通過 +15', $adminId);
             }
 

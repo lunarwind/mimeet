@@ -48,12 +48,12 @@ Route::prefix('api/v1')->group(function () {
     Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
-        Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend']);
-        Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm']);
+        Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend'])->middleware('throttle:5,1');
+        Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm'])->middleware('throttle:5,1');
     });
 
-    // ─── Users (authenticated) ───────────────────────────────────────
-    Route::prefix('users')->middleware('auth:sanctum')->group(function () {
+    // ─── Users (authenticated, rate-limited) ───────────────────────────
+    Route::prefix('users')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/me', [UserController::class, 'me']);
         Route::patch('/me', [UserController::class, 'update']);
         Route::get('/me/settings', [UserController::class, 'settings']);
@@ -164,7 +164,7 @@ Route::prefix('api/v1')->group(function () {
 
     // ─── Admin ───────────────────────────────────────────────────────
     Route::prefix('admin')->group(function () {
-        Route::post('/auth/login', [AdminController::class, 'login']);
+        Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:5,1');
 
         Route::middleware(['admin.auth', 'admin.log'])->group(function () {
             Route::get('/members', [AdminController::class, 'members']);

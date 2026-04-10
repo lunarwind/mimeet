@@ -44,7 +44,6 @@ async function startCamera() {
     }
     scanStatus.value = '對準 QR Code…'
   } catch (e) {
-    console.warn('[QRScan] getUserMedia failed:', e)
     viewState.value = 'denied'
   }
 }

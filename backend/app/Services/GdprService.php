@@ -23,10 +23,10 @@ class GdprService
             throw new \Exception('DELETION_PENDING');
         }
 
-        $user->update([
+        $user->forceFill([
             'status' => 'pending_deletion',
             'delete_requested_at' => now(),
-        ]);
+        ])->save();
 
         Log::info("[GDPR] User #{$user->id} requested deletion");
     }
@@ -37,10 +37,10 @@ class GdprService
             throw new \Exception('NO_PENDING_DELETION');
         }
 
-        $user->update([
+        $user->forceFill([
             'status' => 'active',
             'delete_requested_at' => null,
-        ]);
+        ])->save();
 
         Log::info("[GDPR] User #{$user->id} cancelled deletion request");
     }
@@ -57,7 +57,7 @@ class GdprService
             // Quarantine user's uploaded files before anonymizing
             $this->quarantineUserFiles($user);
 
-            $user->updateQuietly([
+            $user->forceFill([
                 'email' => "deleted_{$user->id}@removed.mimeet",
                 'phone' => null,
                 'nickname' => '已刪除用戶',
@@ -68,7 +68,7 @@ class GdprService
                 'password' => Hash::make(Str::random(32)),
                 'status' => 'deleted',
                 'deleted_at' => now(),
-            ]);
+            ])->saveQuietly();
 
             FcmToken::where('user_id', $user->id)->delete();
             $user->tokens()->delete();
