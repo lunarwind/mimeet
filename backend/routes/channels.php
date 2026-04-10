@@ -14,8 +14,11 @@ use Illuminate\Support\Facades\Broadcast;
 */
 
 Broadcast::channel('chat.{conversationId}', function ($user, $conversationId) {
-    // Simplified for dev — in production, verify user is a participant
-    return true;
+    $conversation = \App\Models\Conversation::find($conversationId);
+    if (!$conversation) {
+        return false;
+    }
+    return $conversation->user_a_id === $user->id || $conversation->user_b_id === $user->id;
 });
 
 Broadcast::channel('user.{userId}', function ($user, $userId) {
