@@ -11,7 +11,7 @@ const authStore = useAuthStore()
 const uiStore = useUiStore()
 const { isUploading, uploadAvatar, uploadPhoto, error: uploadError } = useImageUpload()
 
-const USE_MOCK = import.meta.env.DEV
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // ── 表單資料 ──────────────────────────────────────────────
 const form = ref({

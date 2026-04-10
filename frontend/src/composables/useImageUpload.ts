@@ -6,7 +6,7 @@
 import { ref } from 'vue'
 import client from '@/api/client'
 
-const USE_MOCK = import.meta.env.DEV
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB

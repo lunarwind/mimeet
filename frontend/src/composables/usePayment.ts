@@ -13,7 +13,7 @@ import type {
   TrialInfo,
 } from '@/types/payment'
 
-const USE_MOCK = import.meta.env.DEV
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
