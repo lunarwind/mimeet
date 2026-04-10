@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
     /**
-     * Admin login.
+     * Admin login with lockout protection.
      */
     public function login(Request $request): JsonResponse
     {
@@ -19,7 +21,56 @@ class AdminController extends Controller
             'password' => 'required|string',
         ]);
 
-        // Mock admin login
+        $lockKey = 'admin_login_lock:' . $request->ip();
+        $attemptsKey = 'admin_login_attempts:' . $request->ip();
+
+        // Check if locked
+        if (Cache::has($lockKey)) {
+            $remainingSeconds = Cache::get($lockKey) - time();
+            Log::warning('Admin login attempt while locked', ['ip' => $request->ip(), 'email' => $request->email]);
+            return response()->json([
+                'success' => false,
+                'code' => 'ADMIN_LOCKED',
+                'message' => '登入嘗試過多，請 ' . ceil($remainingSeconds / 60) . ' 分鐘後再試',
+            ], 429);
+        }
+
+        // Check password against accepted mock passwords
+        $validPasswords = ['password', 'admin123', 'mimeet2024'];
+
+        if (!in_array($request->password, $validPasswords)) {
+            // Failed login
+            $attempts = Cache::get($attemptsKey, 0) + 1;
+            Cache::put($attemptsKey, $attempts, 900); // 15 min
+
+            Log::warning('Admin login failed', [
+                'ip' => $request->ip(),
+                'email' => $request->email,
+                'attempts' => $attempts,
+            ]);
+
+            if ($attempts >= 5) {
+                Cache::put($lockKey, time() + 900, 900);
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ADMIN_LOCKED',
+                    'message' => '連續錯誤 5 次，帳號已鎖定 15 分鐘',
+                ], 429);
+            }
+
+            return response()->json([
+                'success' => false,
+                'code' => 'ADMIN_LOGIN_FAILED',
+                'message' => '帳號或密碼錯誤。',
+            ], 401);
+        }
+
+        // Successful login — clear attempts
+        Cache::forget($attemptsKey);
+        Cache::forget($lockKey);
+
+        Log::info('Admin login successful', ['ip' => $request->ip(), 'email' => $request->email]);
+
         $token = 'admin_token_' . Str::random(40);
 
         return response()->json([
@@ -310,6 +361,22 @@ class AdminController extends Controller
             'success' => true,
             'code' => 'SETTINGS_UPDATED',
             'message' => '系統設定已更新。',
+        ]);
+    }
+
+    /**
+     * Confirm admin password (S9 - password confirmation for sensitive operations).
+     */
+    public function confirmPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        // Mock: always succeeds for now
+        return response()->json([
+            'success' => true,
+            'message' => '密碼確認成功。',
         ]);
     }
 }
