@@ -16,6 +16,17 @@ use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
+use App\Http\Controllers\Admin\SystemControlController;
+use App\Http\Controllers\Admin\MailController;
+use App\Http\Controllers\Admin\SmsController;
+use App\Http\Controllers\Admin\SubscriptionSettingsController;
+use App\Http\Controllers\Admin\SeoController;
+use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\MemberLevelPermissionController;
+use App\Http\Controllers\Admin\VerificationController;
+use App\Http\Controllers\Admin\BroadcastController;
+use App\Http\Controllers\Admin\AdminLogController;
+use App\Http\Controllers\Admin\AdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -144,6 +155,9 @@ Route::prefix('api/v1')->group(function () {
         Route::patch('notifications/{id}/read', [NotificationController::class, 'markRead']);
     });
 
+    // ─── SEO redirect (public, no auth) (S10) ─────────────────────────
+    Route::get('/go/{slug}', [SeoController::class, 'redirect']);
+
     // ─── Admin ───────────────────────────────────────────────────────
     Route::prefix('admin')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login']);
@@ -165,6 +179,69 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations']);
             Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
             Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
+
+            // Password confirmation (S9)
+            Route::post('/auth/confirm-password', [AdminController::class, 'confirmPassword']);
+
+            // System Control (S9)
+            Route::get('/system/status', [SystemControlController::class, 'status']);
+            Route::post('/system/mode', [SystemControlController::class, 'setMode']);
+            Route::post('/system/cache-clear', [SystemControlController::class, 'cacheClear']);
+
+            // Mail settings (S9)
+            Route::get('/settings/mail', [MailController::class, 'show']);
+            Route::patch('/settings/mail', [MailController::class, 'update']);
+            Route::post('/settings/mail/test', [MailController::class, 'test']);
+
+            // SMS settings (S9)
+            Route::get('/settings/sms', [SmsController::class, 'show']);
+            Route::patch('/settings/sms', [SmsController::class, 'update']);
+            Route::post('/settings/sms/test', [SmsController::class, 'test']);
+
+            // Subscription settings (S10)
+            Route::get('/settings/subscription-plans', [SubscriptionSettingsController::class, 'plans']);
+            Route::patch('/settings/subscription-plans/{id}', [SubscriptionSettingsController::class, 'updatePlan']);
+            Route::get('/settings/discounts', [SubscriptionSettingsController::class, 'discounts']);
+            Route::post('/settings/discounts', [SubscriptionSettingsController::class, 'storeDiscount']);
+            Route::patch('/settings/discounts/{id}', [SubscriptionSettingsController::class, 'updateDiscount']);
+
+            // SEO (S10)
+            Route::get('/seo/meta', [SeoController::class, 'metaIndex']);
+            Route::patch('/seo/meta/{id}', [SeoController::class, 'metaUpdate']);
+            Route::get('/seo/links', [SeoController::class, 'linkIndex']);
+            Route::post('/seo/links', [SeoController::class, 'linkStore']);
+            Route::patch('/seo/links/{id}', [SeoController::class, 'linkUpdate']);
+            Route::delete('/seo/links/{id}', [SeoController::class, 'linkDestroy']);
+            Route::get('/seo/links/{id}/stats', [SeoController::class, 'linkStats']);
+
+            // Announcements (S10)
+            Route::get('/announcements', [AnnouncementController::class, 'index']);
+            Route::post('/announcements', [AnnouncementController::class, 'store']);
+            Route::patch('/announcements/{id}', [AnnouncementController::class, 'update']);
+            Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+
+            // Level permissions (S11)
+            Route::get('/level-permissions', [MemberLevelPermissionController::class, 'index']);
+            Route::patch('/level-permissions', [MemberLevelPermissionController::class, 'update']);
+
+            // Verifications (S11)
+            Route::get('/verifications/pending', [VerificationController::class, 'pending']);
+            Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
+
+            // Broadcasts (S11)
+            Route::get('/broadcasts', [BroadcastController::class, 'index']);
+            Route::post('/broadcasts', [BroadcastController::class, 'store']);
+            Route::get('/broadcasts/{id}', [BroadcastController::class, 'show']);
+            Route::post('/broadcasts/{id}/send', [BroadcastController::class, 'send']);
+
+            // Admin operation logs (S11)
+            Route::get('/logs', [AdminLogController::class, 'index']);
+
+            // Admin user management (S11)
+            Route::get('/settings/admins', [AdminUserController::class, 'index']);
+            Route::post('/settings/admins', [AdminUserController::class, 'store']);
+            Route::patch('/settings/admins/{id}/role', [AdminUserController::class, 'updateRole']);
+            Route::delete('/settings/admins/{id}', [AdminUserController::class, 'destroy']);
         });
     });
 });
