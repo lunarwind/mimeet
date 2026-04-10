@@ -3,8 +3,16 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { Card, Form, Input, Button, Alert, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
+import apiClient from '../../api/client'
 
 const { Title, Text } = Typography
+
+// Mock credentials for fallback when backend is unavailable
+const MOCK_ACCOUNTS: Record<string, { id: number; name: string; email: string; role: string; defaultRoute: string }> = {
+  'admin@mimeet.tw': { id: 1, name: '管理員', email: 'admin@mimeet.tw', role: 'super_admin', defaultRoute: '/dashboard' },
+  'cs@mimeet.tw': { id: 2, name: '客服人員', email: 'cs@mimeet.tw', role: 'cs', defaultRoute: '/tickets' },
+  'mod@mimeet.tw': { id: 3, name: '管理員B', email: 'mod@mimeet.tw', role: 'admin', defaultRoute: '/dashboard' },
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -28,34 +36,37 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 500))
-
-    if (import.meta.env.DEV) {
-      // Mock login
-      if (values.email === 'admin@mimeet.tw' && values.password === 'password') {
-        login({ id: 1, name: '管理員', email: 'admin@mimeet.tw', role: 'super_admin' })
-        navigate('/dashboard', { replace: true })
-        setLoading(false)
+    // Try real API first
+    try {
+      const res = await apiClient.post('/admin/auth/login', {
+        data: { email: values.email, password: values.password },
+      })
+      if (res.data?.data?.user) {
+        const user = res.data.data.user
+        if (res.data.data.tokens?.access_token) {
+          localStorage.setItem('admin_token', res.data.data.tokens.access_token)
+        }
+        login({ id: user.id, name: user.name || user.nickname, email: user.email, role: user.role })
+        navigate(user.role === 'cs' ? '/tickets' : '/dashboard', { replace: true })
         return
       }
-      if (values.email === 'cs@mimeet.tw' && values.password === 'password') {
-        login({ id: 2, name: '客服人員', email: 'cs@mimeet.tw', role: 'cs' })
-        navigate('/tickets', { replace: true })
-        setLoading(false)
-        return
+    } catch {
+      // API unavailable — fall back to mock credentials in DEV mode
+      if (import.meta.env.DEV) {
+        const mock = MOCK_ACCOUNTS[values.email]
+        if (mock && values.password === 'password') {
+          const { defaultRoute, ...userData } = mock
+          login(userData)
+          navigate(defaultRoute, { replace: true })
+          return
+        }
       }
-      if (values.email === 'mod@mimeet.tw' && values.password === 'password') {
-        login({ id: 3, name: '管理員B', email: 'mod@mimeet.tw', role: 'admin' })
-        navigate('/dashboard', { replace: true })
-        setLoading(false)
-        return
-      }
+    } finally {
+      setLoading(false)
     }
 
     setAttempts((a) => a + 1)
     setError('Email 或密碼不正確')
-    setLoading(false)
   }
 
   return (
