@@ -32,7 +32,6 @@ class SmsService
         return match (SystemSetting::get('sms.provider', 'disabled')) {
             'mitake' => new MitakeDriver(),
             'twilio' => new TwilioDriver(),
-            'every8d' => new Every8dDriver(),
             default => new LogDriver(),
         };
     }

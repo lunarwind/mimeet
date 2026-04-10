@@ -1,6 +1,6 @@
 # [API-002] MiMeet 後台管理 API 規格書
 
-**文檔版本：** v1.0  
+**文檔版本：** v1.2（2026年4月更新，新增會員權限覆寫 API）  
 **建立日期：** 2026年3月  
 **適用範圍：** 後台 React Admin SPA 呼叫的所有 `/api/v1/admin/*` 端點  
 **前置文件：** API-001（前台 API）、DEV-001（技術架構）、DEV-004（後端規範）
@@ -476,6 +476,66 @@ PATCH /api/v1/admin/members/{user_id}/actions
     "new_credit_score": 75,
     "log_id": 5501
   }
+}
+```
+
+---
+
+### 4.3.1 會員權限覆寫（Admin Override）（v1.2 新增）
+
+```
+PATCH /api/v1/admin/members/{user_id}/permissions
+```
+
+> 所需權限：`members.edit`（admin / super_admin）
+> 稽核：自動寫入 `credit_score_histories` + `admin_operation_logs`
+
+**請求參數：**
+
+| 參數 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `credit_score` | int | 否 | 目標誠信分數（0-100），系統自動計算 delta |
+| `membership_level` | float | 否 | 目標會員等級（0 / 1 / 1.5 / 2 / 3） |
+| `status` | string | 否 | 帳號狀態（`active` / `suspended`） |
+| `reason` | string | 否 | 變更原因（記入稽核日誌） |
+
+**請求範例：**
+```json
+{
+  "credit_score": 85,
+  "membership_level": 3,
+  "status": "active",
+  "reason": "開發測試：將測試帳號設為付費會員"
+}
+```
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "code": "MEMBER_PERMISSIONS_UPDATED",
+  "message": "會員權限已更新。",
+  "data": {
+    "member": {
+      "id": 123,
+      "membership_level": 3,
+      "credit_score": 85,
+      "status": "active"
+    },
+    "changes": [
+      "credit_score: 60 → 85",
+      "membership_level: 1 → 3"
+    ]
+  }
+}
+```
+
+**無變更回應 200：**
+```json
+{
+  "success": true,
+  "code": "NO_CHANGES",
+  "message": "未偵測到變更。"
 }
 ```
 
@@ -1642,6 +1702,311 @@ POST /api/v1/admin/settings/database/test
 
 ---
 
+### 10.A 會員等級功能設定 API（Sprint 11 新增）
+
+> 所需權限：`super_admin`
+
+#### 取得會員等級功能權限
+
+```
+GET /api/v1/admin/settings/member-level-permissions
+```
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "permissions": [
+      {
+        "level": "registered",
+        "feature_key": "send_message",
+        "enabled": false,
+        "value": null
+      },
+      {
+        "level": "verified",
+        "feature_key": "send_message",
+        "enabled": true,
+        "value": 10
+      }
+    ]
+  }
+}
+```
+
+---
+
+#### 批次更新會員等級功能權限
+
+```
+PATCH /api/v1/admin/settings/member-level-permissions
+```
+
+**請求參數：**
+```json
+[
+  { "level": "registered", "feature_key": "send_message", "enabled": true, "value": 5 },
+  { "level": "verified", "feature_key": "view_profile", "enabled": true }
+]
+```
+
+> 每個項目至少需包含 `level` 與 `feature_key`，`enabled` 與 `value` 為選填（部分更新）。
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "updated": 2
+  }
+}
+```
+
+---
+
+### 10.A.1 權限矩陣 JSON 簡化介面（v1.2 新增）
+
+> 所需權限：`super_admin`
+
+```
+GET /api/v1/admin/settings/permission-matrix
+```
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "matrix": {
+      "browse": [0, 1, 1.5, 2, 3],
+      "basic_search": [0, 1, 1.5, 2, 3],
+      "advanced_search": [1, 1.5, 2, 3],
+      "view_full_profile": [1.5, 2, 3],
+      "read_receipt": [3],
+      "vip_invisible": [3]
+    }
+  }
+}
+```
+
+> 每個 key 為功能名稱，value 為允許使用該功能的會員等級陣列。
+
+```
+PATCH /api/v1/admin/settings/permission-matrix
+```
+
+**請求參數：**
+```json
+{
+  "matrix": {
+    "vip_invisible": [2, 3],
+    "read_receipt": [2, 3]
+  }
+}
+```
+
+> 更新後自動同步到 `member_level_permissions` 資料表 + `system_settings` JSON。
+
+---
+
+### 10.B 女性驗證審核 API（Sprint 11 新增）
+
+> 所需權限：`members.edit`
+
+#### 取得待審核驗證列表
+
+```
+GET /api/v1/admin/verifications/pending
+```
+
+**Query 參數：**
+
+| 參數 | 類型 | 說明 |
+|------|------|------|
+| `page` | int | 頁碼 |
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 301,
+      "user_id": 1001,
+      "user_nickname": "甜心寶貝",
+      "user_age": 23,
+      "type": "photo",
+      "verification_photo_url": "https://cdn.mimeet.tw/verifications/...",
+      "random_code": "739284",
+      "submitted_at": "2026-04-09T09:00:00Z"
+    }
+  ],
+  "meta": { "page": 1, "per_page": 20, "total": 4, "last_page": 1 }
+}
+```
+
+---
+
+#### 審核驗證申請
+
+```
+PATCH /api/v1/admin/verifications/{id}
+```
+
+**請求參數：**
+```json
+{
+  "result": "approved",
+  "reject_reason": null
+}
+```
+
+| `result` 值 | 說明 |
+|------------|------|
+| `approved` | 通過：`membership_level` 升至 1.5、`credit_score` +15，發送通知 |
+| `rejected` | 駁回：狀態改為 rejected，儲存 `reject_reason`，用戶收到通知可重試 |
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "驗證已通過",
+    "user_id": 1001,
+    "new_membership_level": 1.5,
+    "credit_score_added": 15
+  }
+}
+```
+
+---
+
+### 10.C 廣播訊息 API（Sprint 11 新增）
+
+> 所需權限：`admin` 以上
+
+#### 取得廣播列表
+
+```
+GET /api/v1/admin/broadcasts
+```
+
+**Query 參數：** `status`（draft/sending/completed/failed）、`page`
+
+---
+
+#### 建立廣播草稿
+
+```
+POST /api/v1/admin/broadcasts
+```
+
+建立後狀態為 `draft`，需呼叫 send 端點才會實際發送。
+
+---
+
+#### 取得廣播詳情
+
+```
+GET /api/v1/admin/broadcasts/{id}
+```
+
+---
+
+#### 觸發發送廣播
+
+```
+POST /api/v1/admin/broadcasts/{id}/send
+```
+
+> 只有 `status=draft` 的廣播可執行。非同步以 Queue Job 批次發出。
+
+---
+
+### 10.D 操作日誌 API（Sprint 11 新增）
+
+> 所需權限：`admin` 以上均可查詢
+
+#### 取得操作日誌
+
+```
+GET /api/v1/admin/logs
+```
+
+**Query 參數：**
+
+| 參數 | 類型 | 說明 |
+|------|------|------|
+| `action_type` | string | 篩選操作類型 |
+| `admin_id` | int | 指定操作者（僅 super_admin 可用） |
+| `resource_type` | string | 篩選操作對象 |
+| `date_from` | string | 起始日期 YYYY-MM-DD |
+| `date_to` | string | 結束日期 YYYY-MM-DD |
+| `show_ip` | bool | `true` = 顯示完整 IP（僅 `super_admin` 有效）；預設 `false` |
+| `page` | int | 頁碼 |
+
+> **IP 顯示規則：** `show_ip=true` 僅限 `super_admin` 使用，其他角色傳此參數無效（IP 欄位回傳 `null`）。
+
+---
+
+### 10.E 管理員帳號 CRUD（Sprint 11 新增）
+
+> 所需權限：`settings.roles`（`super_admin` 專屬）
+
+#### 取得管理員列表
+
+```
+GET /api/v1/admin/settings/admins
+```
+
+回傳所有管理員帳號（含角色、最後登入時間等）。
+
+---
+
+#### 建立管理員帳號
+
+```
+POST /api/v1/admin/settings/admins
+```
+
+**請求參數：**
+```json
+{
+  "name": "新管理員",
+  "email": "new-admin@mimeet.tw",
+  "password": "初始密碼（8字以上）",
+  "role": "cs"
+}
+```
+
+---
+
+#### 變更管理員角色
+
+```
+PATCH /api/v1/admin/settings/admins/{id}/role
+```
+
+**請求參數：**
+```json
+{
+  "role": "admin"
+}
+```
+
+---
+
+#### 取得角色與權限矩陣
+
+```
+GET /api/v1/admin/settings/roles
+```
+
+回傳角色清單及各角色對應的權限矩陣。
+
+---
+
 ## 11. 操作日誌 API
 
 > 所需權限：所有管理員角色均可查自己的日誌；`super_admin` 可查全部
@@ -1981,6 +2346,7 @@ GET /api/v1/admin/settings/system/app-mode
 | 會員列表 | `/members` | GET | members.view |
 | 會員詳情 | `/members/{id}` | GET | members.view |
 | 會員操作 | `/members/{id}/actions` | PATCH | members.edit |
+| 會員權限覆寫 | `/members/{id}/permissions` | PATCH | members.edit |
 | 分數紀錄 | `/members/{id}/credit-logs` | GET | members.view |
 | 訂閱記錄 | `/members/{id}/subscriptions` | GET | members.view |
 | 聊天記錄 | `/members/{id}/chat-logs` | GET | chat.view |
@@ -2033,7 +2399,23 @@ GET /api/v1/admin/settings/system/app-mode
 | 資料庫設定 | `/settings/database` | PATCH | super_admin |
 | 測試 DB 連線 | `/settings/database/test` | POST | super_admin |
 | app.mode 狀態 | `/settings/system/app-mode` | GET | super_admin |
+| **Sprint 11 新增** | | | |
+| 會員等級權限查詢 | `/settings/member-level-permissions` | GET | super_admin |
+| 會員等級權限更新 | `/settings/member-level-permissions` | PATCH | super_admin |
+| 權限矩陣 JSON 查詢 | `/settings/permission-matrix` | GET | super_admin |
+| 權限矩陣 JSON 更新 | `/settings/permission-matrix` | PATCH | super_admin |
+| 驗證待審列表 | `/verifications/pending` | GET | members.edit |
+| 審核驗證 | `/verifications/{id}` | PATCH | members.edit |
+| 廣播列表 | `/broadcasts` | GET | admin+ |
+| 建立廣播 | `/broadcasts` | POST | admin+ |
+| 廣播詳情 | `/broadcasts/{id}` | GET | admin+ |
+| 發送廣播 | `/broadcasts/{id}/send` | POST | admin+ |
+| 操作日誌 | `/logs` | GET | admin+ |
+| 管理員列表 | `/settings/admins` | GET | settings.roles |
+| 建立管理員 | `/settings/admins` | POST | settings.roles |
+| 變更角色 | `/settings/admins/{id}/role` | PATCH | settings.roles |
+| 角色權限矩陣 | `/settings/roles` | GET | settings.roles |
 
 ---
 
-*本文件涵蓋後台所有 API 端點（共 61 個）。前台用戶 API 請參閱 API-001。*
+*本文件涵蓋後台所有 API 端點（共 74 個）。前台用戶 API 請參閱 API-001。*

@@ -72,6 +72,7 @@ class PaymentService
 
     /**
      * Handle ECPay payment callback (notify).
+     * Stores reconciliation fields and issues invoice on success.
      */
     public function handleECPayNotify(array $data): string
     {
@@ -83,7 +84,6 @@ class PaymentService
 
         $merchantTradeNo = $data['MerchantTradeNo'] ?? '';
         $rtnCode = $data['RtnCode'] ?? '';
-        $tradeNo = $data['TradeNo'] ?? '';
 
         $order = Order::where('ecpay_merchant_trade_no', $merchantTradeNo)->first();
 
@@ -92,12 +92,25 @@ class PaymentService
             return '0|Order Not Found';
         }
 
+        // Idempotency: already processed
         if ($order->status === 'paid') {
-            return '1|OK'; // Already processed
+            return '1|OK';
         }
 
+        // Store reconciliation fields regardless of success/failure
+        $order->update(array_filter([
+            'ecpay_trade_no' => $data['TradeNo'] ?? null,
+            'ecpay_payment_date' => $data['PaymentDate'] ?? null,
+            'ecpay_payment_type' => $data['PaymentType'] ?? null,
+            'ecpay_payment_type_charge_fee' => $data['PaymentTypeChargeFee'] ?? null,
+        ], fn ($v) => $v !== null));
+
         if ($rtnCode === '1') {
-            $this->activateSubscription($order, $tradeNo);
+            $this->activateSubscription($order);
+
+            // Issue electronic invoice
+            $this->issueInvoiceForOrder($order);
+
             return '1|OK';
         }
 
@@ -117,19 +130,22 @@ class PaymentService
             return $order;
         }
 
-        $this->activateSubscription($order, 'MOCK_' . Str::random(10));
+        $this->activateSubscription($order);
+
+        // Also try to issue invoice in mock mode
+        $this->issueInvoiceForOrder($order->fresh());
+
         return $order->fresh();
     }
 
     /**
      * Activate subscription after successful payment.
      */
-    private function activateSubscription(Order $order, string $ecpayTradeNo): void
+    private function activateSubscription(Order $order): void
     {
-        DB::transaction(function () use ($order, $ecpayTradeNo) {
+        DB::transaction(function () use ($order) {
             $order->update([
                 'status' => 'paid',
-                'ecpay_trade_no' => $ecpayTradeNo,
                 'paid_at' => now(),
             ]);
 
@@ -161,6 +177,52 @@ class PaymentService
                 $this->notificationService->notifySubscriptionActivated($user, $plan->name);
             }
         });
+    }
+
+    /**
+     * Issue B2C electronic invoice for a paid order.
+     */
+    private function issueInvoiceForOrder(Order $order): void
+    {
+        if ($order->invoice_no) {
+            return; // Already issued
+        }
+
+        $user = $order->user;
+        if (!$user) {
+            return;
+        }
+
+        $plan = $order->plan;
+
+        $invoiceResult = $this->ecPayService->issueInvoice([
+            'relate_number' => $order->order_number,
+            'customer_email' => $user->email ?? '',
+            'customer_phone' => '',
+            'sales_amount' => $order->amount,
+            'items' => [
+                [
+                    'seq' => 1,
+                    'name' => 'MiMeet ' . ($plan->name ?? '訂閱方案'),
+                    'count' => 1,
+                    'word' => '式',
+                    'price' => $order->amount,
+                    'amount' => $order->amount,
+                ],
+            ],
+        ]);
+
+        if ($invoiceResult) {
+            $order->update([
+                'invoice_no' => $invoiceResult['invoice_no'],
+                'invoice_date' => $invoiceResult['invoice_date'],
+                'invoice_random_number' => $invoiceResult['random_number'],
+            ]);
+            Log::info('[Invoice] Saved to order', [
+                'order' => $order->order_number,
+                'invoice_no' => $invoiceResult['invoice_no'],
+            ]);
+        }
     }
 
     /**

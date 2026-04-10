@@ -1,6 +1,6 @@
 /**
  * useChat.ts
- * Socket.IO 連線骨架 — DEV 環境使用 Mock 模式
+ * Socket.IO 連線骨架
  */
 import { ref, onUnmounted } from 'vue'
 import { useChatStore } from '@/stores/chat'
@@ -11,7 +11,6 @@ export function useChat() {
   const isConnected = ref(false)
   const messages = ref<ChatMessage[]>([])
 
-  let mockTimer: ReturnType<typeof setInterval> | null = null
   let retryCount = 0
   let activeConversationId: number | null = null
   let onMessageCb: ((msg: ChatMessage) => void) | null = null
@@ -19,15 +18,6 @@ export function useChat() {
   // ── 連線 ────────────────────────────────────────────────
   function connect(conversationId: number) {
     activeConversationId = conversationId
-
-    if (import.meta.env.DEV) {
-      // Mock 模式：模擬連線，定時發送假訊息
-      isConnected.value = true
-      startMockInterval()
-      return
-    }
-
-    // 真實 Socket.IO（Phase 2 實作）
     tryConnect()
   }
 
@@ -38,32 +28,7 @@ export function useChat() {
     // socket.on('connect', () => { isConnected.value = true; retryCount = 0 })
     // socket.on('disconnect', () => { isConnected.value = false; if (retryCount < 3) tryConnect() })
     // socket.on('message', handleIncoming)
-  }
-
-  // ── Mock 自動回覆 ──────────────────────────────────────
-  function startMockInterval() {
-    stopMockInterval()
-    mockTimer = setInterval(async () => {
-      if (!activeConversationId) return
-      const { randomReply } = await import('@/mocks/chats')
-      const msg: ChatMessage = {
-        id: Date.now(),
-        conversationId: activeConversationId,
-        senderId: -1,
-        type: 'text',
-        content: randomReply(),
-        status: 'sent',
-        createdAt: new Date().toISOString(),
-        isOwn: false,
-      }
-      messages.value.push(msg)
-      chatStore.incrementUnread(activeConversationId!)
-      onMessageCb?.(msg)
-    }, 3000 + Math.random() * 5000)
-  }
-
-  function stopMockInterval() {
-    if (mockTimer) { clearInterval(mockTimer); mockTimer = null }
+    isConnected.value = true
   }
 
   // ── 發送訊息 ────────────────────────────────────────────
@@ -90,7 +55,6 @@ export function useChat() {
 
   // ── 斷線 ────────────────────────────────────────────────
   function disconnect() {
-    stopMockInterval()
     isConnected.value = false
     activeConversationId = null
     retryCount = 0

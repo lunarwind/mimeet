@@ -59,7 +59,5 @@ client.interceptors.response.use(
   },
 )
 
-import { setupMockAdapter } from '@/mocks/mockAdapter'
-setupMockAdapter(client)
-
+export { client as apiClient }
 export default client

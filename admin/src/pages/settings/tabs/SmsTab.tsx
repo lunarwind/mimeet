@@ -1,14 +1,27 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, Select, Button, Alert, Space, message } from 'antd'
+import { Card, Form, Input, Select, Button, Alert, Space, message, Divider, Typography } from 'antd'
 import apiClient from '../../../api/client'
+
+const { Text } = Typography
 
 export default function SmsTab() {
   const [form] = Form.useForm()
   const [provider, setProvider] = useState('disabled')
-  const [testPhone, setTestPhone] = useState('')
-  const [testResult, setTestResult] = useState('')
-  const [testLoading, setTestLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
+
+  // --- Per-provider test credentials (separate state, never shared) ---
+  // Mitake
+  const [mitakeTestUser, setMitakeTestUser] = useState('')
+  const [mitakeTestPass, setMitakeTestPass] = useState('')
+  // Twilio
+  const [twilioTestSid, setTwilioTestSid] = useState('')
+  const [twilioTestToken, setTwilioTestToken] = useState('')
+  const [twilioTestFrom, setTwilioTestFrom] = useState('')
+  // Common
+  const [testPhone, setTestPhone] = useState('0983144094')
+  const [testMessage, setTestMessage] = useState('TEST from mimeet admin panel')
+  const [testLoading, setTestLoading] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; raw: string; provider: string } | null>(null)
 
   useEffect(() => {
     apiClient.get('/admin/settings/system-control').then(res => {
@@ -19,8 +32,11 @@ export default function SmsTab() {
         mitake_username: sms.mitake?.username || '',
         twilio_account_sid: sms.twilio?.account_sid || '',
         twilio_from_number: sms.twilio?.from_number || '',
-        every8d_username: sms.every8d?.username || '',
       })
+      // Pre-fill test fields from saved settings
+      if (sms.mitake?.username) setMitakeTestUser(sms.mitake.username)
+      if (sms.twilio?.account_sid) setTwilioTestSid(sms.twilio.account_sid)
+      if (sms.twilio?.from_number) setTwilioTestFrom(sms.twilio.from_number)
     }).catch(() => {})
   }, [form])
 
@@ -30,7 +46,6 @@ export default function SmsTab() {
     const body: Record<string, unknown> = { provider: vals.provider }
     if (vals.provider === 'mitake') body.mitake = { username: vals.mitake_username, password: vals.mitake_password || undefined }
     if (vals.provider === 'twilio') body.twilio = { account_sid: vals.twilio_account_sid, auth_token: vals.twilio_auth_token || undefined, from_number: vals.twilio_from_number }
-    if (vals.provider === 'every8d') body.every8d = { username: vals.every8d_username, password: vals.every8d_password || undefined }
 
     try {
       const res = await apiClient.patch('/admin/settings/sms', body)
@@ -39,18 +54,56 @@ export default function SmsTab() {
     setSaveLoading(false)
   }
 
+  function toE164(phone: string): string {
+    const cleaned = phone.replace(/[\s-]/g, '')
+    if (cleaned.startsWith('09')) return '+886' + cleaned.substring(1)
+    if (cleaned.startsWith('+')) return cleaned
+    return '+886' + cleaned.replace(/^0+/, '')
+  }
+
   async function handleTestSms() {
-    if (!testPhone) return
+    if (!testPhone) { message.warning('請輸入電話號碼'); return }
     setTestLoading(true)
+    setTestResult(null)
+
+    const payload: Record<string, string | undefined> = {
+      phone: testPhone,
+      message: testMessage || undefined,
+      provider_override: provider,
+    }
+
+    if (provider === 'twilio') {
+      payload.username = twilioTestSid || undefined
+      payload.password = twilioTestToken || undefined
+      payload.from_number = twilioTestFrom || undefined
+      payload.phone = toE164(testPhone) // Convert for display consistency
+    } else if (provider === 'mitake') {
+      payload.username = mitakeTestUser || undefined
+      payload.password = mitakeTestPass || undefined
+    }
+
     try {
-      const res = await apiClient.post('/admin/settings/sms/test', { phone: testPhone })
-      setTestResult(`✅ ${res.data.data.message}`)
+      const res = await apiClient.post('/admin/settings/sms/test', payload)
+      setTestResult({
+        success: res.data.success,
+        message: res.data.data.message,
+        raw: res.data.data.raw_response || '',
+        provider: res.data.data.provider || provider,
+      })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '發送失敗'
-      setTestResult(`❌ ${msg}`)
+      const resp = (err as { response?: { data?: { data?: { message?: string; raw_response?: string; provider?: string }; error?: { message?: string } } } })?.response?.data
+      setTestResult({
+        success: false,
+        message: resp?.data?.message || resp?.error?.message || '發送失敗',
+        raw: resp?.data?.raw_response || '',
+        provider: resp?.data?.provider || provider,
+      })
     }
     setTestLoading(false)
   }
+
+  const isTwilio = provider === 'twilio'
+  const isMitake = provider === 'mitake'
 
   return (
     <Card>
@@ -59,37 +112,138 @@ export default function SmsTab() {
           <Select options={[
             { value: 'mitake', label: '三竹簡訊' },
             { value: 'twilio', label: 'Twilio' },
-            { value: 'every8d', label: '每日簡訊' },
             { value: 'disabled', label: '停用（僅寫 Log）' },
           ]} />
         </Form.Item>
 
-        {provider === 'mitake' && (<>
+        {isMitake && (<>
           <Form.Item label="三竹帳號" name="mitake_username"><Input /></Form.Item>
           <Form.Item label="三竹密碼" name="mitake_password"><Input.Password placeholder="留空保留現有" /></Form.Item>
         </>)}
 
-        {provider === 'twilio' && (<>
-          <Form.Item label="Account SID" name="twilio_account_sid"><Input /></Form.Item>
+        {isTwilio && (<>
+          <Form.Item label="Account SID" name="twilio_account_sid"><Input placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" /></Form.Item>
           <Form.Item label="Auth Token" name="twilio_auth_token"><Input.Password placeholder="留空保留現有" /></Form.Item>
-          <Form.Item label="發送號碼" name="twilio_from_number"><Input placeholder="+1xxxxxxxxxx" /></Form.Item>
+          <Form.Item label="發送號碼 (From)" name="twilio_from_number"><Input placeholder="+16067553121" /></Form.Item>
         </>)}
 
-        {provider === 'every8d' && (<>
-          <Form.Item label="帳號" name="every8d_username"><Input /></Form.Item>
-          <Form.Item label="密碼" name="every8d_password"><Input.Password placeholder="留空保留現有" /></Form.Item>
-        </>)}
+        <Button type="primary" onClick={handleSave} loading={saveLoading}>儲存設定</Button>
       </Form>
 
-      <Card title="📱 發送測試簡訊" size="small" style={{ marginBottom: 16, background: '#F9FAFB' }}>
-        <Space>
-          <Input placeholder="手機號碼 09xxxxxxxx" value={testPhone} onChange={e => setTestPhone(e.target.value)} style={{ width: 200 }} />
-          <Button onClick={handleTestSms} loading={testLoading}>發送測試簡訊</Button>
-        </Space>
-        {testResult && <Alert message={testResult} type={testResult.startsWith('✅') ? 'success' : 'error'} style={{ marginTop: 8 }} />}
-      </Card>
+      <Divider />
 
-      <Button type="primary" onClick={handleSave} loading={saveLoading}>儲存設定</Button>
+      <Card
+        title={`📱 發送測試簡訊${isTwilio ? ' (Twilio)' : isMitake ? ' (三竹)' : ''}`}
+        size="small"
+        style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+          {isTwilio
+            ? '輸入 Twilio 憑證測試發送。電話號碼自動轉換為 E.164 格式（09xx → +886xx）。'
+            : isMitake
+              ? '輸入三竹帳密測試發送，不影響系統已儲存的設定。'
+              : '請先選擇 SMS 服務商。'}
+        </Text>
+
+        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+          {/* Mitake test fields */}
+          {isMitake && (
+            <Space wrap>
+              <Input
+                value={mitakeTestUser}
+                onChange={e => setMitakeTestUser(e.target.value)}
+                style={{ width: 220 }}
+                addonBefore="帳號"
+                placeholder="三竹帳號"
+              />
+              <Input.Password
+                value={mitakeTestPass}
+                onChange={e => setMitakeTestPass(e.target.value)}
+                style={{ width: 240 }}
+                addonBefore="密碼"
+                placeholder="三竹密碼"
+              />
+            </Space>
+          )}
+
+          {/* Twilio test fields */}
+          {isTwilio && (<>
+            <Space wrap>
+              <Input
+                value={twilioTestSid}
+                onChange={e => setTwilioTestSid(e.target.value)}
+                style={{ width: 320 }}
+                addonBefore="SID"
+                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              />
+            </Space>
+            <Space wrap>
+              <Input.Password
+                value={twilioTestToken}
+                onChange={e => setTwilioTestToken(e.target.value)}
+                style={{ width: 320 }}
+                addonBefore="Token"
+                placeholder="Auth Token"
+              />
+            </Space>
+            <Input
+              value={twilioTestFrom}
+              onChange={e => setTwilioTestFrom(e.target.value)}
+              style={{ width: 240 }}
+              addonBefore="From"
+              placeholder="+16067553121"
+            />
+          </>)}
+
+          {/* Common: phone + message */}
+          <Space wrap>
+            <Input
+              value={testPhone}
+              onChange={e => setTestPhone(e.target.value)}
+              style={{ width: 200 }}
+              addonBefore="電話"
+              placeholder="09xxxxxxxx"
+              suffix={isTwilio && testPhone ? <Text type="secondary" style={{ fontSize: 11 }}>{toE164(testPhone)}</Text> : null}
+            />
+            <Input
+              value={testMessage}
+              onChange={e => setTestMessage(e.target.value)}
+              style={{ width: 300 }}
+              addonBefore="訊息"
+              placeholder="測試訊息內容"
+            />
+          </Space>
+
+          <Button type="primary" onClick={handleTestSms} loading={testLoading} disabled={provider === 'disabled'}>
+            發送測試簡訊
+          </Button>
+        </Space>
+
+        {testResult && (
+          <div style={{ marginTop: 12 }}>
+            <Alert
+              message={testResult.success ? '發送成功' : '發送失敗'}
+              description={testResult.message}
+              type={testResult.success ? 'success' : 'error'}
+              showIcon
+            />
+            {testResult.raw && (
+              <div style={{ marginTop: 8 }}>
+                <Text strong style={{ fontSize: 12 }}>
+                  {testResult.provider === 'twilio' ? 'Twilio' : '三竹'} 原始回應：
+                </Text>
+                <pre style={{
+                  background: '#1F2937', color: '#10B981', padding: 12, borderRadius: 6,
+                  fontSize: 12, marginTop: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                  maxHeight: 200, overflow: 'auto',
+                }}>
+                  {testResult.raw}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
     </Card>
   )
 }

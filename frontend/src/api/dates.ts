@@ -5,22 +5,12 @@
 import client from './client'
 import type { DateInvitation } from '@/types/chat'
 
-const USE_MOCK = import.meta.env.DEV
-
-function delay(ms: number) { return new Promise(r => setTimeout(r, ms)) }
-
 export async function fetchDates(): Promise<DateInvitation[]> {
-  if (USE_MOCK) {
-    const { mockFetchDates } = await import('@/mocks/dates')
-    await delay(300 + Math.random() * 300)
-    return mockFetchDates()
-  }
   const res = await client.get<{ data: { invitations: DateInvitation[] } }>('/date-invitations')
   return res.data.data.invitations
 }
 
 export async function respondToDate(id: number, response: 'accepted' | 'rejected'): Promise<void> {
-  if (USE_MOCK) { await delay(300); return }
   await client.patch(`/date-invitations/${id}/response`, { data: { response } })
 }
 
@@ -36,11 +26,6 @@ export async function verifyDateQR(
   latitude?: number | null,
   longitude?: number | null,
 ): Promise<VerifyResult> {
-  if (USE_MOCK) {
-    await delay(500)
-    return { success: true, creditScoreAwarded: latitude ? 5 : 2, gpsPassed: !!latitude, status: 'completed' }
-  }
-
   const body: Record<string, unknown> = { token }
   if (latitude != null) body.latitude = latitude
   if (longitude != null) body.longitude = longitude

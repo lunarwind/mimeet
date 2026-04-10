@@ -6,8 +6,6 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import client from '@/api/client'
 
-const USE_MOCK = import.meta.env.DEV
-
 interface DateInviteForm {
   date: string
   time: string
@@ -32,11 +30,7 @@ export function useDateInviteFromProfile(profileUserId: () => number, profileMem
     isLoading.value = true
     try {
       // Step 1: Create or get existing conversation
-      if (USE_MOCK) {
-        await new Promise(r => setTimeout(r, 300))
-      } else {
-        await client.post('/chats', { user_id: profileUserId() })
-      }
+      await client.post('/chats', { user_id: profileUserId() })
 
       // Step 2: Open bottom sheet
       form.value = { date: '', time: '', locationName: '' }
@@ -55,17 +49,13 @@ export function useDateInviteFromProfile(profileUserId: () => number, profileMem
     try {
       const dateTime = `${form.value.date}T${form.value.time}:00`
 
-      if (USE_MOCK) {
-        await new Promise(r => setTimeout(r, 500))
-      } else {
-        await client.post('/dates', {
-          invitee_id: profileUserId(),
-          date_time: dateTime,
-          location_name: form.value.locationName || null,
-          latitude: null,
-          longitude: null,
-        })
-      }
+      await client.post('/dates', {
+        invitee_id: profileUserId(),
+        date_time: dateTime,
+        location_name: form.value.locationName || null,
+        latitude: null,
+        longitude: null,
+      })
 
       showBottomSheet.value = false
       successMessage.value = `約會邀請已送出！等待 ${nickname} 確認`

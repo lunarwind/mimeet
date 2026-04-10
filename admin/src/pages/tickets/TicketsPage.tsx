@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Tabs, Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select, message } from 'antd'
+import { Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 const STATUS_COLORS: Record<string, string> = { pending: 'orange', investigating: 'blue', resolved: 'green', dismissed: 'default' }
 const STATUS_LABELS: Record<string, string> = { pending: '待處理', investigating: '處理中', resolved: '已結案', dismissed: '已駁回' }

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
-  Space, Typography, Statistic, Row, Col, message, Image, Result,
+  Space, Typography, Statistic, Row, Col, message, Image, Result, Select, Divider, Switch,
+  Drawer, Form, DatePicker,
 } from 'antd'
-import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
-import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
+import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
+import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail } from '../../types/admin'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -24,12 +25,32 @@ export default function MemberDetailPage() {
   const navigate = useNavigate()
   const uid = Number(id)
 
-  const [member, setMember] = useState<Record<string, unknown> | null>(null)
-  const [scoreRecords, setScoreRecords] = useState<Record<string, unknown>[]>([])
+  const [member, setMember] = useState<MemberDetail | null>(null)
+  const [scoreRecords] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false)
   const [adjustValue, setAdjustValue] = useState<number>(0)
   const [adjustReason, setAdjustReason] = useState('')
+
+  // Permissions modal state
+  const [permModalOpen, setPermModalOpen] = useState(false)
+  const [permLevel, setPermLevel] = useState<number>(0)
+  const [permScore, setPermScore] = useState<number>(80)
+  const [permStatus, setPermStatus] = useState<string>('active')
+  const [permReason, setPermReason] = useState('')
+  const [permSaving, setPermSaving] = useState(false)
+
+  // Edit profile drawer state
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editForm] = Form.useForm()
+  const isSuperAdmin = useAuthStore.getState().user?.role === 'super_admin'
+
+  function reloadMember() {
+    apiClient.get(`/admin/members/${uid}`).then(res => {
+      setMember(res.data.data.member)
+    }).catch(() => {})
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -48,22 +69,111 @@ export default function MemberDetailPage() {
 
   const creditLevel = getCreditLevel(member.credit_score)
 
-  const handleAdjustScore = () => {
-    message.success(`誠信分數已調整 ${adjustValue > 0 ? '+' : ''}${adjustValue}`)
-    setAdjustModalOpen(false)
-    setAdjustValue(0)
-    setAdjustReason('')
+  const handleAdjustScore = async () => {
+    try {
+      await apiClient.patch(`/admin/members/${uid}/actions`, {
+        action: 'adjust_score',
+        score_delta: adjustValue,
+        reason: adjustReason || '管理員手動調整',
+      })
+      message.success(`誠信分數已調整 ${adjustValue > 0 ? '+' : ''}${adjustValue}`)
+      setAdjustModalOpen(false)
+      setAdjustValue(0)
+      setAdjustReason('')
+      reloadMember()
+    } catch {
+      message.error('調整失敗')
+    }
   }
 
   const handleSuspend = () => {
+    const isSuspended = member.status === 'suspended'
     Modal.confirm({
-      title: member.status === 'suspended' ? '確定解除停權？' : '確定停權此會員？',
-      content: member.status === 'suspended' ? `將解除 ${member.nickname} 的停權狀態` : `將停權 ${member.nickname}`,
+      title: isSuspended ? '確定解除停權？' : '確定停權此會員？',
+      content: isSuspended ? `將解除 ${member.nickname} 的停權狀態` : `將停權 ${member.nickname}`,
       okText: '確定',
       cancelText: '取消',
-      okButtonProps: { danger: member.status !== 'suspended' },
-      onOk: () => message.success(member.status === 'suspended' ? '已解除停權' : '已停權'),
+      okButtonProps: { danger: !isSuspended },
+      onOk: async () => {
+        try {
+          await apiClient.patch(`/admin/members/${uid}/actions`, {
+            action: isSuspended ? 'unsuspend' : 'suspend',
+          })
+          message.success(isSuspended ? '已解除停權' : '已停權')
+          reloadMember()
+        } catch {
+          message.error('操作失敗')
+        }
+      },
     })
+  }
+
+  function openPermModal() {
+    if (!member) return
+    setPermLevel(member.membership_level)
+    setPermScore(member.credit_score)
+    setPermStatus(member.status === 'suspended' ? 'suspended' : 'active')
+    setPermReason('')
+    setPermModalOpen(true)
+  }
+
+  async function handlePermSave() {
+    setPermSaving(true)
+    try {
+      await apiClient.patch(`/admin/members/${uid}/permissions`, {
+        membership_level: permLevel,
+        credit_score: permScore,
+        status: permStatus,
+        reason: permReason || '管理員調整權限',
+      })
+      message.success('會員權限已更新')
+      setPermModalOpen(false)
+      reloadMember()
+    } catch {
+      message.error('更新失敗')
+    }
+    setPermSaving(false)
+  }
+
+  function openEditDrawer() {
+    if (!member) return
+    editForm.setFieldsValue({
+      nickname: member.nickname,
+      birth_date: member.birth_date ? dayjs(member.birth_date) : null,
+      avatar_url: member.avatar,
+      gender: member.gender,
+      height: member.height,
+      location: member.location,
+      occupation: member.job,
+      education: member.education,
+      bio: member.introduction,
+    })
+    setEditDrawerOpen(true)
+  }
+
+  async function handleEditSave() {
+    try {
+      const values = await editForm.validateFields()
+      setEditSaving(true)
+      const payload: Record<string, unknown> = {}
+      if (values.nickname !== undefined) payload.nickname = values.nickname
+      if (values.birth_date) payload.birth_date = values.birth_date.format('YYYY-MM-DD')
+      if (values.avatar_url !== undefined) payload.avatar_url = values.avatar_url || null
+      if (values.gender !== undefined) payload.gender = values.gender
+      if (values.height !== undefined) payload.height = values.height || null
+      if (values.location !== undefined) payload.location = values.location || null
+      if (values.occupation !== undefined) payload.occupation = values.occupation || null
+      if (values.education !== undefined) payload.education = values.education || null
+      if (values.bio !== undefined) payload.bio = values.bio || null
+
+      await apiClient.patch(`/admin/members/${uid}/profile`, payload)
+      message.success('會員資料已更新')
+      setEditDrawerOpen(false)
+      reloadMember()
+    } catch {
+      message.error('更新失敗')
+    }
+    setEditSaving(false)
   }
 
   const scoreColumns = [
@@ -120,16 +230,19 @@ export default function MemberDetailPage() {
                           valueStyle={{ color: CreditLevelColor[creditLevel], fontSize: 36, fontWeight: 800 }}
                         />
                       </div>
-                      <Space style={{ marginTop: 16, width: '100%', justifyContent: 'center' }}>
+                      <Space style={{ marginTop: 16, width: '100%', justifyContent: 'center' }} wrap>
                         <Button onClick={() => setAdjustModalOpen(true)}>調整分數</Button>
                         <Button danger={member.status !== 'suspended'} onClick={handleSuspend}>
                           {member.status === 'suspended' ? '解除停權' : '停權'}
+                        </Button>
+                        <Button icon={<SettingOutlined />} onClick={openPermModal}>
+                          權限調整
                         </Button>
                       </Space>
                     </Card>
                   </Col>
                   <Col xs={24} md={16}>
-                    <Card title="個人資料">
+                    <Card title="個人資料" extra={isSuperAdmin && <Button icon={<EditOutlined />} size="small" onClick={openEditDrawer}>編輯資料</Button>}>
                       <Descriptions column={2} bordered size="small">
                         <Descriptions.Item label="性別">{member.gender === 'male' ? '男' : '女'}</Descriptions.Item>
                         <Descriptions.Item label="年齡">{member.age}</Descriptions.Item>
@@ -230,6 +343,145 @@ export default function MemberDetailPage() {
           <Input.TextArea value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} rows={3} style={{ marginTop: 4 }} placeholder="請填寫調整原因" />
         </div>
       </Modal>
+
+      {/* Permissions Modal */}
+      <Modal
+        title={<Space><SettingOutlined />權限 / 狀態調整 — {member.nickname}</Space>}
+        open={permModalOpen}
+        onOk={handlePermSave}
+        onCancel={() => setPermModalOpen(false)}
+        okText="確認儲存"
+        confirmLoading={permSaving}
+        width={520}
+      >
+        <div style={{ marginBottom: 20 }}>
+          <Text type="secondary">直接設定該用戶的等級、分數與狀態，變更會即時生效並寫入操作日誌。</Text>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>會員等級</Text>
+          <Select value={permLevel} onChange={setPermLevel} style={{ width: '100%', marginTop: 4 }}>
+            <Select.Option value={0}>Lv0 — 未驗證（一般會員）</Select.Option>
+            <Select.Option value={1}>Lv1 — Email + 手機驗證</Select.Option>
+            <Select.Option value={1.5}>Lv1.5 — 女性照片驗證</Select.Option>
+            <Select.Option value={2}>Lv2 — 進階驗證</Select.Option>
+            <Select.Option value={3}>Lv3 — 付費會員</Select.Option>
+          </Select>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>誠信分數</Text>
+          <InputNumber
+            value={permScore}
+            onChange={(v) => setPermScore(v ?? 0)}
+            min={0} max={100}
+            style={{ width: '100%', marginTop: 4 }}
+            addonAfter="/ 100"
+          />
+          <div style={{ marginTop: 4 }}>
+            <Tag style={{
+              background: CreditLevelBg[getCreditLevel(permScore)],
+              color: CreditLevelColor[getCreditLevel(permScore)],
+              border: 'none',
+            }}>
+              {permScore} 分 — {CreditLevelLabel[getCreditLevel(permScore)]}
+            </Tag>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>帳號狀態</Text>
+          <div style={{ marginTop: 4 }}>
+            <Switch
+              checked={permStatus === 'active'}
+              onChange={(v) => setPermStatus(v ? 'active' : 'suspended')}
+              checkedChildren="正常"
+              unCheckedChildren="停權"
+            />
+            {permStatus === 'suspended' && (
+              <Tag color="red" style={{ marginLeft: 8 }}>將被停權</Tag>
+            )}
+          </div>
+        </div>
+
+        <Divider />
+
+        <div>
+          <Text strong>變更原因</Text>
+          <Input.TextArea
+            value={permReason}
+            onChange={(e) => setPermReason(e.target.value)}
+            rows={2}
+            style={{ marginTop: 4 }}
+            placeholder="選填，會記錄在操作日誌中"
+          />
+        </div>
+      </Modal>
+
+      {/* Edit Profile Drawer (super_admin only) */}
+      <Drawer
+        title={`編輯會員資料 — ${member.nickname}`}
+        open={editDrawerOpen}
+        onClose={() => setEditDrawerOpen(false)}
+        width={480}
+        extra={
+          <Button type="primary" icon={<EditOutlined />} onClick={handleEditSave} loading={editSaving}>
+            儲存
+          </Button>
+        }
+      >
+        <Form form={editForm} layout="vertical">
+          <Form.Item name="nickname" label="暱稱" rules={[{ required: true, min: 2, max: 20 }]}>
+            <Input />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="gender" label="性別">
+                <Select>
+                  <Select.Option value="male">男</Select.Option>
+                  <Select.Option value="female">女</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="birth_date" label="生日">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="avatar_url" label="頭像 URL">
+            <Input placeholder="https://cdn.mimeet.tw/avatars/..." />
+          </Form.Item>
+          <Divider />
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="height" label="身高 (cm)">
+                <InputNumber min={100} max={250} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="location" label="居住地區">
+                <Input placeholder="台北市" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="occupation" label="職業">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="education" label="學歷">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="bio" label="自我介紹">
+            <Input.TextArea rows={4} maxLength={500} showCount />
+          </Form.Item>
+        </Form>
+      </Drawer>
     </div>
   )
 }

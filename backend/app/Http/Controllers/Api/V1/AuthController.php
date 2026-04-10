@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -66,6 +67,8 @@ class AuthController extends Controller
         $token = $user->createToken('login')->plainTextToken;
         $user->update(['last_active_at' => now()]);
 
+        UserActivityLogService::logLogin($user->id, $request);
+
         return response()->json([
             'success' => true, 'code' => 'LOGIN_SUCCESS', 'message' => '登入成功。',
             'data' => ['user' => $user, 'token' => $token],
@@ -120,6 +123,9 @@ class AuthController extends Controller
     {
         $request->validate(['phone' => 'required|string', 'code' => 'required|string|size:6']);
         // TODO: verify against stored OTP code
+
+        UserActivityLogService::logPhoneChange($request->user()->id, $request);
+
         return response()->json(['success' => true, 'code' => 'PHONE_VERIFIED', 'message' => '手機驗證成功。']);
     }
 

@@ -498,7 +498,12 @@ const SPRINTS = [
   { id:'S6', label:'Sprint 6', weeks:'Week 11–12', sub:'後台骨架 + API 對接' },
   { id:'S7', label:'Sprint 7', weeks:'Week 13–14', sub:'API 完善 + 金流串接' },
   { id:'S8', label:'Sprint 8', weeks:'Week 15–16', sub:'MVP 補完（申訴 + 隱私 + GDPR）' },
-  { id:'S10', label:'Sprint 10', weeks:'Week 19–20', sub:'後台系統控制中心' },
+  { id:'S9', label:'Sprint 9', weeks:'Week 17–18', sub:'後台系統控制中心（Tab 2–5）' },
+  { id:'S10', label:'Sprint 10', weeks:'Week 19–20', sub:'後台訂閱折扣 + SEO + 系統參數' },
+  { id:'S11', label:'Sprint 11', weeks:'Week 21–22', sub:'後台管理介面補完' },
+  { id:'S13', label:'Sprint 13', weeks:'Week 23–24', sub:'資訊安全強化（評估 + 修復）' },
+  { id:'S14', label:'Sprint 14', weeks:'Week 25–26', sub:'資訊安全實作與強化' },
+  { id:'S15', label:'Sprint 15', weeks:'Week 27–28', sub:'MVP 系統改善與上線準備' },
 ]
 
 const MILESTONES = [
@@ -510,7 +515,12 @@ const MILESTONES = [
   { id:'M6', label:'M6', title:'前後端聯調', date:'Week 12 結束', criteria:'Auth / User / Subscription API 對接完成；後台會員管理功能可用', sprint:'S6' },
   { id:'M7', label:'M7', title:'API 完善', date:'Week 14 結束', criteria:'Chat / Date / Report / Notification API 完整；綠界金流測試環境串接', sprint:'S7' },
   { id:'M8', label:'M8', title:'MVP 補完', date:'Week 16 結束', criteria:'申訴流程閉環；隱私設定 5 開關；GDPR 刪除冷靜期 + 匿名化排程', sprint:'S8' },
-  { id:'M10', label:'M10', title:'系統控制中心', date:'Week 20 結束', criteria:'後台系統模式切換；Email/SMS/DB 動態設定；SmsService 多服務商 Driver', sprint:'S10' },
+  { id:'M9', label:'M9', title:'系統控制中心完整', date:'Week 18 結束', criteria:'後台 Tab 2-5 均可操作；切換模式需密碼確認；測試信/簡訊發送正常', sprint:'S9' },
+  { id:'M10', label:'M10', title:'後台管理工具完整', date:'Week 20 結束', criteria:'訂閱方案金額可後台調整；SEO /go/:slug 跳轉正常；系統參數設定可存取', sprint:'S10' },
+  { id:'M11', label:'M11', title:'後台管理介面規格對齊', date:'Week 22 結束', criteria:'Lv1.5 驗證審核閉環；等級功能後台勾選生效；RBAC 細粒度驗證；廣播基礎版可用；操作日誌後端完整', sprint:'S11' },
+  { id:'M13', label:'M13', title:'資安基線達標', date:'Week 24 結束', criteria:'無 Critical/High 弱點；Security Headers 完整；關鍵 API 全有 Rate Limit；OWASP Top 10 基本防護完成', sprint:'S13' },
+  { id:'M14', label:'M14', title:'資安實作完成', date:'Week 26 結束', criteria:'SQL Injection / XSS / CSRF 防護到位；密碼政策強化；Token 安全審查通過；第三方套件無已知漏洞', sprint:'S14' },
+  { id:'M15', label:'M15', title:'MVP 上線就緒', date:'Week 28 結束', criteria:'API p95 < 300ms；首頁 LCP < 2s；壓力測試 1000 concurrent 通過；上線 checklist 全部完成', sprint:'S15' },
 ]
 
 const ALL_TASKS = {
@@ -614,13 +624,116 @@ S8:[
   {id:'S8-02',title:'隱私設定（可見性控制，5 個開關）',cat:'FULL',status:'done'},
   {id:'S8-03',title:'帳號刪除 GDPR（冷靜期 7 天 + 資料匿名化排程）',cat:'FULL',status:'done'},
 ],
+S9:[
+  {id:'S9-01',title:'後台 Tab 2：系統運作模式（AppModeTab.tsx）',cat:'FE',status:'done'},
+  {id:'S9-02',title:'後台 Tab 3：資料庫設定（DatabaseTab.tsx）',cat:'FE',status:'done'},
+  {id:'S9-03',title:'後台 Tab 4：Email 設定（MailTab.tsx）',cat:'FE',status:'done'},
+  {id:'S9-04',title:'後台 Tab 5：SMS 設定（SmsTab.tsx）',cat:'FE',status:'done'},
+  {id:'S9-05',title:'後端：SystemControlController（system-control + app-mode）',cat:'BE',status:'done'},
+  {id:'S9-06',title:'後端：MailController（PATCH mail + POST mail/test）',cat:'BE',status:'done'},
+  {id:'S9-07',title:'後端：SmsController（PATCH sms + POST sms/test）',cat:'BE',status:'done'},
+  {id:'S9-08',title:'後端：DatabaseController（PATCH database + POST test）',cat:'BE',status:'done'},
+  {id:'S9-09',title:'模式切換二次密碼確認 Modal（super_admin only）',cat:'FE',status:'done'},
+],
 S10:[
-  {id:'S10-00',title:'前置：SystemSetting Model + Migration + Middleware',cat:'BE',status:'done'},
-  {id:'S10-02',title:'SmsService 重構（多服務商 Driver 架構）',cat:'BE',status:'done'},
-  {id:'S10-03',title:'SystemControlController（9 個端點）',cat:'BE',status:'done'},
-  {id:'S10-04',title:'後台系統設定頁（7 Tabs）',cat:'FE',status:'done'},
-  {id:'S10-05',title:'Feature Tests（10 個）',cat:'TEST',status:'done'},
-]
+  {id:'S10-01',title:'後台 Tab 6：訂閱方案金額管理（SubscriptionTab.tsx）',cat:'FE',status:'done'},
+  {id:'S10-02',title:'後台訂閱折扣設定（各週期獨立 + 有效期）',cat:'FE',status:'done'},
+  {id:'S10-03',title:'後台 SEO Meta Tag 管理（/admin/seo/meta）',cat:'FE',status:'done'},
+  {id:'S10-04',title:'後台廣告跳轉連結管理（/admin/seo/links + 統計）',cat:'FE',status:'done'},
+  {id:'S10-05',title:'後端：SeoController（CRUD + stats）',cat:'BE',status:'done'},
+  {id:'S10-06',title:'後端：SubscriptionDiscountController',cat:'BE',status:'done'},
+  {id:'S10-07',title:'前台：/go/:slug 廣告跳轉路由',cat:'FE',status:'done'},
+  {id:'S10-08',title:'後台：系統公告管理 UI（/admin/announcements）',cat:'FE',status:'done'},
+  {id:'S10-09',title:'後台 Tab 7：系統參數設定（誠信分數規則值等）',cat:'FE',status:'done'},
+],
+S11:[
+  {id:'S11-01',title:'DB Migration：create_member_level_permissions_table',cat:'BE',status:'done'},
+  {id:'S11-02',title:'DB Migration：user_verifications 獨立表（Lv1.5 審核用）',cat:'BE',status:'done'},
+  {id:'S11-03',title:'DB Migration：create_broadcast_campaigns_table',cat:'BE',status:'done'},
+  {id:'S11-04',title:'DB Migration：admin_role_permissions + admin_permissions 表',cat:'BE',status:'done'},
+  {id:'S11-05',title:'DB Migration：create_admin_operation_logs_table',cat:'BE',status:'done'},
+  {id:'S11-06',title:'DB Migration：users.membership_level 改為 DECIMAL(3,1)',cat:'BE',status:'done'},
+  {id:'S11-07',title:'Seeder：MemberLevelPermissionsSeeder（5等級×10功能預設值）',cat:'BE',status:'done'},
+  {id:'S11-08',title:'Seeder：AdminPermissionsSeeder（11個 permission key + 角色矩陣）',cat:'BE',status:'done'},
+  {id:'S11-09',title:'後端：AdminPermissionMiddleware 細粒度 RBAC',cat:'BE',status:'done'},
+  {id:'S11-10',title:'後端：MemberLevelPermissionController（GET + PATCH 2個端點）',cat:'BE',status:'done'},
+  {id:'S11-11',title:'後端：VerificationController（前台申請 + 後台審核）',cat:'BE',status:'done'},
+  {id:'S11-12',title:'後端：BroadcastController + BroadcastJob（非同步佇列）',cat:'BE',status:'done'},
+  {id:'S11-13',title:'後端：AdminLogController + LogAdminOperation middleware',cat:'BE',status:'done'},
+  {id:'S11-14',title:'後端：管理員帳號 CRUD API（4個端點）',cat:'BE',status:'done'},
+  {id:'S11-15',title:'後台前端：Tab 7 新增會員等級功能矩陣 UI（Switch 5×10）',cat:'FE',status:'done'},
+  {id:'S11-16',title:'後台前端：/admin/verifications 審核頁面（照片對比 Drawer）',cat:'FE',status:'done'},
+  {id:'S11-17',title:'後台前端：Tab 1 管理員帳號 CRUD 完成（Table + Drawer）',cat:'FE',status:'done'},
+  {id:'S11-18',title:'後台前端：/admin/broadcasts 廣播工具頁面',cat:'FE',status:'done'},
+  {id:'S11-19',title:'後台前端：ActivityLogsPage 連接真實 API + IP Toggle',cat:'FE',status:'done'},
+  {id:'S11-20',title:'前台：useLevelPermissions composable + 功能開關整合',cat:'FE',status:'done'},
+  {id:'S11-21',title:'前台：VerifyView.vue Lv1.5 驗證流程完成（3步驟）',cat:'FE',status:'done'},
+],
+S13:[
+  // === 高風險修復 ===
+  {id:'S13-01',title:'修復 Broadcast Channel 認證繞過（chat channel 對所有用戶回傳 true）',cat:'BE',status:'todo'},
+  {id:'S13-02',title:'修復後台登入端點缺少 Rate Limiting（可暴力破解）',cat:'BE',status:'todo'},
+  // === Nginx Security Headers 強化 ===
+  {id:'S13-03',title:'Nginx 加入完整 Security Headers（CSP / HSTS / X-Frame-Options）',cat:'INFRA',status:'todo'},
+  // === Rate Limiting 補完 ===
+  {id:'S13-04',title:'補完所有關鍵端點 Rate Limiting（OTP / 上傳 / 搜尋 / QR 驗證）',cat:'BE',status:'todo'},
+  // === IDOR 防護 ===
+  {id:'S13-05',title:'Chat / Date / Report API 補強 ownership 驗證 Policy',cat:'BE',status:'todo'},
+  // === 敏感資料防洩漏 ===
+  {id:'S13-06',title:'User Model phone 欄位加入 AES-256 加密 cast',cat:'BE',status:'todo'},
+  {id:'S13-07',title:'移除所有 console.log / console.error 殘留（13 處）',cat:'FE',status:'todo'},
+  // === 後台 Token 強化 ===
+  {id:'S13-08',title:'Sanctum Token 設定有效期（前台 24h / 後台 8h）+ IP 綁定驗證',cat:'BE',status:'todo'},
+  {id:'S13-09',title:'後台管理員連續錯誤 5 次鎖定 15 分鐘（寫入 admin_operation_logs）',cat:'BE',status:'todo'},
+  // === 上傳安全強化 ===
+  {id:'S13-10',title:'檔案上傳加入 magic bytes 驗證（不只依賴 extension）',cat:'BE',status:'todo'},
+  {id:'S13-11',title:'上傳檔案隔離至非公開路徑，透過 signed URL 存取',cat:'BE',status:'todo'},
+  // === WebSocket 強化 ===
+  {id:'S13-12',title:'Broadcast Channel 回調驗證用戶為對話參與者',cat:'BE',status:'todo'},
+  {id:'S13-13',title:'Presence Channel 回調只回傳 id + nickname（移除其他欄位）',cat:'BE',status:'todo'},
+  // === Mass Assignment 防護 ===
+  {id:'S13-14',title:'User Model $fillable 移除 admin-only 欄位（credit_score / status / membership_level）',cat:'BE',status:'todo'},
+  // === 安全測試 ===
+  {id:'S13-15',title:'撰寫資安相關 Feature Tests（IDOR / Auth Bypass / Rate Limit）',cat:'TEST',status:'todo'},
+  // === 文件更新 ===
+  {id:'S13-16',title:'新增 DEV-012_資訊安全規格書.md',cat:'INFRA',status:'todo'},
+],
+S14:[
+  // === SQL Injection / Query 安全 ===
+  {id:'S14-01',title:'SQL Injection 防護審查（全 Controller 掃描 Raw Query）',cat:'BE',status:'todo'},
+  {id:'S14-02',title:'XSS 跨站腳本防護（前後端輸出 escape + CSP Header）',cat:'FULL',status:'todo'},
+  // === CSRF / Token ===
+  {id:'S14-03',title:'CSRF Token 驗證強化（Sanctum Cookie SPA 模式確認）',cat:'BE',status:'todo'},
+  {id:'S14-04',title:'JWT / Sanctum Token 安全審查（有效期 + 撤銷機制）',cat:'BE',status:'todo'},
+  // === Rate Limiting ===
+  {id:'S14-05',title:'API Rate Limiting 實作（登入/OTP/搜尋/上傳全覆蓋）',cat:'BE',status:'todo'},
+  // === 加密與機密管理 ===
+  {id:'S14-06',title:'敏感資料加密（phone AES-256 + 金流金鑰 DB 加密儲存）',cat:'BE',status:'todo'},
+  {id:'S14-07',title:'密碼政策強化（最低複雜度 + bcrypt cost 12 確認）',cat:'BE',status:'todo'},
+  // === 日誌與稽核 ===
+  {id:'S14-08',title:'管理後台存取日誌完整化（所有 CRUD 操作自動記錄）',cat:'BE',status:'todo'},
+  // === 外部依賴 ===
+  {id:'S14-09',title:'第三方套件漏洞掃描（composer audit + npm audit）',cat:'INFRA',status:'todo'},
+  // === 傳輸層 ===
+  {id:'S14-10',title:'HTTPS / TLS 設定檢查（HSTS + TLS 1.3 + 憑證自動更新）',cat:'INFRA',status:'todo'},
+],
+S15:[
+  // === 效能優化 ===
+  {id:'S15-01',title:'API 效能優化（p95 response time < 300ms）',cat:'BE',status:'todo'},
+  {id:'S15-02',title:'前台載入速度優化（首頁 LCP < 2s）',cat:'FE',status:'todo'},
+  {id:'S15-03',title:'資料庫 Query 優化（N+1 問題排查 + 索引調整）',cat:'BE',status:'todo'},
+  {id:'S15-04',title:'Redis 快取策略完善（熱點資料 + Session + Queue）',cat:'BE',status:'todo'},
+  // === 穩定性 ===
+  {id:'S15-05',title:'錯誤處理與 Log 系統完整化（Sentry 整合 + 分級告警）',cat:'FULL',status:'todo'},
+  {id:'S15-06',title:'使用者體驗細節修正（UI bug fix + 動效微調）',cat:'FE',status:'todo'},
+  {id:'S15-07',title:'跨裝置 / 瀏覽器相容性測試（iOS Safari / Android Chrome / 桌面）',cat:'TEST',status:'todo'},
+  // === 後台優化 ===
+  {id:'S15-08',title:'Admin 後台操作流程優化（批次操作 + 快捷鍵）',cat:'FE',status:'todo'},
+  // === 壓力測試 ===
+  {id:'S15-09',title:'壓力測試（concurrent 1000 users + API 負載測試）',cat:'TEST',status:'todo'},
+  // === 上線準備 ===
+  {id:'S15-10',title:'上線前最終 checklist（DNS + CDN + 備份 + 監控 + Rollback 計畫）',cat:'INFRA',status:'todo'},
+],
 }
 
 // ── State ────────────────────────────────────────

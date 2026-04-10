@@ -49,7 +49,7 @@ async function switchIdentity(account: TestAccount) {
   try {
     authStore.logout()
     const data = await apiLogin({ email: account.email, password: 'Test1234!' })
-    authStore.setToken(data.token)
+    authStore.setToken(data.tokens.access_token)
     authStore.setUser(data.user)
     activeAccountKey.value = account.key
     localStorage.setItem('dev_identity_key', account.key)
@@ -619,23 +619,254 @@ const groups: CheckGroup[] = [
     ],
   },
   // ═══════════════════════════════════════════════════════════
-  //  Sprint 10 — 系統控制中心
+  //  Sprint 9 — 後台系統控制中心（Tab 2–5）
   // ═══════════════════════════════════════════════════════════
   {
-    title: 'S10 系統控制中心',
+    title: 'S9-01 後台 Tab 2：系統運作模式',
     items: [
-      { id: 's10-01-1', label: '設定頁顯示「管理員帳號」Tab，可新增/編輯管理員' },
-      { id: 's10-01-2', label: 'super_admin 才能看到系統模式/資料庫/Email/SMS Tab' },
-      { id: 's10-02-1', label: 'AppModeTab：顯示目前系統模式（testing/production）' },
-      { id: 's10-02-2', label: '切換系統模式需輸入管理員密碼確認' },
-      { id: 's10-02-3', label: '切換為 production 後 SmsService 使用真實 driver' },
-      { id: 's10-03-1', label: 'DatabaseTab：[測試連線] 回傳連線狀態和回應時間' },
-      { id: 's10-03-2', label: '資料庫密碼欄位後台永遠顯示 ****' },
-      { id: 's10-04-1', label: 'MailTab：[SendGrid] 快捷鍵自動填入 SMTP 設定' },
-      { id: 's10-04-2', label: '發送測試信成功（MAIL_MAILER=log 時查 log 確認）' },
-      { id: 's10-05-1', label: 'SmsTab：切換服務商顯示對應設定欄位' },
-      { id: 's10-05-2', label: '切換為 disabled 後 SmsService 使用 LogDriver' },
-      { id: 's10-05-3', label: 'GET /api/v1/admin/settings/system-control 回傳分類設定' },
+      { id: 's9-01-1', label: 'Tab 2 顯示目前模式 Badge（🟡 測試模式 / 🟢 正式模式）' },
+      { id: 's9-01-2', label: '各服務狀態列顯示（Email / SMS / 綠界）' },
+      { id: 's9-01-3', label: '[切換模式] 按鈕 → 顯示密碼確認 Modal' },
+      { id: 's9-01-4', label: '密碼正確後模式切換成功（PATCH /settings/app-mode）' },
+      { id: 's9-01-5', label: '維護模式 Switch 可開關，開啟後前台顯示維護公告' },
+      { id: 's9-01-6', label: '版本號顯示（唯讀）' },
+    ],
+  },
+  {
+    title: 'S9-02 後台 Tab 3：資料庫設定',
+    items: [
+      { id: 's9-02-1', label: 'Tab 3 顯示連線表單（主機/Port/資料庫名/帳密）' },
+      { id: 's9-02-2', label: '[🔌 測試連線] 回傳連線狀態 + 回應時間' },
+      { id: 's9-02-3', label: '[儲存設定] 需二次輸入管理員密碼' },
+      { id: 's9-02-4', label: '密碼欄位顯示 ****（不明文顯示）' },
+    ],
+  },
+  {
+    title: 'S9-03 後台 Tab 4：Email 設定',
+    items: [
+      { id: 's9-03-1', label: '[SendGrid] 快捷按鈕自動填入常用值' },
+      { id: 's9-03-2', label: 'SMTP 表單欄位齊全（主機/Port/加密/帳密/寄件人）' },
+      { id: 's9-03-3', label: '[📧 發送測試信] 輸入收件地址後送出，顯示成功/失敗結果' },
+      { id: 's9-03-4', label: 'PATCH /settings/mail 儲存成功' },
+    ],
+  },
+  {
+    title: 'S9-04 後台 Tab 5：SMS 設定',
+    items: [
+      { id: 's9-04-1', label: '服務商 Select（三竹簡訊 / Twilio / 每日簡訊 / 停用）' },
+      { id: 's9-04-2', label: '依選擇顯示對應欄位（帳號/密碼）' },
+      { id: 's9-04-3', label: '[📱 發送測試簡訊] 輸入手機號後送出，顯示成功/失敗' },
+      { id: 's9-04-4', label: 'PATCH /settings/sms 儲存成功' },
+    ],
+  },
+  {
+    title: 'S9 API 端點驗證',
+    items: [
+      { id: 's9-api-1', label: 'GET /api/v1/admin/settings/system-control 回傳四大分類設定' },
+      { id: 's9-api-2', label: 'PATCH /settings/app-mode 切換成功（需密碼驗證）' },
+      { id: 's9-api-3', label: 'POST /settings/mail/test 回傳測試結果' },
+      { id: 's9-api-4', label: 'POST /settings/sms/test 回傳測試結果' },
+      { id: 's9-api-5', label: 'POST /settings/database/test 回傳連線狀態' },
+      { id: 's9-api-6', label: '非 super_admin 呼叫上述端點回傳 403' },
+    ],
+  },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 10 — 後台訂閱折扣 + SEO + 系統參數
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S10-01/02 後台 Tab 6：訂閱方案 + 折扣',
+    items: [
+      { id: 's10-01-1', label: '後台可查看週/月/季/年費方案金額' },
+      { id: 's10-01-2', label: 'PATCH /settings/subscription-plans/{id} 更新金額成功' },
+      { id: 's10-02-1', label: '各週期折扣設定（百分比或固定金額）' },
+      { id: 's10-02-2', label: '折扣有效期起訖日可設定' },
+      { id: 's10-02-3', label: '體驗價方案（PATCH /settings/trial-plan）可修改' },
+    ],
+  },
+  {
+    title: 'S10-03/04 後台 SEO 工具',
+    items: [
+      { id: 's10-03-1', label: '/admin/seo/meta 頁面可查看各路由 Meta 設定' },
+      { id: 's10-03-2', label: 'PATCH /seo/meta/{id} 更新 title/description/og 成功' },
+      { id: 's10-04-1', label: '/admin/seo/links 可建立廣告跳轉短連結' },
+      { id: 's10-04-2', label: 'GET /seo/links/{id}/stats 回傳點擊/轉換統計' },
+      { id: 's10-07-1', label: '前台 GET /go/{slug} 正確跳轉目標 URL' },
+      { id: 's10-07-2', label: '無效 slug 回傳 404' },
+    ],
+  },
+  {
+    title: 'S10-08 系統公告管理',
+    items: [
+      { id: 's10-08-1', label: '/admin/announcements 可查看公告列表' },
+      { id: 's10-08-2', label: '可新增公告（POST /admin/announcements）' },
+      { id: 's10-08-3', label: '可設定顯示起訖時間（含 null = 永久）' },
+      { id: 's10-08-4', label: 'is_active=false 後前台不顯示此公告' },
+    ],
+  },
+  {
+    title: 'S10-09 後台 Tab 7：系統參數設定',
+    items: [
+      { id: 's10-09-1', label: 'Tab 7 顯示誠信分數相關規則值（如 QR 驗證加分）' },
+      { id: 's10-09-2', label: 'PATCH /settings/system/{key} 可更新系統參數' },
+      { id: 's10-09-3', label: '修改 date_verify.score_with_gps 後驗證行為對應更新' },
+      { id: 's10-09-4', label: '廣播預設送達方式可調整' },
+    ],
+  },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 11 — 後台管理介面補完
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S11-A 會員等級功能後台勾選制',
+    items: [
+      { id: 's11-a-1', label: 'GET /api/v1/admin/settings/member-level-permissions 回傳完整矩陣' },
+      { id: 's11-a-2', label: 'PATCH 批次更新，非 super_admin 回傳 403' },
+      { id: 's11-a-3', label: 'member_level_permissions 資料表存在，Seeder 植入 5×10 預設值' },
+      { id: 's11-a-4', label: '後台 Tab 7 顯示 5×10 Switch 矩陣（含 InputNumber 額度欄）' },
+      { id: 's11-a-5', label: '儲存後前台聊天額度即時反映（Lv0 = 5則, Lv1 = 30則...）' },
+      { id: 's11-a-6', label: 'useLevelPermissions composable 存在並正確讀取設定' },
+    ],
+  },
+  {
+    title: 'S11-B Lv1.5 驗證女會員審核',
+    items: [
+      { id: 's11-b-1', label: 'users.membership_level 支援 1.5（DECIMAL 或等效，可儲存 1.5）' },
+      { id: 's11-b-2', label: 'POST /api/v1/me/verification-photo/request 回傳 random_code + expires_at' },
+      { id: 's11-b-3', label: '10 分鐘後上傳回傳 422 VERIFICATION_EXPIRED' },
+      { id: 's11-b-4', label: 'GET /api/v1/admin/verifications/pending 回傳待審清單' },
+      { id: 's11-b-5', label: 'PATCH approve → membership_level=1.5, credit_score+15' },
+      { id: 's11-b-6', label: 'PATCH reject → 記錄 reason，發送通知' },
+      { id: 's11-b-7', label: '後台 /admin/verifications 頁面存在，Drawer 含照片對比' },
+      { id: 's11-b-8', label: '前台 VerifyView.vue 完整三步驟（隨機碼→上傳→等待）' },
+    ],
+  },
+  {
+    title: 'S11-C RBAC 細粒度權限',
+    items: [
+      { id: 's11-c-1', label: 'admin_permissions 資料表存在，11 個 key 已植入' },
+      { id: 's11-c-2', label: 'admin_role_permissions 三角色矩陣已植入' },
+      { id: 's11-c-3', label: 'cs 角色嘗試 members.delete 回傳 ADMIN_4003' },
+      { id: 's11-c-4', label: 'GET /api/v1/admin/settings/admins 僅 super_admin 可取得' },
+      { id: 's11-c-5', label: 'POST /api/v1/admin/settings/admins 可建立新管理員' },
+      { id: 's11-c-6', label: 'PATCH admins/{id}/role 不可修改自己角色（回傳 422）' },
+      { id: 's11-c-7', label: '後台 Tab 1 管理員列表 + 新增/編輯 Drawer 正常運作' },
+    ],
+  },
+  {
+    title: 'S11-D 操作日誌後端補完',
+    items: [
+      { id: 's11-d-1', label: 'admin_operation_logs 資料表存在' },
+      { id: 's11-d-2', label: '後台 POST/PATCH/DELETE 操作自動寫入日誌' },
+      { id: 's11-d-3', label: '日誌不含 password / token 欄位內容' },
+      { id: 's11-d-4', label: 'GET /api/v1/admin/logs 正常回傳分頁結果' },
+      { id: 's11-d-5', label: 'show_ip=true 非 super_admin 時 ip 欄位為 null' },
+      { id: 's11-d-6', label: 'ActivityLogsPage 已連接真實 API（非 mock data）' },
+      { id: 's11-d-7', label: '頁面「顯示 IP」Toggle 僅 super_admin 可見' },
+    ],
+  },
+  {
+    title: 'S11-E 誠信分數扣分整合',
+    items: [
+      { id: 's11-e-1', label: '刪除動態/頭像 API 支援 deduct_score 參數' },
+      { id: 's11-e-2', label: 'deduct_score=true 觸發 credit_sub_bad_content 扣分' },
+      { id: 's11-e-3', label: 'memberAction() delta 驗證 min:-50 max:50（嘗試 -100 回傳 422）' },
+      { id: 's11-e-4', label: '後台刪除內容 UI 顯示「扣除誠信分數」勾選框' },
+    ],
+  },
+  {
+    title: 'S11-F 廣播工具',
+    items: [
+      { id: 's11-f-1', label: 'broadcast_campaigns 資料表存在' },
+      { id: 's11-f-2', label: 'POST /api/v1/admin/broadcasts 建立草稿並回傳 target_count' },
+      { id: 's11-f-3', label: 'POST /api/v1/admin/broadcasts/{id}/send 觸發非同步 Job' },
+      { id: 's11-f-4', label: 'BroadcastJob 每批 100 筆分批處理' },
+      { id: 's11-f-5', label: '後台 /admin/broadcasts 頁面存在，含建立表單 + 狀態追蹤' },
+      { id: 's11-f-6', label: '發送確認 Modal 正確顯示目標人數' },
+    ],
+  },
+  // ═══════════════════════════════════════════════════════════
+  //  Sprint 13 — 資訊安全強化
+  // ═══════════════════════════════════════════════════════════
+  {
+    title: 'S13 Security Headers（Nginx）',
+    items: [
+      { id: 's13-nh-1', label: 'Response Header 含 Strict-Transport-Security（HSTS max-age≥31536000）' },
+      { id: 's13-nh-2', label: 'Response Header 含 Content-Security-Policy' },
+      { id: 's13-nh-3', label: 'Response Header 含 X-Frame-Options: DENY' },
+      { id: 's13-nh-4', label: 'Response Header 含 X-Content-Type-Options: nosniff' },
+      { id: 's13-nh-5', label: 'Response Header 含 Referrer-Policy: strict-origin-when-cross-origin' },
+      { id: 's13-nh-6', label: 'Response Header 不含 X-Powered-By / Server 版本資訊' },
+    ],
+  },
+  {
+    title: 'S13 Rate Limiting 完整性',
+    items: [
+      { id: 's13-rl-1', label: 'POST /auth/login 連續 5 次失敗同 IP → 鎖定 15 分鐘 429' },
+      { id: 's13-rl-2', label: 'POST /auth/verify-phone/send 每小時同用戶最多 3 次 429' },
+      { id: 's13-rl-3', label: 'POST /uploads 每分鐘同用戶最多 10 次 429' },
+      { id: 's13-rl-4', label: 'POST /dates/verify 每對用戶每 24 小時最多 1 次有效' },
+      { id: 's13-rl-5', label: 'GET /users/search 每分鐘最多 20 次 429' },
+      { id: 's13-rl-6', label: '後台登入連續錯誤 5 次鎖定 + 寫入 admin_operation_logs' },
+    ],
+  },
+  {
+    title: 'S13 IDOR / Ownership 驗證',
+    items: [
+      { id: 's13-idor-1', label: '用戶 A 嘗試讀取用戶 B 的私訊（GET /chats/{B的chat_id}/messages）→ 403' },
+      { id: 's13-idor-2', label: '用戶 A 嘗試撤回用戶 B 的訊息 → 403' },
+      { id: 's13-idor-3', label: '用戶 A 嘗試存取用戶 B 的 appeal → 403' },
+      { id: 's13-idor-4', label: '用戶 A 嘗試刪除用戶 B 的照片 → 403' },
+      { id: 's13-idor-5', label: '未登入存取任何 /app/* API → 401' },
+    ],
+  },
+  {
+    title: 'S13 敏感資料防洩漏',
+    items: [
+      { id: 's13-sd-1', label: 'GET /users/{id} response 不含 password 欄位' },
+      { id: 's13-sd-2', label: 'GET /users/{id} response 不含完整 phone（遮罩顯示）' },
+      { id: 's13-sd-3', label: 'GET /auth/me response 不含 password 欄位' },
+      { id: 's13-sd-4', label: 'API error response 不洩漏 stack trace（production 模式）' },
+      { id: 's13-sd-5', label: '後台 GET /logs response 預設隱藏 IP（show_ip=false）' },
+    ],
+  },
+  {
+    title: 'S13 後台 Token 安全',
+    items: [
+      { id: 's13-at-1', label: '後台 Token 有效期確認為 8 小時（28800 秒）' },
+      { id: 's13-at-2', label: '後台 Token 在不同 IP 使用時回傳 401 TOKEN_IP_MISMATCH' },
+      { id: 's13-at-3', label: '後台登出後 Token 立即失效（不可再用）' },
+    ],
+  },
+  {
+    title: 'S13 檔案上傳安全',
+    items: [
+      { id: 's13-fu-1', label: '上傳偽裝 MIME 的 PHP/Shell 檔案 → 拒絕（422）' },
+      { id: 's13-fu-2', label: '上傳超過 5MB 的圖片 → 拒絕（422）' },
+      { id: 's13-fu-3', label: '上傳的圖片無法透過直接 URL 存取（需 signed URL）' },
+    ],
+  },
+  {
+    title: 'S13 XSS / Injection 防護',
+    items: [
+      { id: 's13-xi-1', label: '聊天訊息含 \x3Cscript\x3Ealert(1)\x3C/script\x3E → 存入後顯示為純文字' },
+      { id: 's13-xi-2', label: '用戶暱稱含 XSS payload → 搜尋結果顯示為純文字' },
+      { id: 's13-xi-3', label: 'API response 中 Content-Type 為 application/json（非 text/html）' },
+      { id: 's13-xi-4', label: '前台無 v-html 使用（或有使用的地方已做 sanitize）' },
+    ],
+  },
+  {
+    title: 'S13 綠界金流 Webhook 安全',
+    items: [
+      { id: 's13-pay-1', label: '偽造 CheckMacValue 的 Webhook 請求 → 拒絕（200 0|Error）' },
+      { id: 's13-pay-2', label: 'Webhook 端點僅接受 POST，GET 回傳 405' },
+      { id: 's13-pay-3', label: '重放相同 Webhook 請求不會重複啟用訂閱' },
+    ],
+  },
+  {
+    title: 'S13 WebSocket Channel 安全',
+    items: [
+      { id: 's13-ws-1', label: 'private-chat.{id} 頻道僅對話參與者可訂閱' },
+      { id: 's13-ws-2', label: '非參與者嘗試訂閱 chat channel → 拒絕' },
+      { id: 's13-ws-3', label: 'presence channel 回傳資料僅含 id + nickname' },
     ],
   },
 ]
@@ -666,7 +897,7 @@ function getState(id: string): CheckState {
 function cycle(id: string) {
   const order: CheckState[] = ['none', 'pass', 'fail']
   const cur = getState(id)
-  const next = order[(order.indexOf(cur) + 1) % order.length]
+  const next = order[(order.indexOf(cur) + 1) % order.length]!
   states.value[id] = next
 }
 
@@ -696,7 +927,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-        <h1 class="check-header__title">Sprint 3-8 檢核清單</h1>
+        <h1 class="check-header__title">Sprint 3–13 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">

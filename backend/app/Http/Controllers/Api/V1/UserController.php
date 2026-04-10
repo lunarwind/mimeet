@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\GdprService;
+use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -36,7 +38,10 @@ class UserController extends Controller
         ]);
 
         $user = $request->user();
-        $user->update($request->only(['nickname', 'bio', 'avatar_url', 'height', 'location', 'occupation', 'education', 'interests']));
+        $fields = $request->only(['nickname', 'bio', 'avatar_url', 'height', 'location', 'occupation', 'education', 'interests']);
+        $user->update($fields);
+
+        UserActivityLogService::logProfileUpdate($user->id, array_keys($fields), $request);
 
         return response()->json([
             'success' => true, 'code' => 'PROFILE_UPDATED', 'message' => '個人資料已更新。',
@@ -110,6 +115,8 @@ class UserController extends Controller
         $request->validate(['photo' => 'required|image|mimes:jpeg,png,gif,webp|max:5120']);
 
         $path = Storage::disk('public')->put('photos/' . $request->user()->id, $request->file('photo'));
+
+        UserActivityLogService::logPhotoChange($request->user()->id, 'upload', $request);
 
         return response()->json([
             'success' => true, 'code' => 'PHOTO_UPLOADED', 'message' => '照片已上傳。',

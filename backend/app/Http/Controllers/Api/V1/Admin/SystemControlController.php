@@ -151,7 +151,7 @@ class SystemControlController extends Controller
     public function updateSms(Request $request): JsonResponse
     {
         $request->validate([
-            'provider' => 'required|in:mitake,twilio,every8d,disabled',
+            'provider' => 'required|in:mitake,twilio,disabled',
         ]);
 
         $admin = $request->user();
@@ -170,13 +170,7 @@ class SystemControlController extends Controller
             if (!empty($t['from_number'])) SystemSetting::set('sms.twilio.from_number', $t['from_number'], $admin->id);
         }
 
-        if ($request->provider === 'every8d' && $request->has('every8d')) {
-            $e = $request->input('every8d');
-            if (!empty($e['username'])) SystemSetting::set('sms.every8d.username', $e['username'], $admin->id);
-            if (!empty($e['password'])) SystemSetting::set('sms.every8d.password_encrypted', Crypt::encryptString($e['password']), $admin->id);
-        }
-
-        $labels = ['mitake' => '三竹簡訊', 'twilio' => 'Twilio', 'every8d' => '每日簡訊', 'disabled' => '停用'];
+        $labels = ['mitake' => '三竹簡訊', 'twilio' => 'Twilio', 'disabled' => '停用'];
         Log::info("[SystemControl] SMS provider changed to {$request->provider} by admin #{$admin->id}");
 
         return response()->json(['success' => true, 'data' => [
@@ -187,17 +181,76 @@ class SystemControlController extends Controller
 
     public function testSms(Request $request): JsonResponse
     {
-        $request->validate(['phone' => 'required|string']);
-        $driver = match (SystemSetting::get('sms.provider', 'disabled')) {
-            'mitake' => new MitakeDriver(),
-            'twilio' => new TwilioDriver(),
-            'every8d' => new Every8dDriver(),
-            default => new LogDriver(),
-        };
-        $success = $driver->send($request->phone, '【MiMeet】後台 SMS 設定測試，請忽略此訊息。');
-        return $success
-            ? response()->json(['success' => true, 'data' => ['message' => "測試簡訊已發送至 {$request->phone}"]])
-            : response()->json(['success' => false, 'error' => ['code' => 'SMS_SEND_FAILED', 'message' => '發送失敗']], 422);
+        $request->validate([
+            'phone' => 'required|string',
+            'provider_override' => 'sometimes|string|in:mitake,twilio',
+            'username' => 'sometimes|string',
+            'password' => 'sometimes|string',
+            'from_number' => 'sometimes|string',
+            'message' => 'sometimes|string|max:500',
+        ]);
+
+        $msg = $request->input('message', '【MiMeet】後台 SMS 設定測試，請忽略此訊息。');
+        $providerOverride = $request->input('provider_override');
+        $provider = $providerOverride ?? SystemSetting::get('sms.provider', 'disabled');
+
+        // Mitake override (username + password provided, and provider is mitake)
+        if ($provider === 'mitake' && $request->filled('username') && $request->filled('password')) {
+            $driver = new MitakeDriver();
+            $result = $driver->sendWithDetail(
+                $request->phone, $msg,
+                $request->input('username'),
+                $request->input('password'),
+            );
+            return $this->smsTestResponse($result, 'mitake', $request->phone);
+        }
+
+        // Twilio override or system Twilio
+        if ($provider === 'twilio') {
+            $driver = new TwilioDriver();
+            $result = $driver->sendWithDetail(
+                $request->phone, $msg,
+                $request->input('username'),   // SID override
+                $request->input('password'),   // Auth Token override
+                $request->input('from_number'),
+            );
+            return $this->smsTestResponse($result, 'twilio', $request->phone);
+        }
+
+        // Mitake with system credentials
+        if ($provider === 'mitake') {
+            $driver = new MitakeDriver();
+            $result = $driver->sendWithDetail($request->phone, $msg);
+            return $this->smsTestResponse($result, 'mitake', $request->phone);
+        }
+
+        // Disabled / Log fallback
+        $driver = new LogDriver();
+        $success = $driver->send($request->phone, $msg);
+
+        return response()->json([
+            'success' => $success,
+            'data' => [
+                'message' => $success ? "測試簡訊已寫入 Log（SMS 停用中）" : '發送失敗',
+                'provider' => 'log',
+                'raw_response' => '',
+            ],
+        ]);
+    }
+
+    private function smsTestResponse(array $result, string $provider, string $phone): JsonResponse
+    {
+        return response()->json([
+            'success' => $result['success'],
+            'data' => [
+                'message' => $result['success']
+                    ? "測試簡訊已發送至 {$phone}"
+                    : '發送失敗：' . ($result['error'] ?? '未知錯誤'),
+                'provider' => $provider,
+                'raw_response' => $result['raw'] ?? '',
+                'http_status' => $result['http_status'] ?? null,
+            ],
+        ], $result['success'] ? 200 : 422);
     }
 
     public function updateDatabase(Request $request): JsonResponse

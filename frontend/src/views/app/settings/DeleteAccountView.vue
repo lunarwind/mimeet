@@ -9,8 +9,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 
-const USE_MOCK = import.meta.env.DEV
-
 const understood = ref(false)
 const deleteText = ref('')
 const showConfirmModal = ref(false)
@@ -44,9 +42,7 @@ async function confirmDelete() {
   if (!canConfirm.value) return
   isDeleting.value = true
   try {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 1000))
-    }
+    await (await import('@/api/client')).default.post('/me/delete-account', { password: 'confirmed' })
     authStore.logout()
     localStorage.removeItem('dev_identity_key')
     localStorage.removeItem('member_level')

@@ -10,8 +10,6 @@ import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
-// TODO: Replace with real API calls when backend is connected
-// For now, use apiClient with fallback to mock data
 
 interface SearchResult {
   message_id: number

@@ -12,6 +12,9 @@ import {
   DashboardOutlined,
   AuditOutlined,
   MessageOutlined,
+  SafetyCertificateOutlined,
+  NotificationOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import type { AdminRole } from '../types/admin'
@@ -33,8 +36,11 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'chat-logs', icon: <MessageOutlined />, label: '聊天記錄', path: '/chat-logs', roles: ['super_admin', 'admin'] },
   { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/tickets', roles: ['super_admin', 'admin', 'cs'] },
   { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/payments', roles: ['super_admin', 'admin'] },
+  { key: 'verifications', icon: <SafetyCertificateOutlined />, label: '驗證審核', path: '/verifications', roles: ['super_admin', 'admin'] },
+  { key: 'broadcasts', icon: <NotificationOutlined />, label: '廣播訊息', path: '/broadcasts', roles: ['super_admin', 'admin'] },
   { key: 'settings', icon: <SettingOutlined />, label: '系統設定', path: '/settings/system', roles: ['super_admin'] },
   { key: 'logs', icon: <AuditOutlined />, label: '操作日誌', path: '/logs', roles: ['super_admin'] },
+  { key: 'user-activity', icon: <HistoryOutlined />, label: '用戶活動日誌', path: '/user-activity-logs', roles: ['super_admin'] },
 ]
 
 const ROLE_COLORS: Record<AdminRole, string> = {

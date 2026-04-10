@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminUser;
 use App\Models\Order;
 use App\Models\Report;
 use App\Models\SystemSetting;
@@ -14,7 +15,8 @@ use Illuminate\Support\Facades\Hash;
 class AdminController extends Controller
 {
     /**
-     * Admin login.
+     * Admin login — authenticates against admin_users table,
+     * issues a Sanctum token scoped to the 'admin' guard.
      */
     public function login(Request $request): JsonResponse
     {
@@ -23,14 +25,24 @@ class AdminController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        $admin = AdminUser::where('email', $request->email)->first();
+
+        if (!$admin || !Hash::check($request->password, $admin->password)) {
             return response()->json([
                 'success' => false, 'code' => 401, 'message' => 'Email 或密碼不正確',
             ], 401);
         }
 
-        $token = $user->createToken('admin-login')->plainTextToken;
+        if (!$admin->is_active) {
+            return response()->json([
+                'success' => false, 'code' => 403, 'message' => '帳號已停用',
+            ], 403);
+        }
+
+        // Issue token with 'admin' ability to distinguish from user tokens
+        $token = $admin->createToken('admin-token', ['admin'])->plainTextToken;
+
+        $admin->update(['last_login_at' => now()]);
 
         return response()->json([
             'success' => true,
@@ -38,10 +50,10 @@ class AdminController extends Controller
             'message' => '管理員登入成功。',
             'data' => [
                 'admin' => [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                    'name' => $user->nickname,
-                    'role' => 'super_admin',
+                    'id' => $admin->id,
+                    'email' => $admin->email,
+                    'name' => $admin->name,
+                    'role' => $admin->role,
                 ],
                 'token' => $token,
             ],
@@ -121,7 +133,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'action' => 'required|string|in:adjust_score,suspend,unsuspend',
-            'score_delta' => 'required_if:action,adjust_score|integer',
+            'score_delta' => 'required_if:action,adjust_score|integer|min:-50|max:50',
             'reason' => 'sometimes|string|max:500',
         ]);
 
@@ -145,6 +157,175 @@ class AdminController extends Controller
             'success' => true,
             'code' => 'MEMBER_ACTION_' . strtoupper($action),
             'message' => $messages[$action] ?? '操作完成。',
+        ]);
+    }
+
+    /**
+     * PATCH /api/v1/admin/members/{id}/permissions
+     * Directly set a user's membership_level, credit_score, and status.
+     * Logs to credit_score_histories + admin_operation_logs (via middleware).
+     */
+    public function updatePermissions(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'membership_level' => 'sometimes|numeric|in:0,1,1.5,2,3',
+            'credit_score' => 'sometimes|integer|min:0|max:100',
+            'status' => 'sometimes|string|in:active,suspended',
+            'reason' => 'sometimes|string|max:500',
+        ]);
+
+        $user = User::findOrFail($id);
+        $changes = [];
+        $reason = $request->input('reason', '管理員手動調整權限');
+        $adminId = $request->user()?->id;
+
+        // Credit score — use CreditScoreService for history logging
+        if ($request->has('credit_score')) {
+            $newScore = (int) $request->input('credit_score');
+            $delta = $newScore - $user->credit_score;
+            if ($delta !== 0) {
+                \App\Services\CreditScoreService::adjust($user, $delta, 'admin_set', $reason, $adminId);
+                $changes[] = "credit_score: {$user->credit_score} → {$newScore}";
+            }
+        }
+
+        // Membership level
+        if ($request->has('membership_level')) {
+            $newLevel = (float) $request->input('membership_level');
+            if ((float) $user->membership_level !== $newLevel) {
+                $changes[] = "membership_level: {$user->membership_level} → {$newLevel}";
+                $user->update(['membership_level' => $newLevel]);
+            }
+        }
+
+        // Status (suspend / unsuspend)
+        if ($request->has('status')) {
+            $newStatus = $request->input('status');
+            if ($user->status !== $newStatus) {
+                $changes[] = "status: {$user->status} → {$newStatus}";
+                $updateData = ['status' => $newStatus];
+                if ($newStatus === 'suspended') {
+                    $updateData['suspended_at'] = now();
+                }
+                $user->update($updateData);
+            }
+        }
+
+        if (empty($changes)) {
+            return response()->json([
+                'success' => true,
+                'code' => 'NO_CHANGES',
+                'message' => '未偵測到變更。',
+            ]);
+        }
+
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'code' => 'MEMBER_PERMISSIONS_UPDATED',
+            'message' => '會員權限已更新。',
+            'data' => [
+                'member' => [
+                    'id' => $user->id,
+                    'membership_level' => $user->membership_level,
+                    'credit_score' => $user->credit_score,
+                    'status' => $user->status,
+                ],
+                'changes' => $changes,
+            ],
+        ]);
+    }
+
+    /**
+     * PATCH /api/v1/admin/members/{id}/profile
+     * Update a user's profile fields. Super-admin only.
+     * Manually logs before/after snapshot to admin_operation_logs.
+     */
+    public function updateProfile(Request $request, int $id): JsonResponse
+    {
+        // Role check — super_admin only
+        $admin = $request->user();
+        if (!$admin || $admin->role !== 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'code' => 403,
+                'message' => '此功能僅限超級管理員使用',
+            ], 403);
+        }
+
+        $request->validate([
+            'nickname' => 'sometimes|string|min:2|max:20',
+            'birth_date' => 'sometimes|date|before:-18 years',
+            'avatar_url' => 'sometimes|nullable|string|max:500',
+            'gender' => 'sometimes|string|in:male,female',
+            'height' => 'sometimes|nullable|integer|min:100|max:250',
+            'location' => 'sometimes|nullable|string|max:50',
+            'occupation' => 'sometimes|nullable|string|max:50',
+            'education' => 'sometimes|nullable|string|max:50',
+            'bio' => 'sometimes|nullable|string|max:500',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        $allowedFields = ['nickname', 'birth_date', 'avatar_url', 'gender', 'height', 'location', 'occupation', 'education', 'bio'];
+        $updates = $request->only($allowedFields);
+
+        // Filter to only actually changed fields
+        $before = [];
+        $after = [];
+        foreach ($updates as $key => $newValue) {
+            $oldValue = $user->getAttribute($key);
+            $oldStr = $oldValue instanceof \Carbon\Carbon ? $oldValue->format('Y-m-d') : (string) ($oldValue ?? '');
+            $newStr = (string) ($newValue ?? '');
+            if ($oldStr !== $newStr) {
+                $before[$key] = $oldValue;
+                $after[$key] = $newValue;
+            }
+        }
+
+        if (empty($after)) {
+            return response()->json([
+                'success' => true,
+                'code' => 'NO_CHANGES',
+                'message' => '未偵測到變更。',
+            ]);
+        }
+
+        $user->update($after);
+
+        // Write detailed audit log with before/after snapshot
+        \App\Models\AdminOperationLog::create([
+            'admin_id' => $admin->id,
+            'action' => 'update_member_profile',
+            'resource_type' => 'member',
+            'resource_id' => $id,
+            'description' => "PATCH admin/members/{$id}/profile",
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 500),
+            'request_summary' => [
+                'before' => $before,
+                'after' => $after,
+            ],
+            'created_at' => now(),
+        ]);
+
+        $user->refresh();
+
+        return response()->json([
+            'success' => true,
+            'code' => 'MEMBER_PROFILE_UPDATED',
+            'message' => '會員資料已更新。',
+            'data' => [
+                'member' => [
+                    'id' => $user->id,
+                    'nickname' => $user->nickname,
+                    'gender' => $user->gender,
+                    'bio' => $user->bio,
+                    'location' => $user->location,
+                ],
+                'changes' => array_keys($after),
+            ],
         ]);
     }
 
@@ -238,7 +419,13 @@ class AdminController extends Controller
                     'id' => $o->id, 'order_number' => $o->order_number,
                     'user' => $o->user ? ['id' => $o->user->id, 'nickname' => $o->user->nickname] : null,
                     'plan_name' => $o->plan?->name, 'amount' => $o->amount,
+                    'payment_method' => $o->payment_method,
                     'status' => $o->status, 'paid_at' => $o->paid_at?->toISOString(),
+                    'ecpay_trade_no' => $o->ecpay_trade_no,
+                    'ecpay_payment_date' => $o->ecpay_payment_date,
+                    'ecpay_payment_type' => $o->ecpay_payment_type,
+                    'invoice_no' => $o->invoice_no,
+                    'invoice_date' => $o->invoice_date,
                     'created_at' => $o->created_at?->toISOString(),
                 ]),
                 'pagination' => [

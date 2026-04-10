@@ -18,6 +18,14 @@ use App\Http\Controllers\Api\V1\PrivacyController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
 use App\Http\Controllers\Api\V1\Admin\SystemControlController;
 use App\Http\Controllers\Api\V1\Admin\DatasetController;
+use App\Http\Controllers\Api\V1\Admin\MemberLevelPermissionController;
+use App\Http\Controllers\Api\V1\Admin\VerificationController;
+use App\Http\Controllers\Api\V1\Admin\BroadcastController;
+use App\Http\Controllers\Api\V1\Admin\AdminLogController;
+use App\Http\Controllers\Api\V1\Admin\AdminCrudController;
+use App\Http\Controllers\Api\V1\VerificationPhotoController;
+use App\Http\Controllers\Api\V1\Admin\ECPaySettingController;
+use App\Http\Controllers\Api\V1\Admin\UserActivityLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -111,6 +119,7 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/notify', [PaymentCallbackController::class, 'notify']);
         Route::get('/return', [PaymentCallbackController::class, 'returnUrl']);
         Route::get('/mock', [PaymentCallbackController::class, 'mock']);
+        Route::get('/checkout/{token}', [PaymentCallbackController::class, 'checkout']);
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────
@@ -139,6 +148,13 @@ Route::prefix('api/v1')->group(function () {
         Route::delete('me/delete-account', [DeleteAccountController::class, 'cancel']);
     });
 
+    // ─── Verification Photo / Lv1.5 (Sprint 11) ─────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('me/verification-photo/request', [VerificationPhotoController::class, 'request']);
+        Route::post('me/verification-photo/upload', [VerificationPhotoController::class, 'upload']);
+        Route::get('me/verification-photo/status', [VerificationPhotoController::class, 'status']);
+    });
+
     // ─── Notifications (authenticated) ───────────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('notifications', [NotificationController::class, 'index']);
@@ -150,10 +166,12 @@ Route::prefix('api/v1')->group(function () {
     Route::prefix('admin')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login']);
 
-        Route::middleware('auth:sanctum')->group(function () {
+        Route::middleware(['admin.auth', 'admin.log'])->group(function () {
             Route::get('/members', [AdminController::class, 'members']);
             Route::get('/members/{id}', [AdminController::class, 'memberDetail']);
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction']);
+            Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions']);
+            Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile']);
             Route::get('/tickets', [AdminController::class, 'tickets']);
             Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket']);
             Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
@@ -167,6 +185,23 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations']);
             Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
             Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
+
+            // Verification review (Sprint 11)
+            Route::get('/verifications', [VerificationController::class, 'index']);
+            Route::get('/verifications/pending', [VerificationController::class, 'pending']);
+            Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
+
+            // Broadcasts (Sprint 11)
+            Route::get('/broadcasts', [BroadcastController::class, 'index']);
+            Route::post('/broadcasts', [BroadcastController::class, 'store']);
+            Route::get('/broadcasts/{id}', [BroadcastController::class, 'show']);
+            Route::post('/broadcasts/{id}/send', [BroadcastController::class, 'send']);
+
+            // Operation logs (Sprint 11)
+            Route::get('/logs', [AdminLogController::class, 'index']);
+
+            // User activity logs (super_admin only)
+            Route::get('/user-activity-logs', [UserActivityLogController::class, 'index']);
 
             // System Control (super_admin only)
             Route::middleware('check.super_admin')->prefix('settings')->group(function () {
@@ -184,6 +219,24 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('dataset/stats', [DatasetController::class, 'stats']);
                 Route::post('dataset/reset', [DatasetController::class, 'reset']);
                 Route::post('dataset/seed', [DatasetController::class, 'seed']);
+
+                // Member level permissions (Sprint 11)
+                Route::get('member-level-permissions', [MemberLevelPermissionController::class, 'index']);
+                Route::patch('member-level-permissions', [MemberLevelPermissionController::class, 'update']);
+
+                // Permission matrix JSON (simplified view)
+                Route::get('permission-matrix', [MemberLevelPermissionController::class, 'matrix']);
+                Route::patch('permission-matrix', [MemberLevelPermissionController::class, 'updateMatrix']);
+
+                // Admin CRUD (Sprint 11)
+                Route::get('admins', [AdminCrudController::class, 'index']);
+                Route::post('admins', [AdminCrudController::class, 'store']);
+                Route::patch('admins/{id}/role', [AdminCrudController::class, 'updateRole']);
+                Route::get('roles', [AdminCrudController::class, 'roles']);
+
+                // ECPay settings (Sprint 13)
+                Route::get('ecpay', [ECPaySettingController::class, 'index']);
+                Route::post('ecpay', [ECPaySettingController::class, 'update']);
             });
         });
     });

@@ -10,18 +10,17 @@ class DatabaseSeeder extends Seeder
     {
         // System data (all environments)
         $this->call(SubscriptionPlanSeeder::class);
+        $this->call(MemberLevelPermissionsSeeder::class);
+        $this->call(AdminPermissionsSeeder::class);
 
-        // Admin account (from .env or defaults)
-        \App\Models\User::firstOrCreate(
+        // Admin account in admin_users table (separate from frontend users)
+        \App\Models\AdminUser::firstOrCreate(
             ['email' => env('ADMIN_EMAIL', 'admin@mimeet.tw')],
             [
                 'password' => bcrypt(env('ADMIN_PASSWORD', 'ChangeMe@2026')),
-                'nickname' => env('ADMIN_NAME', 'Super Admin'),
-                'gender' => 'male',
-                'membership_level' => 3,
-                'credit_score' => 100,
-                'status' => 'active',
-                'email_verified' => true,
+                'name' => env('ADMIN_NAME', 'Super Admin'),
+                'role' => 'super_admin',
+                'is_active' => true,
             ],
         );
 

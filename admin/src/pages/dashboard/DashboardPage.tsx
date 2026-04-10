@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Row, Col, Card, Statistic, Typography, Tag, List, Badge, Segmented } from 'antd'
+import { Row, Col, Card, Statistic, Typography, Tag, List, Badge } from 'antd'
 import {
   UserOutlined,
   DollarOutlined,
   CrownOutlined,
   FileExclamationOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import * as echarts from 'echarts'
@@ -17,11 +15,11 @@ const { Title, Text } = Typography
 
 function EChart({ option, style }: { option: echarts.EChartsOption; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<echarts.ECharts>()
+  const chartRef = useRef<echarts.ECharts>(null)
 
   useEffect(() => {
     if (!ref.current) return
-    chartRef.current = echarts.init(ref.current)
+    chartRef.current = echarts.init(ref.current as unknown as HTMLElement)
     const onResize = () => chartRef.current?.resize()
     window.addEventListener('resize', onResize)
     return () => {
@@ -37,11 +35,6 @@ function EChart({ option, style }: { option: echarts.EChartsOption; style?: Reac
   return <div ref={ref} style={style} />
 }
 
-function TrendSuffix({ pct }: { pct: number }) {
-  if (pct > 0) return <span style={{ color: '#52c41a', fontSize: 14 }}><ArrowUpOutlined /> {pct}%</span>
-  if (pct < 0) return <span style={{ color: '#ff4d4f', fontSize: 14 }}><ArrowDownOutlined /> {Math.abs(pct)}%</span>
-  return null
-}
 
 interface DashboardStats {
   total_members: number
@@ -55,7 +48,6 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [chartMode, setChartMode] = useState<string>('近 30 天（按天）')
   const [stats, setStats] = useState<DashboardStats>({
     total_members: 0, month_revenue: 0, paid_members: 0, pending_tickets: 0,
     level_distribution: [], recent_tickets: [], recent_payments: [],

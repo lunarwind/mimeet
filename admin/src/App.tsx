@@ -9,7 +9,10 @@ import TicketsPage from './pages/tickets/TicketsPage'
 import PaymentsPage from './pages/payments/PaymentsPage'
 import SystemSettingsPage from './pages/settings/SystemSettingsPage'
 import ActivityLogsPage from './pages/logs/ActivityLogsPage'
+import UserActivityLogsPage from './pages/logs/UserActivityLogsPage'
 import ChatLogsPage from './pages/chat-logs/ChatLogsPage'
+import VerificationsPage from './pages/verifications/VerificationsPage'
+import BroadcastsPage from './pages/broadcasts/BroadcastsPage'
 import { useAuthStore } from './stores/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -38,7 +41,10 @@ export default function App() {
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="settings/system" element={<SystemSettingsPage />} />
         <Route path="chat-logs" element={<ChatLogsPage />} />
+        <Route path="verifications" element={<VerificationsPage />} />
+        <Route path="broadcasts" element={<BroadcastsPage />} />
         <Route path="logs" element={<ActivityLogsPage />} />
+        <Route path="user-activity-logs" element={<UserActivityLogsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
