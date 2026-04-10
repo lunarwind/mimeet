@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Table, Select, DatePicker, Tag, Button, Card, Row, Col, Statistic, Typography, Space, Modal, Descriptions } from 'antd'
 import { DollarOutlined, UserOutlined, RiseOutlined, ShoppingCartOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/icons'
+import apiClient from '../../api/client'
 import { MOCK_PAYMENTS } from '../../mocks/members'
 import type { PaymentRecord } from '../../types/admin'
 import dayjs from 'dayjs'
@@ -34,9 +35,25 @@ export default function PaymentsPage() {
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
   const [detailRecord, setDetailRecord] = useState<ExtendedPayment | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [allPayments, setAllPayments] = useState<ExtendedPayment[]>(EXTENDED_PAYMENTS)
+
+  useEffect(() => {
+    // Try real API first, fall back to mock data on failure
+    apiClient.get('/admin/payments', { params: { per_page: 100 } })
+      .then((res) => {
+        if (res.data?.data?.payments && res.data.data.payments.length > 0) {
+          setAllPayments(res.data.data.payments.map((p: PaymentRecord, idx: number) => ({
+            ...p,
+            ecpay_trade_no: p.ecpay_trade_no || `2026041${String(idx + 1).padStart(7, '0')}`,
+            ecpay_invoice_no: p.ecpay_invoice_no || null,
+          })))
+        }
+      })
+      .catch(() => { /* keep mock data */ })
+  }, [])
 
   const filtered = useMemo(() => {
-    let data = [...EXTENDED_PAYMENTS]
+    let data = [...allPayments]
     if (statusFilter !== 'all') data = data.filter((p) => p.status === statusFilter)
     if (planFilter !== 'all') data = data.filter((p) => p.plan === planFilter)
     if (dateRange && dateRange[0] && dateRange[1]) {
@@ -50,10 +67,10 @@ export default function PaymentsPage() {
     return data
   }, [statusFilter, planFilter, dateRange])
 
-  const todayRevenue = MOCK_PAYMENTS.filter((p) => p.status === 'paid' && dayjs(p.paid_at).isSame(dayjs(), 'day')).reduce((s, p) => s + p.amount_paid, 0)
-  const monthRevenue = MOCK_PAYMENTS.filter((p) => p.status === 'paid' && dayjs(p.paid_at).isSame(dayjs(), 'month')).reduce((s, p) => s + p.amount_paid, 0)
-  const paidMembers = new Set(MOCK_PAYMENTS.filter((p) => p.status === 'paid').map((p) => p.user.uid)).size
-  const monthNewSubs = MOCK_PAYMENTS.filter((p) => p.status === 'paid' && dayjs(p.paid_at).isSame(dayjs(), 'month')).length
+  const todayRevenue = allPayments.filter((p) => p.status === 'paid' && dayjs(p.paid_at).isSame(dayjs(), 'day')).reduce((s, p) => s + p.amount_paid, 0)
+  const monthRevenue = allPayments.filter((p) => p.status === 'paid' && dayjs(p.paid_at).isSame(dayjs(), 'month')).reduce((s, p) => s + p.amount_paid, 0)
+  const paidMembers = new Set(allPayments.filter((p) => p.status === 'paid').map((p) => p.user.uid)).size
+  const monthNewSubs = allPayments.filter((p) => p.status === 'paid' && dayjs(p.paid_at).isSame(dayjs(), 'month')).length
 
   const handleRowClick = (record: ExtendedPayment) => {
     setDetailRecord(record)

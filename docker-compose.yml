@@ -81,8 +81,35 @@ services:
     networks:
       - mimeet
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mimeet-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+    networks:
+      - mimeet
+
+  minio:
+    image: minio/minio:latest
+    container_name: mimeet-minio
+    restart: unless-stopped
+    ports:
+      - "9001:9000"   # API
+      - "9002:9001"   # Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-mimeet_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_secret_2024}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - mimeet
+
 volumes:
   mysql_data:
+  minio_data:
 
 networks:
   mimeet:
