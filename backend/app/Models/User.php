@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -77,6 +78,14 @@ class User extends Authenticatable
         'deleted_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    protected function phone(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => $value ? decrypt($value) : null,
+            set: fn($value) => $value ? encrypt($value) : null,
+        );
+    }
 
     public function getPrivacySettingsAttribute($value): array
     {
