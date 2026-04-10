@@ -31,6 +31,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   LockOutlined,
+  DollarOutlined,
 } from '@ant-design/icons'
 import apiClient from '../../api/client'
 
@@ -688,6 +689,139 @@ function SmsTab() {
   )
 }
 
+// ─── Tab 6: ECPay ────────────────────────────────────────────────────────────
+
+function ECPayTab() {
+  const [merchantId, setMerchantId] = useState('')
+  const [hashKey, setHashKey] = useState('')
+  const [hashIv, setHashIv] = useState('')
+  const [isSandbox, setIsSandbox] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/admin/settings/ecpay')
+      if (res.data?.data) {
+        const d = res.data.data
+        setMerchantId(d.merchant_id || '')
+        setHashKey(d.hash_key || '')
+        setHashIv(d.hash_iv || '')
+        setIsSandbox(d.is_sandbox ?? true)
+      }
+    } catch {
+      message.error('無法取得金流設定')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSettings()
+  }, [fetchSettings])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await apiClient.patch('/admin/settings/ecpay', {
+        merchant_id: merchantId,
+        hash_key: hashKey,
+        hash_iv: hashIv,
+        is_sandbox: isSandbox,
+      })
+      message.success(res.data?.message || '金流設定已更新')
+    } catch (err: any) {
+      message.error(err.response?.data?.message || '儲存失敗')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: 48 }}>
+        <Spin />
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <Card title="綠界科技 ECPay 設定" style={{ marginBottom: 24, maxWidth: 600 }}>
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>MerchantID（特店編號）</Text>
+          <Input
+            style={{ marginTop: 4 }}
+            value={merchantId}
+            onChange={(e) => setMerchantId(e.target.value)}
+            placeholder="例如 3002607"
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>HashKey</Text>
+          <Input.Password
+            style={{ marginTop: 4 }}
+            value={hashKey}
+            onChange={(e) => setHashKey(e.target.value)}
+            placeholder="ECPay HashKey"
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>HashIV</Text>
+          <Input.Password
+            style={{ marginTop: 4 }}
+            value={hashIv}
+            onChange={(e) => setHashIv(e.target.value)}
+            placeholder="ECPay HashIV"
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <Text strong>沙箱模式（Sandbox）</Text>
+          <div style={{ marginTop: 4 }}>
+            <Switch
+              checked={isSandbox}
+              onChange={setIsSandbox}
+              checkedChildren="測試"
+              unCheckedChildren="正式"
+            />
+          </div>
+          {isSandbox && (
+            <Alert
+              style={{ marginTop: 8 }}
+              type="info"
+              showIcon
+              message="目前為沙箱測試模式，付款將導向 ECPay 測試環境"
+            />
+          )}
+          {!isSandbox && (
+            <Alert
+              style={{ marginTop: 8 }}
+              type="warning"
+              showIcon
+              icon={<ExclamationCircleOutlined />}
+              message="正式模式：付款將使用真實金流，請確認設定正確"
+            />
+          )}
+        </div>
+        <Divider />
+        <Space>
+          <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
+            儲存金流設定
+          </Button>
+          <Button
+            icon={<DollarOutlined />}
+            onClick={() =>
+              message.info('測試付款功能請至前台使用體驗方案進行測試付款')
+            }
+          >
+            測試付款說明
+          </Button>
+        </Space>
+      </Card>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SystemSettingsPage() {
@@ -736,6 +870,15 @@ export default function SystemSettingsPage() {
         </span>
       ),
       children: <SmsTab />,
+    },
+    {
+      key: 'ecpay',
+      label: (
+        <span>
+          <DollarOutlined /> 金流設定
+        </span>
+      ),
+      children: <ECPayTab />,
     },
   ]
 

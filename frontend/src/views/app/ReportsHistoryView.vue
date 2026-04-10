@@ -11,7 +11,7 @@ onMounted(async () => {
   try {
     reports.value = await fetchReportHistory()
   } catch {
-    console.error('Failed to load report history')
+    // Error silently handled — empty state shown
   } finally {
     isLoading.value = false
   }

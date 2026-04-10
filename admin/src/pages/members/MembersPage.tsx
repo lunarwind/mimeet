@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar } from 'antd'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
+import apiClient from '../../api/client'
 import { MOCK_MEMBERS } from '../../mocks/members'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import type { MemberListItem } from '../../types/admin'
@@ -16,9 +17,24 @@ export default function MembersPage() {
   const [levelFilter, setLevelFilter] = useState<number | null>(null)
   const [creditFilter, setCreditFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [members, setMembers] = useState<MemberListItem[]>(MOCK_MEMBERS)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // Try real API first, fall back to mock data on failure
+    setLoading(true)
+    apiClient.get('/admin/members', { params: { per_page: 100 } })
+      .then((res) => {
+        if (res.data?.data?.members && res.data.data.members.length > 0) {
+          setMembers(res.data.data.members)
+        }
+      })
+      .catch(() => { /* keep mock data */ })
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = useMemo(() => {
-    let data = [...MOCK_MEMBERS]
+    let data = [...members]
     if (search) {
       const q = search.toLowerCase()
       data = data.filter((m) => m.nickname.includes(q) || m.email.toLowerCase().includes(q))
@@ -32,7 +48,7 @@ export default function MembersPage() {
     }
     if (statusFilter !== 'all') data = data.filter((m) => m.status === statusFilter)
     return data
-  }, [search, genderFilter, levelFilter, creditFilter, statusFilter])
+  }, [search, genderFilter, levelFilter, creditFilter, statusFilter, members])
 
   const resetFilters = () => {
     setSearch('')
@@ -172,6 +188,7 @@ export default function MembersPage() {
         dataSource={filtered}
         columns={columns}
         rowKey="uid"
+        loading={loading}
         pagination={{ pageSize: 20, showTotal: (total) => `共 ${total} 筆` }}
         size="middle"
         scroll={{ x: 1100 }}

@@ -107,9 +107,10 @@ class ReportController extends Controller
     public function destroy(Request $request, int $id): JsonResponse
     {
         $report = Report::where('id', $id)
-            ->where('reporter_id', $request->user()->id)
             ->where('status', 'pending')
             ->firstOrFail();
+
+        $this->authorize('delete', $report);
 
         $report->update(['status' => 'dismissed']);
 

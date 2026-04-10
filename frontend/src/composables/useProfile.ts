@@ -51,7 +51,7 @@ export function useProfile() {
       return data
     } catch (e) {
       error.value = '無法載入用戶資料'
-      console.error('[useProfile] fetchProfile error:', e)
+      // Error handled via error ref
       return null
     } finally {
       isLoading.value = false
@@ -71,7 +71,7 @@ export function useProfile() {
       // 更新快取
       if (profile.value) setCache(userId, profile.value)
     } catch (e) {
-      console.error('[useProfile] toggleFavorite error:', e)
+      // Silently fail — UI state not changed on error
     }
   }
 

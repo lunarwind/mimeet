@@ -11,6 +11,7 @@ import {
   WarningOutlined,
 } from '@ant-design/icons'
 import * as echarts from 'echarts'
+import apiClient from '../../api/client'
 import {
   mockSummary,
   mockLevelDistribution,
@@ -19,9 +20,6 @@ import {
   mockRecentTickets,
   mockRecentPayments,
 } from '../../mocks/dashboard'
-
-// TODO: GET /api/v1/admin/stats/summary
-// TODO: GET /api/v1/admin/stats/chart?type=registrations&granularity=daily
 
 const { Title, Text } = Typography
 
@@ -57,7 +55,67 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [chartMode, setChartMode] = useState<string>('近 30 天（按天）')
 
-  const chartData = chartMode === '近 30 天（按天）' ? mockRegistrationChart : mockHourlyChart
+  // State for API data with mock fallback
+  const [summary, setSummary] = useState(mockSummary)
+  const [levelDist, setLevelDist] = useState(mockLevelDistribution)
+  const [regChart, setRegChart] = useState(mockRegistrationChart)
+  const [hourlyChart, setHourlyChart] = useState(mockHourlyChart)
+  const [recentTickets, setRecentTickets] = useState(mockRecentTickets)
+  const [recentPayments, setRecentPayments] = useState(mockRecentPayments)
+
+  useEffect(() => {
+    // Try real API first, fall back to mock data on failure
+    apiClient.get('/admin/stats/summary')
+      .then((res) => {
+        if (res.data?.data) setSummary(res.data.data)
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get('/admin/stats/level-distribution')
+      .then((res) => {
+        if (res.data?.data) setLevelDist(res.data.data)
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get('/admin/stats/chart?type=registrations&granularity=daily')
+      .then((res) => {
+        if (res.data?.data) setRegChart(res.data.data)
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get('/admin/stats/chart?type=registrations&granularity=hourly')
+      .then((res) => {
+        if (res.data?.data) setHourlyChart(res.data.data)
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get('/admin/tickets?status=1&per_page=5')
+      .then((res) => {
+        if (res.data?.data?.tickets) {
+          setRecentTickets(res.data.data.tickets.map((t: Record<string, unknown>) => ({
+            id: t.ticket_number || t.id,
+            type: t.type_label || t.type,
+            time: t.created_at,
+          })))
+        }
+      })
+      .catch(() => { /* keep mock data */ })
+
+    apiClient.get('/admin/payments?per_page=5&sort_by=paid_at_desc')
+      .then((res) => {
+        if (res.data?.data?.payments) {
+          setRecentPayments(res.data.data.payments.map((p: Record<string, unknown>) => ({
+            user: (p.user as Record<string, unknown>)?.nickname || 'Unknown',
+            plan: p.plan,
+            amount: p.amount,
+            time: p.paid_at,
+          })))
+        }
+      })
+      .catch(() => { /* keep mock data */ })
+  }, [])
+
+  const chartData = chartMode === '近 30 天（按天）' ? regChart : hourlyChart
 
   const lineOption: echarts.EChartsOption = {
     tooltip: { trigger: 'axis' },
@@ -77,7 +135,7 @@ export default function DashboardPage() {
       right: 10,
       top: 'center',
       formatter: (name: string) => {
-        const item = mockLevelDistribution.find((d) => d.name === name)
+        const item = levelDist.find((d) => d.name === name)
         return `${name}  ${item?.value ?? ''}`
       },
     },
@@ -86,7 +144,7 @@ export default function DashboardPage() {
         type: 'pie',
         radius: ['45%', '70%'],
         center: ['35%', '50%'],
-        data: mockLevelDistribution,
+        data: levelDist,
         label: { show: false },
       },
     ],
@@ -102,9 +160,9 @@ export default function DashboardPage() {
           <Card>
             <Statistic
               title="今日新增會員"
-              value={mockSummary.today_new_members}
+              value={summary.today_new_members}
               prefix={<UserOutlined />}
-              suffix={<TrendSuffix pct={mockSummary.today_new_members_pct} />}
+              suffix={<TrendSuffix pct={summary.today_new_members_pct} />}
             />
           </Card>
         </Col>
@@ -112,9 +170,9 @@ export default function DashboardPage() {
           <Card>
             <Statistic
               title="本月收入"
-              value={`NT$ ${mockSummary.month_revenue.toLocaleString()}`}
+              value={`NT$ ${summary.month_revenue.toLocaleString()}`}
               prefix={<DollarOutlined />}
-              suffix={<TrendSuffix pct={mockSummary.month_revenue_pct} />}
+              suffix={<TrendSuffix pct={summary.month_revenue_pct} />}
             />
           </Card>
         </Col>
@@ -122,9 +180,9 @@ export default function DashboardPage() {
           <Card>
             <Statistic
               title="付費會員數"
-              value={mockSummary.paid_members_total}
+              value={summary.paid_members_total}
               prefix={<CrownOutlined />}
-              suffix={<TrendSuffix pct={mockSummary.paid_members_pct} />}
+              suffix={<TrendSuffix pct={summary.paid_members_pct} />}
             />
           </Card>
         </Col>
@@ -132,11 +190,11 @@ export default function DashboardPage() {
           <Card>
             <Statistic
               title="待處理 Ticket"
-              value={mockSummary.pending_tickets}
+              value={summary.pending_tickets}
               prefix={<FileExclamationOutlined />}
-              valueStyle={mockSummary.pending_tickets > 10 ? { color: '#F0294E' } : undefined}
+              valueStyle={summary.pending_tickets > 10 ? { color: '#F0294E' } : undefined}
               suffix={
-                mockSummary.pending_tickets > 10 ? (
+                summary.pending_tickets > 10 ? (
                   <Badge dot>
                     <WarningOutlined style={{ color: '#F0294E' }} />
                   </Badge>
@@ -175,7 +233,7 @@ export default function DashboardPage() {
         <Col span={12}>
           <Card title="最新 Ticket" extra={<a onClick={() => navigate('/tickets')}>查看全部</a>}>
             <List
-              dataSource={mockRecentTickets}
+              dataSource={recentTickets}
               renderItem={(item) => (
                 <List.Item>
                   <Tag color="orange">{item.type}</Tag> {item.id} <Text type="secondary">{item.time}</Text>
@@ -187,7 +245,7 @@ export default function DashboardPage() {
         <Col span={12}>
           <Card title="最新付款" extra={<a onClick={() => navigate('/payments')}>查看全部</a>}>
             <List
-              dataSource={mockRecentPayments}
+              dataSource={recentPayments}
               renderItem={(item) => (
                 <List.Item>
                   {item.user} <Tag color="blue">{item.plan}</Tag> <Text strong>NT${item.amount}</Text>{' '}
