@@ -1,21 +1,43 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Table, Card, Typography, Select, DatePicker, Space, Tag, Input, Switch } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { mockLogs, actionMeta } from '../../mocks/logs'
 import type { ActionType, LogEntry } from '../../mocks/logs'
+import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 const { RangePicker } = DatePicker
 
 export default function ActivityLogsPage() {
+  const [logs, setLogs] = useState<LogEntry[]>(mockLogs)
+  const [loading, setLoading] = useState(false)
   const [actionFilter, setActionFilter] = useState<ActionType | 'all'>('all')
   const [search, setSearch] = useState('')
   const [showIp, setShowIp] = useState(false)
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null)
 
+  const fetchLogs = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiClient.get('/admin/logs')
+      const apiData = res.data.data ?? res.data
+      if (Array.isArray(apiData) && apiData.length > 0) {
+        setLogs(apiData)
+      }
+    } catch {
+      // Fall back to mock data (already set as default)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchLogs()
+  }, [fetchLogs])
+
   const filtered = useMemo(() => {
-    let data = [...mockLogs]
+    let data = [...logs]
     if (actionFilter !== 'all') {
       data = data.filter((l) => l.action_type === actionFilter)
     }
@@ -37,7 +59,7 @@ export default function ActivityLogsPage() {
       })
     }
     return data
-  }, [actionFilter, search, dateRange])
+  }, [logs, actionFilter, search, dateRange])
 
   const columns = [
     {
@@ -136,6 +158,7 @@ export default function ActivityLogsPage() {
           dataSource={filtered}
           columns={columns}
           rowKey="id"
+          loading={loading}
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `共 ${t} 筆` }}
           size="middle"
         />
