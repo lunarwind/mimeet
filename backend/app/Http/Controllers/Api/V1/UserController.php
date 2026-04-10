@@ -97,6 +97,16 @@ class UserController extends Controller
             return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此用戶'], 404);
         }
 
+        // Record profile visit (don't record self-visits)
+        $viewerId = $request->user()?->id;
+        if ($viewerId && $viewerId !== $id) {
+            \Illuminate\Support\Facades\DB::table('user_profile_visits')->insert([
+                'visitor_id' => $viewerId,
+                'visited_user_id' => $id,
+                'created_at' => now(),
+            ]);
+        }
+
         return response()->json([
             'success' => true, 'code' => 'USER_DETAIL', 'message' => 'OK',
             'data' => ['user' => [
@@ -157,49 +167,100 @@ class UserController extends Controller
 
     public function following(Request $request): JsonResponse
     {
-        // TODO: implement with user_follows table
+        $userId = $request->user()->id;
+        $follows = \Illuminate\Support\Facades\DB::table('user_follows')
+            ->where('follower_id', $userId)
+            ->join('users', 'users.id', '=', 'user_follows.following_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url', 'users.credit_score', 'users.last_active_at', 'user_follows.created_at as followed_at')
+            ->orderByDesc('user_follows.created_at')
+            ->paginate($request->query('per_page', 20));
+
         return response()->json([
             'success' => true, 'code' => 'FOLLOWING_LIST', 'message' => 'OK',
-            'data' => ['users' => [], 'pagination' => ['current_page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 1]],
+            'data' => ['users' => $follows->items()],
+            'pagination' => ['current_page' => $follows->currentPage(), 'per_page' => $follows->perPage(), 'total' => $follows->total()],
         ]);
     }
 
     public function visitors(Request $request): JsonResponse
     {
-        // TODO: implement with user_visitors table
+        $userId = $request->user()->id;
+        $visitors = \Illuminate\Support\Facades\DB::table('user_profile_visits')
+            ->where('visited_user_id', $userId)
+            ->join('users', 'users.id', '=', 'user_profile_visits.visitor_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url', 'users.credit_score', 'user_profile_visits.created_at as visited_at')
+            ->orderByDesc('user_profile_visits.created_at')
+            ->paginate($request->query('per_page', 20));
+
         return response()->json([
             'success' => true, 'code' => 'VISITORS_LIST', 'message' => 'OK',
-            'data' => ['visitors' => [], 'pagination' => ['current_page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 1]],
+            'data' => ['visitors' => $visitors->items()],
+            'pagination' => ['current_page' => $visitors->currentPage(), 'per_page' => $visitors->perPage(), 'total' => $visitors->total()],
         ]);
     }
 
     public function follow(Request $request, int $id): JsonResponse
     {
-        // TODO: implement with user_follows table
+        $userId = $request->user()->id;
+        if ($userId === $id) {
+            return response()->json(['success' => false, 'message' => '不能追蹤自己'], 422);
+        }
+        \Illuminate\Support\Facades\DB::table('user_follows')->updateOrInsert(
+            ['follower_id' => $userId, 'following_id' => $id],
+            ['created_at' => now()]
+        );
         return response()->json(['success' => true, 'code' => 'FOLLOWED', 'message' => '已追蹤。']);
     }
 
     public function unfollow(Request $request, int $id): JsonResponse
     {
+        \Illuminate\Support\Facades\DB::table('user_follows')
+            ->where('follower_id', $request->user()->id)
+            ->where('following_id', $id)
+            ->delete();
         return response()->json(['success' => true, 'code' => 'UNFOLLOWED', 'message' => '已取消追蹤。']);
     }
 
     public function block(Request $request, int $id): JsonResponse
     {
+        $userId = $request->user()->id;
+        if ($userId === $id) {
+            return response()->json(['success' => false, 'message' => '不能封鎖自己'], 422);
+        }
+        \Illuminate\Support\Facades\DB::table('user_blocks')->updateOrInsert(
+            ['blocker_id' => $userId, 'blocked_id' => $id],
+            ['created_at' => now()]
+        );
+        // Also unfollow both directions
+        \Illuminate\Support\Facades\DB::table('user_follows')
+            ->where(fn ($q) => $q->where(['follower_id' => $userId, 'following_id' => $id])->orWhere(['follower_id' => $id, 'following_id' => $userId]))
+            ->delete();
         return response()->json(['success' => true, 'code' => 'BLOCKED', 'message' => '已封鎖該用戶。']);
     }
 
     public function unblock(Request $request, int $id): JsonResponse
     {
+        \Illuminate\Support\Facades\DB::table('user_blocks')
+            ->where('blocker_id', $request->user()->id)
+            ->where('blocked_id', $id)
+            ->delete();
         return response()->json(['success' => true, 'code' => 'UNBLOCKED', 'message' => '已解除封鎖。']);
     }
 
     public function blockedUsers(Request $request): JsonResponse
     {
-        // TODO: implement with user_blocks table
+        $userId = $request->user()->id;
+        $blocked = \Illuminate\Support\Facades\DB::table('user_blocks')
+            ->where('blocker_id', $userId)
+            ->join('users', 'users.id', '=', 'user_blocks.blocked_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url', 'user_blocks.created_at as blocked_at')
+            ->orderByDesc('user_blocks.created_at')
+            ->paginate($request->query('per_page', 20));
+
         return response()->json([
             'success' => true, 'code' => 'BLOCKED_USERS', 'message' => 'OK',
-            'data' => ['users' => [], 'pagination' => ['current_page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 1]],
+            'data' => ['users' => $blocked->items()],
+            'pagination' => ['current_page' => $blocked->currentPage(), 'per_page' => $blocked->perPage(), 'total' => $blocked->total()],
         ]);
     }
 }
