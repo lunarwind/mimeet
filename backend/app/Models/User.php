@@ -17,9 +17,10 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     /**
-     * WARNING: Fillable includes admin-only fields (credit_score, status, membership_level).
-     * Controllers MUST NOT pass unvalidated user input to update().
-     * Use $request->only([...]) or explicit field lists in controllers.
+     * User-editable fields only. Admin-only fields (credit_score, status,
+     * membership_level) are intentionally excluded to prevent mass-assignment
+     * attacks. Backend services that need to update these fields should use
+     * DB::table('users')->where(...)->update([...]) or $user->forceFill([...]).
      */
     protected $fillable = [
         'email',
@@ -34,12 +35,9 @@ class User extends Authenticatable
         'occupation',
         'education',
         'interests',
-        'membership_level',
-        'credit_score',
         'email_verified',
         'phone',
         'phone_verified',
-        'status',
         'privacy_settings',
         'preferences',
         'profile',

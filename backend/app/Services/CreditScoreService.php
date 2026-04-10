@@ -17,7 +17,7 @@ class CreditScoreService
         $after = max(0, min(100, $before + $delta));
 
         DB::transaction(function () use ($user, $delta, $type, $reason, $operatorId, $before, $after) {
-            $user->update(['credit_score' => $after]);
+            $user->forceFill(['credit_score' => $after])->save();
 
             CreditScoreHistory::create([
                 'user_id' => $user->id,

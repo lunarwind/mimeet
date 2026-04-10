@@ -20,10 +20,10 @@ class GdprService
             throw new \Exception('DELETION_PENDING');
         }
 
-        $user->update([
+        $user->forceFill([
             'status' => 'pending_deletion',
             'delete_requested_at' => now(),
-        ]);
+        ])->save();
 
         Log::info("[GDPR] User #{$user->id} requested deletion");
     }
@@ -34,10 +34,10 @@ class GdprService
             throw new \Exception('NO_PENDING_DELETION');
         }
 
-        $user->update([
+        $user->forceFill([
             'status' => 'active',
             'delete_requested_at' => null,
-        ]);
+        ])->save();
 
         Log::info("[GDPR] User #{$user->id} cancelled deletion request");
     }
@@ -51,7 +51,8 @@ class GdprService
         $email = $user->email;
 
         DB::transaction(function () use ($user) {
-            $user->updateQuietly([
+            // Use DB::table to bypass fillable protection for admin-only fields
+            DB::table('users')->where('id', $user->id)->update([
                 'email' => "deleted_{$user->id}@removed.mimeet",
                 'phone' => null,
                 'nickname' => '已刪除用戶',
