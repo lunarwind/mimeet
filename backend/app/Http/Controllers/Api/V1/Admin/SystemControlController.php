@@ -123,8 +123,7 @@ class SystemControlController extends Controller
         }
 
         if ($request->filled('password')) {
-            $this->writeEnv('MAIL_PASSWORD', $request->password);
-            config(['mail.mailers.smtp.password' => $request->password]);
+            SystemSetting::set('mail.password_encrypted', Crypt::encryptString($request->password), $admin->id);
         }
 
         try { Log::info("[SystemControl] Mail settings updated by admin #{$admin->id}"); } catch (\Throwable) {}
@@ -140,16 +139,37 @@ class SystemControlController extends Controller
         $success = false;
         $errorDetail = null;
 
+        // Apply DB-stored mail settings for this request
+        $host = SystemSetting::get('mail.host', config('mail.mailers.smtp.host'));
+        $port = (int) SystemSetting::get('mail.port', config('mail.mailers.smtp.port'));
+        $enc = SystemSetting::get('mail.encryption', config('mail.mailers.smtp.encryption'));
+        $user = SystemSetting::get('mail.username', config('mail.mailers.smtp.username'));
+        $from = SystemSetting::get('mail.from_address', config('mail.from.address'));
+        $fromName = SystemSetting::get('mail.from_name', config('mail.from.name'));
+        $passEnc = SystemSetting::get('mail.password_encrypted', '');
+        $pass = $passEnc ? (function () use ($passEnc) { try { return Crypt::decryptString($passEnc); } catch (\Throwable) { return $passEnc; } })() : config('mail.mailers.smtp.password');
+
+        config([
+            'mail.mailers.smtp.host' => $host,
+            'mail.mailers.smtp.port' => $port,
+            'mail.mailers.smtp.encryption' => $enc === 'null' ? null : $enc,
+            'mail.mailers.smtp.username' => $user,
+            'mail.mailers.smtp.password' => $pass,
+            'mail.from.address' => $from,
+            'mail.from.name' => $fromName,
+        ]);
+
         $debug[] = '[' . now()->format('H:i:s') . '] 開始 SMTP 測試';
-        $debug[] = '  Host       : ' . config('mail.mailers.smtp.host');
-        $debug[] = '  Port       : ' . config('mail.mailers.smtp.port');
-        $debug[] = '  Encryption : ' . (config('mail.mailers.smtp.encryption') ?: 'none');
-        $debug[] = '  Username   : ' . config('mail.mailers.smtp.username');
-        $debug[] = '  From       : ' . config('mail.from.address');
+        $debug[] = "  Host       : {$host}";
+        $debug[] = "  Port       : {$port}";
+        $debug[] = '  Encryption : ' . ($enc ?: 'none');
+        $debug[] = "  Username   : {$user}";
+        $debug[] = "  From       : {$from}";
         $debug[] = '  To         : ' . $request->test_email;
+        $debug[] = '  Password   : ' . ($pass ? '****（已設定）' : '（未設定）');
 
         try {
-            Mail::to($request->test_email)->send(new TestMail());
+            Mail::mailer('smtp')->to($request->test_email)->send(new TestMail());
             $ms = round((microtime(true) - $start) * 1000);
             $success = true;
             $debug[] = "[" . now()->format('H:i:s') . "] ✅ 發送成功（{$ms}ms）";
