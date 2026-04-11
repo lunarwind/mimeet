@@ -1,35 +1,25 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Row, Col, Card, Statistic, Typography, Tag, List, Badge, Segmented } from 'antd'
+import { Row, Col, Card, Statistic, Typography, Tag, List, Badge } from 'antd'
 import {
   UserOutlined,
   DollarOutlined,
   CrownOutlined,
   FileExclamationOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
 import * as echarts from 'echarts'
 import apiClient from '../../api/client'
-import {
-  mockSummary,
-  mockLevelDistribution,
-  mockRegistrationChart,
-  mockHourlyChart,
-  mockRecentTickets,
-  mockRecentPayments,
-} from '../../mocks/dashboard'
 
 const { Title, Text } = Typography
 
 function EChart({ option, style }: { option: echarts.EChartsOption; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<echarts.ECharts | null>(null)
+  const chartRef = useRef<echarts.ECharts>(null)
 
   useEffect(() => {
     if (!ref.current) return
-    chartRef.current = echarts.init(ref.current)
+    chartRef.current = echarts.init(ref.current as unknown as HTMLElement)
     const onResize = () => chartRef.current?.resize()
     window.addEventListener('resize', onResize)
     return () => {
@@ -45,86 +35,91 @@ function EChart({ option, style }: { option: echarts.EChartsOption; style?: Reac
   return <div ref={ref} style={style} />
 }
 
-function TrendSuffix({ pct }: { pct: number }) {
-  if (pct > 0) return <span style={{ color: '#52c41a', fontSize: 14 }}><ArrowUpOutlined /> {pct}%</span>
-  if (pct < 0) return <span style={{ color: '#ff4d4f', fontSize: 14 }}><ArrowDownOutlined /> {Math.abs(pct)}%</span>
-  return null
+
+interface DashboardStats {
+  total_members: number
+  month_revenue: number
+  paid_members: number
+  pending_tickets: number
+  level_distribution: { value: number; name: string; itemStyle: { color: string } }[]
+  recent_tickets: { id: string; type: string; time: string }[]
+  recent_payments: { user: string; plan: string; amount: number; time: string }[]
 }
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const [chartMode, setChartMode] = useState<string>('近 30 天（按天）')
-
-  // State for API data with mock fallback
-  const [summary, setSummary] = useState(mockSummary)
-  const [levelDist, setLevelDist] = useState(mockLevelDistribution)
-  const [regChart, setRegChart] = useState(mockRegistrationChart)
-  const [hourlyChart, setHourlyChart] = useState(mockHourlyChart)
-  const [recentTickets, setRecentTickets] = useState(mockRecentTickets)
-  const [recentPayments, setRecentPayments] = useState(mockRecentPayments)
+  const [stats, setStats] = useState<DashboardStats>({
+    total_members: 0, month_revenue: 0, paid_members: 0, pending_tickets: 0,
+    level_distribution: [], recent_tickets: [], recent_payments: [],
+  })
 
   useEffect(() => {
-    // Try real API first, fall back to mock data on failure
-    apiClient.get('/admin/stats/summary')
-      .then((res) => {
-        if (res.data?.data) setSummary(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/stats/level-distribution')
-      .then((res) => {
-        if (res.data?.data) setLevelDist(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/stats/chart?type=registrations&granularity=daily')
-      .then((res) => {
-        if (res.data?.data) setRegChart(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/stats/chart?type=registrations&granularity=hourly')
-      .then((res) => {
-        if (res.data?.data) setHourlyChart(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/tickets?status=1&per_page=5')
-      .then((res) => {
-        if (res.data?.data?.tickets) {
-          setRecentTickets(res.data.data.tickets.map((t: Record<string, unknown>) => ({
-            id: t.ticket_number || t.id,
-            type: t.type_label || t.type,
-            time: t.created_at,
-          })))
-        }
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/payments?per_page=5&sort_by=paid_at_desc')
-      .then((res) => {
-        if (res.data?.data?.payments) {
-          setRecentPayments(res.data.data.payments.map((p: Record<string, unknown>) => ({
-            user: (p.user as Record<string, unknown>)?.nickname || 'Unknown',
-            plan: p.plan,
-            amount: p.amount,
-            time: p.paid_at,
-          })))
-        }
-      })
-      .catch(() => { /* keep mock data */ })
+    loadDashboardData()
   }, [])
 
-  const chartData = chartMode === '近 30 天（按天）' ? regChart : hourlyChart
+  async function loadDashboardData() {
+    try {
+      // Fetch real data from multiple endpoints
+      const [membersRes, ticketsRes, paymentsRes] = await Promise.allSettled([
+        apiClient.get('/admin/members', { params: { per_page: 1000 } }),
+        apiClient.get('/admin/tickets', { params: { per_page: 100 } }),
+        apiClient.get('/admin/payments', { params: { per_page: 100 } }),
+      ])
+
+      const members = membersRes.status === 'fulfilled' ? membersRes.value.data.data.members : []
+      const tickets = ticketsRes.status === 'fulfilled' ? ticketsRes.value.data.data.tickets : []
+      const payments = paymentsRes.status === 'fulfilled' ? paymentsRes.value.data.data.payments : []
+
+      // Calculate stats from real data
+      const paidCount = Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0
+      const pendingCount = Array.isArray(tickets) ? tickets.filter((t: { status: string }) => t.status === 'pending').length : 0
+      const paidPayments = Array.isArray(payments) ? payments.filter((p: { status: string }) => p.status === 'paid') : []
+      const monthRevenue = paidPayments.reduce((sum: number, p: { amount: number }) => sum + (p.amount || 0), 0)
+
+      // Level distribution
+      const lvCounts = [0, 0, 0, 0] // Lv0, Lv1, Lv2, Lv3
+      if (Array.isArray(members)) {
+        members.forEach((m: { membership_level: number }) => {
+          const lv = Math.min(m.membership_level, 3)
+          lvCounts[lv]++
+        })
+      }
+
+      setStats({
+        total_members: Array.isArray(members) ? members.length : 0,
+        month_revenue: monthRevenue,
+        paid_members: paidCount,
+        pending_tickets: pendingCount,
+        level_distribution: [
+          { value: lvCounts[0], name: 'Lv0 未驗證', itemStyle: { color: '#9CA3AF' } },
+          { value: lvCounts[1], name: 'Lv1 Email驗證', itemStyle: { color: '#3B82F6' } },
+          { value: lvCounts[2], name: 'Lv2 進階驗證', itemStyle: { color: '#10B981' } },
+          { value: lvCounts[3], name: 'Lv3 付費會員', itemStyle: { color: '#F0294E' } },
+        ],
+        recent_tickets: Array.isArray(tickets) ? tickets.slice(0, 5).map((t: { id: number; type: string; created_at: string }) => ({
+          id: `TK-${t.id}`, type: t.type, time: t.created_at ? new Date(t.created_at).toLocaleString('zh-TW') : '',
+        })) : [],
+        recent_payments: Array.isArray(payments) ? paidPayments.slice(0, 5).map((p: { user?: { nickname: string }; plan_name?: string; amount: number; paid_at?: string }) => ({
+          user: p.user?.nickname || '—', plan: p.plan_name || '—', amount: p.amount,
+          time: p.paid_at ? new Date(p.paid_at).toLocaleString('zh-TW') : '',
+        })) : [],
+      })
+    } catch {
+      // API unavailable — show zeros
+    }
+  }
+
+  // Empty chart data when DB is clean
+  const emptyChart = { labels: [] as string[], male: [] as number[], female: [] as number[] }
 
   const lineOption: echarts.EChartsOption = {
     tooltip: { trigger: 'axis' },
     legend: { data: ['男性', '女性'] },
-    xAxis: { data: chartData.labels },
+    xAxis: { data: emptyChart.labels },
     yAxis: {},
     series: [
-      { name: '男性', type: 'line', smooth: true, data: chartData.male, itemStyle: { color: '#3B82F6' } },
-      { name: '女性', type: 'line', smooth: true, data: chartData.female, itemStyle: { color: '#F0294E' } },
+      { name: '男性', type: 'line', smooth: true, data: emptyChart.male, itemStyle: { color: '#3B82F6' } },
+      { name: '女性', type: 'line', smooth: true, data: emptyChart.female, itemStyle: { color: '#F0294E' } },
     ],
   }
 
@@ -135,8 +130,8 @@ export default function DashboardPage() {
       right: 10,
       top: 'center',
       formatter: (name: string) => {
-        const item = levelDist.find((d) => d.name === name)
-        return `${name}  ${item?.value ?? ''}`
+        const item = stats.level_distribution.find((d) => d.name === name)
+        return `${name}  ${item?.value ?? 0}`
       },
     },
     series: [
@@ -144,7 +139,7 @@ export default function DashboardPage() {
         type: 'pie',
         radius: ['45%', '70%'],
         center: ['35%', '50%'],
-        data: levelDist,
+        data: stats.level_distribution,
         label: { show: false },
       },
     ],
@@ -158,46 +153,29 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]}>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="今日新增會員"
-              value={summary.today_new_members}
-              prefix={<UserOutlined />}
-              suffix={<TrendSuffix pct={summary.today_new_members_pct} />}
-            />
+            <Statistic title="會員總數" value={stats.total_members} prefix={<UserOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="本月收入"
-              value={`NT$ ${summary.month_revenue.toLocaleString()}`}
-              prefix={<DollarOutlined />}
-              suffix={<TrendSuffix pct={summary.month_revenue_pct} />}
-            />
+            <Statistic title="付款總額" value={`NT$ ${stats.month_revenue.toLocaleString()}`} prefix={<DollarOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-            <Statistic
-              title="付費會員數"
-              value={summary.paid_members_total}
-              prefix={<CrownOutlined />}
-              suffix={<TrendSuffix pct={summary.paid_members_pct} />}
-            />
+            <Statistic title="付費會員數" value={stats.paid_members} prefix={<CrownOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
           <Card>
             <Statistic
               title="待處理 Ticket"
-              value={summary.pending_tickets}
+              value={stats.pending_tickets}
               prefix={<FileExclamationOutlined />}
-              valueStyle={summary.pending_tickets > 10 ? { color: '#F0294E' } : undefined}
+              valueStyle={stats.pending_tickets > 10 ? { color: '#F0294E' } : undefined}
               suffix={
-                summary.pending_tickets > 10 ? (
-                  <Badge dot>
-                    <WarningOutlined style={{ color: '#F0294E' }} />
-                  </Badge>
+                stats.pending_tickets > 10 ? (
+                  <Badge dot><WarningOutlined style={{ color: '#F0294E' }} /></Badge>
                 ) : null
               }
             />
@@ -208,22 +186,25 @@ export default function DashboardPage() {
       {/* Charts */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={16}>
-          <Card
-            title="近 30 天新增會員趨勢"
-            extra={
-              <Segmented
-                options={['近 30 天（按天）', '今日（按小時）']}
-                value={chartMode}
-                onChange={(v) => setChartMode(v as string)}
-              />
-            }
-          >
-            <EChart option={lineOption} style={{ height: 300 }} />
+          <Card title="新增會員趨勢">
+            {stats.total_members === 0 ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
+                目前無會員資料
+              </div>
+            ) : (
+              <EChart option={lineOption} style={{ height: 300 }} />
+            )}
           </Card>
         </Col>
         <Col span={8}>
           <Card title="會員等級分佈">
-            <EChart option={pieOption} style={{ height: 300 }} />
+            {stats.total_members === 0 ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
+                目前無會員資料
+              </div>
+            ) : (
+              <EChart option={pieOption} style={{ height: 300 }} />
+            )}
           </Card>
         </Col>
       </Row>
@@ -232,27 +213,35 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={12}>
           <Card title="最新 Ticket" extra={<a onClick={() => navigate('/tickets')}>查看全部</a>}>
-            <List
-              dataSource={recentTickets}
-              renderItem={(item) => (
-                <List.Item>
-                  <Tag color="orange">{item.type}</Tag> {item.id} <Text type="secondary">{item.time}</Text>
-                </List.Item>
-              )}
-            />
+            {stats.recent_tickets.length === 0 ? (
+              <Text type="secondary">目前無回報案件</Text>
+            ) : (
+              <List
+                dataSource={stats.recent_tickets}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Tag color="orange">{item.type}</Tag> {item.id} <Text type="secondary">{item.time}</Text>
+                  </List.Item>
+                )}
+              />
+            )}
           </Card>
         </Col>
         <Col span={12}>
           <Card title="最新付款" extra={<a onClick={() => navigate('/payments')}>查看全部</a>}>
-            <List
-              dataSource={recentPayments}
-              renderItem={(item) => (
-                <List.Item>
-                  {item.user} <Tag color="blue">{item.plan}</Tag> <Text strong>NT${item.amount}</Text>{' '}
-                  <Text type="secondary">{item.time}</Text>
-                </List.Item>
-              )}
-            />
+            {stats.recent_payments.length === 0 ? (
+              <Text type="secondary">目前無支付記錄</Text>
+            ) : (
+              <List
+                dataSource={stats.recent_payments}
+                renderItem={(item) => (
+                  <List.Item>
+                    {item.user} <Tag color="blue">{item.plan}</Tag> <Text strong>NT${item.amount}</Text>{' '}
+                    <Text type="secondary">{item.time}</Text>
+                  </List.Item>
+                )}
+              />
+            )}
           </Card>
         </Col>
       </Row>
