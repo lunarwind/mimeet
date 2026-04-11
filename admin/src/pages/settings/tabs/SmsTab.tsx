@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, Select, Button, Alert, Space, message, Divider, Typography } from 'antd'
+import { Card, Form, Input, Select, Button, Space, message, Divider, Typography } from 'antd'
 import apiClient from '../../../api/client'
+import DebugResultPanel from '../../../components/common/DebugResultPanel'
 
 const { Text } = Typography
 
@@ -21,7 +22,7 @@ export default function SmsTab() {
   const [testPhone, setTestPhone] = useState('0983144094')
   const [testMessage, setTestMessage] = useState('TEST from mimeet admin panel')
   const [testLoading, setTestLoading] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; raw: string; provider: string } | null>(null)
+  const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null)
 
   useEffect(() => {
     apiClient.get('/admin/settings/system-control').then(res => {
@@ -84,19 +85,13 @@ export default function SmsTab() {
 
     try {
       const res = await apiClient.post('/admin/settings/sms/test', payload)
-      setTestResult({
-        success: res.data.success,
-        message: res.data.data.message,
-        raw: res.data.data.raw_response || '',
-        provider: res.data.data.provider || provider,
-      })
+      setTestResult(res.data)
     } catch (err: unknown) {
-      const resp = (err as { response?: { data?: { data?: { message?: string; raw_response?: string; provider?: string }; error?: { message?: string } } } })?.response?.data
-      setTestResult({
+      const resp = (err as { response?: { data?: Record<string, unknown>; status?: number }; message?: string })?.response
+      setTestResult(resp?.data as Record<string, unknown> ?? {
         success: false,
-        message: resp?.data?.message || resp?.error?.message || '發送失敗',
-        raw: resp?.data?.raw_response || '',
-        provider: resp?.data?.provider || provider,
+        debug_log: [`❌ HTTP ${resp?.status ?? '?'} 請求失敗`, `  ${(err as { message?: string })?.message ?? ''}`],
+        error_detail: { http_status: resp?.status },
       })
     }
     setTestLoading(false)
@@ -219,30 +214,7 @@ export default function SmsTab() {
           </Button>
         </Space>
 
-        {testResult && (
-          <div style={{ marginTop: 12 }}>
-            <Alert
-              message={testResult.success ? '發送成功' : '發送失敗'}
-              description={testResult.message}
-              type={testResult.success ? 'success' : 'error'}
-              showIcon
-            />
-            {testResult.raw && (
-              <div style={{ marginTop: 8 }}>
-                <Text strong style={{ fontSize: 12 }}>
-                  {testResult.provider === 'twilio' ? 'Twilio' : '三竹'} 原始回應：
-                </Text>
-                <pre style={{
-                  background: '#1F2937', color: '#10B981', padding: 12, borderRadius: 6,
-                  fontSize: 12, marginTop: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                  maxHeight: 200, overflow: 'auto',
-                }}>
-                  {testResult.raw}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
+        <DebugResultPanel result={testResult as Parameters<typeof DebugResultPanel>[0]['result']} isLoading={testLoading} />
       </Card>
     </Card>
   )

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, InputNumber, Select, Button, Alert, Space, Segmented, message } from 'antd'
+import { Card, Form, Input, InputNumber, Select, Button, Space, Segmented, message } from 'antd'
 import apiClient from '../../../api/client'
+import DebugResultPanel from '../../../components/common/DebugResultPanel'
 
 export default function MailTab() {
   const [form] = Form.useForm()
   const [testEmail, setTestEmail] = useState('')
-  const [testResult, setTestResult] = useState('')
+  const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null)
   const [testLoading, setTestLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
 
@@ -28,12 +29,17 @@ export default function MailTab() {
   async function handleTestMail() {
     if (!testEmail) return
     setTestLoading(true)
+    setTestResult(null)
     try {
       const res = await apiClient.post('/admin/settings/mail/test', { test_email: testEmail })
-      setTestResult(`✅ ${res.data.data.message}`)
+      setTestResult(res.data)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '發送失敗'
-      setTestResult(`❌ ${msg}`)
+      const resp = (err as { response?: { data?: Record<string, unknown>; status?: number }; message?: string })?.response
+      setTestResult(resp?.data as Record<string, unknown> ?? {
+        success: false,
+        debug_log: [`❌ HTTP ${resp?.status ?? '?'} 請求失敗`, `  ${(err as { message?: string })?.message ?? ''}`],
+        error_detail: { http_status: resp?.status, response: resp?.data },
+      })
     }
     setTestLoading(false)
   }
@@ -45,8 +51,7 @@ export default function MailTab() {
       message.success('Email 設定已更新')
     } catch (err: unknown) {
       const resp = (err as { response?: { data?: { message?: string; error?: { message?: string } } } })?.response?.data
-      const msg = resp?.error?.message || resp?.message || '儲存失敗'
-      message.error(typeof msg === 'string' ? msg : '儲存失敗，請稍後再試')
+      message.error(resp?.error?.message || resp?.message || '儲存失敗')
     }
     setSaveLoading(false)
   }
@@ -72,7 +77,7 @@ export default function MailTab() {
           <Input placeholder="收件人 Email" value={testEmail} onChange={e => setTestEmail(e.target.value)} style={{ width: 280 }} />
           <Button onClick={handleTestMail} loading={testLoading}>發送測試信</Button>
         </Space>
-        {testResult && <Alert message={testResult} type={testResult.startsWith('✅') ? 'success' : 'error'} style={{ marginTop: 8 }} />}
+        <DebugResultPanel result={testResult as Parameters<typeof DebugResultPanel>[0]['result']} isLoading={testLoading} />
       </Card>
 
       <Button type="primary" onClick={handleSave} loading={saveLoading}>儲存設定</Button>

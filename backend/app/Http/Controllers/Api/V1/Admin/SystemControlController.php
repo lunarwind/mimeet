@@ -135,17 +135,44 @@ class SystemControlController extends Controller
     public function testMail(Request $request): JsonResponse
     {
         $request->validate(['test_email' => 'required|email']);
+        $start = microtime(true);
+        $debug = [];
+        $success = false;
+        $errorDetail = null;
+
+        $debug[] = '[' . now()->format('H:i:s') . '] 開始 SMTP 測試';
+        $debug[] = '  Host       : ' . config('mail.mailers.smtp.host');
+        $debug[] = '  Port       : ' . config('mail.mailers.smtp.port');
+        $debug[] = '  Encryption : ' . (config('mail.mailers.smtp.encryption') ?: 'none');
+        $debug[] = '  Username   : ' . config('mail.mailers.smtp.username');
+        $debug[] = '  From       : ' . config('mail.from.address');
+        $debug[] = '  To         : ' . $request->test_email;
+
         try {
             Mail::to($request->test_email)->send(new TestMail());
-            return response()->json(['success' => true, 'data' => [
-                'message' => "測試信已發送至 {$request->test_email}，請確認收信匣",
-            ]]);
+            $ms = round((microtime(true) - $start) * 1000);
+            $success = true;
+            $debug[] = "[" . now()->format('H:i:s') . "] ✅ 發送成功（{$ms}ms）";
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => [
-                'code' => 'MAIL_SEND_FAILED',
-                'message' => '發送失敗：' . $e->getMessage(),
-            ]], 422);
+            $ms = round((microtime(true) - $start) * 1000);
+            $msg = $e->getMessage();
+            $errorDetail = ['type' => get_class($e), 'message' => $msg, 'code' => $e->getCode()];
+            $debug[] = "[" . now()->format('H:i:s') . "] ❌ 發送失敗（{$ms}ms）";
+            $debug[] = "  錯誤類型 : " . get_class($e);
+            $debug[] = "  錯誤訊息 : {$msg}";
+            if (str_contains($msg, 'Connection refused')) $debug[] = '  診斷建議 : 無法連線，請確認 Host/Port 是否正確';
+            elseif (str_contains($msg, 'Authentication')) $debug[] = '  診斷建議 : 認證失敗，請確認帳號/密碼';
+            elseif (str_contains($msg, 'SSL') || str_contains($msg, 'TLS')) $debug[] = '  診斷建議 : SSL/TLS 握手失敗，嘗試切換加密方式';
+            elseif (str_contains($msg, 'timeout')) $debug[] = '  診斷建議 : 連線逾時，確認防火牆是否開放 Port';
         }
+
+        return response()->json([
+            'success' => $success,
+            'elapsed_ms' => round((microtime(true) - $start) * 1000),
+            'debug_log' => $debug,
+            'debug_text' => implode("\n", $debug),
+            'error_detail' => $errorDetail,
+        ], $success ? 200 : 422);
     }
 
     public function updateSms(Request $request): JsonResponse
@@ -240,8 +267,39 @@ class SystemControlController extends Controller
 
     private function smsTestResponse(array $result, string $provider, string $phone): JsonResponse
     {
+        $debug = [];
+        $debug[] = '[' . now()->format('H:i:s') . "] SMS 測試 — {$provider}";
+        $debug[] = '  To         : ' . $phone;
+        $debug[] = '  HTTP Status: ' . ($result['http_status'] ?? 'N/A');
+
+        if ($result['success']) {
+            $debug[] = '[' . now()->format('H:i:s') . '] ✅ 發送成功';
+        } else {
+            $debug[] = '[' . now()->format('H:i:s') . '] ❌ 發送失敗';
+            $debug[] = '  錯誤訊息 : ' . ($result['error'] ?? '未知錯誤');
+            if ($code = ($result['twilio_error_code'] ?? null)) {
+                $debug[] = "  Twilio Code: {$code}";
+                if ($code == 21608) $debug[] = '  診斷建議 : 試用帳號只能發送到已驗證號碼，請到 Twilio Console 新增';
+                elseif ($code == 21211) $debug[] = '  診斷建議 : 號碼格式無效，需 E.164 格式';
+                elseif ($code == 21659) $debug[] = '  診斷建議 : From 號碼不屬於此 Twilio 帳號';
+                elseif ($code == 20003) $debug[] = '  診斷建議 : SID 或 Auth Token 認證失敗';
+            }
+        }
+
+        if (!empty($result['raw'])) {
+            $debug[] = '  Raw        : ' . substr($result['raw'], 0, 500);
+        }
+
         return response()->json([
             'success' => $result['success'],
+            'elapsed_ms' => null,
+            'debug_log' => $debug,
+            'debug_text' => implode("\n", $debug),
+            'error_detail' => $result['success'] ? null : [
+                'error' => $result['error'] ?? null,
+                'twilio_error_code' => $result['twilio_error_code'] ?? null,
+                'http_status' => $result['http_status'] ?? null,
+            ],
             'data' => [
                 'message' => $result['success']
                     ? "測試簡訊已發送至 {$phone}"
