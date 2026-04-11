@@ -15,9 +15,6 @@ class MitakeDriver implements SmsDriverInterface
         return $result['success'];
     }
 
-    /**
-     * Send SMS and return detailed result including raw response.
-     */
     public function sendWithDetail(string $phone, string $body, ?string $username = null, ?string $password = null): array
     {
         $apiUrl = SystemSetting::get('sms.mitake.api_url', 'https://sms.mitake.com.tw/b2c/mtk/SmSend');
@@ -39,22 +36,9 @@ class MitakeDriver implements SmsDriverInterface
 
             $raw = $response->body();
 
-            Log::info('[SMS Mitake] Response', [
-                'status' => $response->status(),
-                'body' => $raw,
-                'phone' => substr($phone, 0, 4) . '****',
-            ]);
+            try { Log::info('[SMS Mitake] Response', ['status' => $response->status(), 'phone' => substr($phone, 0, 4) . '****']); } catch (\Throwable) {}
 
-            // Mitake success: response body contains a line with '[' and 'statuscode=*'
-            // where statuscode starting with numbers.
-            // A successful send contains 'statuscode=1' or 'statuscode=0'
-            // Failed: statuscode=e (error codes like 'e' prefix)
-            // Simple check: body contains '$' dollar sign = still has quota, or check statuscode
             $success = $response->successful() && str_contains($raw, 'statuscode=');
-
-            // More precise: check for statuscode values
-            // statuscode=0 or statuscode=1 = queued/sent; statuscode=4 = delivered
-            // statuscode with letters (e.g. 'p') = error
             if (preg_match('/statuscode=(\w+)/', $raw, $m)) {
                 $statusCode = $m[1];
                 $success = is_numeric($statusCode) || $statusCode === '*';
@@ -67,7 +51,7 @@ class MitakeDriver implements SmsDriverInterface
                 'error' => $success ? null : '三竹回應異常',
             ];
         } catch (\Exception $e) {
-            Log::error('[SMS Mitake Error]', ['error' => $e->getMessage()]);
+            try { Log::error('[SMS Mitake Error]', ['error' => $e->getMessage()]); } catch (\Throwable) {}
             return ['success' => false, 'raw' => '', 'error' => $e->getMessage()];
         }
     }

@@ -56,11 +56,7 @@ class TwilioDriver implements SmsDriverInterface
             $raw = $response->body();
             $data = $response->json() ?? [];
 
-            Log::info('[SMS Twilio] Response', [
-                'status' => $response->status(),
-                'sid' => $data['sid'] ?? null,
-                'to' => $to,
-            ]);
+            try { Log::info('[SMS Twilio] Response', ['status' => $response->status(), 'sid' => $data['sid'] ?? null, 'to' => $to]); } catch (\Throwable) {}
 
             // Twilio returns 201 on success, not 200
             $success = $response->status() === 201;
@@ -73,7 +69,7 @@ class TwilioDriver implements SmsDriverInterface
                 'twilio_error_code' => $data['code'] ?? null,
             ];
         } catch (\Exception $e) {
-            Log::error('[SMS Twilio Error]', ['error' => $e->getMessage()]);
+            try { Log::error('[SMS Twilio Error]', ['error' => $e->getMessage()]); } catch (\Throwable) {}
             return ['success' => false, 'raw' => '', 'error' => $e->getMessage()];
         }
     }
