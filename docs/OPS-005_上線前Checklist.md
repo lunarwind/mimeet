@@ -1,4 +1,4 @@
-# OPS-002 上線前 Checklist
+# OPS-005 上線前 Checklist
 
 ## 0. 程式碼清理確認
 - [x] DatabaseSeeder 不建立 admin email 的普通用戶
