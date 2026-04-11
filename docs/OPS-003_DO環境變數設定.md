@@ -50,19 +50,19 @@
 
 ## Frontend 環境變數（build 時注入）
 
-| 變數 | 說明 | Production |
-|------|------|-----------|
-| VITE_API_BASE_URL | 後端 API | https://api.mimeet.tw/api/v1 |
-| VITE_WS_HOST | WebSocket host | api.mimeet.tw |
-| VITE_WS_PORT | WebSocket port | 8080 |
-| VITE_WS_KEY | WebSocket key | 同 REVERB_APP_KEY |
-| VITE_WS_SCHEME | WebSocket scheme | wss |
+| 變數 | Online Test | Production |
+|------|------------|-----------|
+| VITE_API_BASE_URL | http://api.mimeet.lunarwind.org/api/v1 | https://api.mimeet.tw/api/v1 |
+| VITE_WS_HOST | api.mimeet.lunarwind.org | api.mimeet.tw |
+| VITE_WS_PORT | 8080 | 8080 |
+| VITE_WS_KEY | 同 REVERB_APP_KEY | 同 REVERB_APP_KEY |
+| VITE_WS_SCHEME | http | https |
 
 ## Admin 環境變數
 
-| 變數 | 說明 | Production |
-|------|------|-----------|
-| VITE_API_BASE_URL | 後端 API | https://api.mimeet.tw/api/v1 |
+| 變數 | Online Test | Production |
+|------|------------|-----------|
+| VITE_API_BASE_URL | http://api.mimeet.lunarwind.org/api/v1 | https://api.mimeet.tw/api/v1 |
 
 ---
 
