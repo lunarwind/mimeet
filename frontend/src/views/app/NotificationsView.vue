@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useUiStore } from '@/stores/ui'
+import client from '@/api/client'
 
 const router = useRouter()
 const uiStore = useUiStore()
@@ -36,24 +37,19 @@ const ICON_MAP: Record<string, string> = {
   ticket_replied: '📋',
 }
 
-// ── Mock Data ────────────────────────────────────────────
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 1, type: 'new_message', title: '新訊息', body: '雅婷 傳了一則訊息給你', actionUrl: '/app/messages/1', isRead: false, createdAt: new Date(Date.now() - 3 * 60000).toISOString(), createdAtHuman: '3 分鐘前' },
-  { id: 2, type: 'new_visitor', title: '訪客記錄', body: '志明 查看了你的個人資料', actionUrl: '/app/profiles/2', isRead: false, createdAt: new Date(Date.now() - 15 * 60000).toISOString(), createdAtHuman: '15 分鐘前' },
-  { id: 3, type: 'new_follower', title: '新收藏', body: '心怡 收藏了你', actionUrl: '/app/profiles/3', isRead: false, createdAt: new Date(Date.now() - 30 * 60000).toISOString(), createdAtHuman: '30 分鐘前' },
-  { id: 4, type: 'date_invite', title: '約會邀請', body: '俊傑 向你發起見面邀請', actionUrl: '/app/dates', isRead: false, createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), createdAtHuman: '2 小時前' },
-  { id: 5, type: 'date_verified', title: 'QR 驗證成功', body: '見面驗證完成！誠信分數 +5', actionUrl: '/app/dates', isRead: true, createdAt: new Date(Date.now() - 5 * 3600000).toISOString(), createdAtHuman: '5 小時前' },
-  { id: 6, type: 'credit_changed', title: '誠信分數異動', body: '你的誠信分數增加了 5 分', actionUrl: '/app/settings', isRead: true, createdAt: new Date(Date.now() - 8 * 3600000).toISOString(), createdAtHuman: '8 小時前' },
-  { id: 7, type: 'subscription_expiry', title: '訂閱到期提醒', body: '你的會員將於 3 天後到期', actionUrl: '/app/shop', isRead: false, createdAt: new Date(Date.now() - 24 * 3600000).toISOString(), createdAtHuman: '1 天前' },
-  { id: 8, type: 'ticket_replied', title: '回報回覆', body: '你的回報 #REPORT-20260405 已有回覆', actionUrl: '/app/reports', isRead: true, createdAt: new Date(Date.now() - 48 * 3600000).toISOString(), createdAtHuman: '2 天前' },
-  { id: 9, type: 'verification_result', title: '驗證結果', body: '你的身份驗證已通過', actionUrl: '/app/settings/verify', isRead: true, createdAt: new Date(Date.now() - 72 * 3600000).toISOString(), createdAtHuman: '3 天前' },
-  { id: 10, type: 'new_message', title: '新訊息', body: '佳穎 傳了一則訊息給你', actionUrl: '/app/messages/4', isRead: true, createdAt: new Date(Date.now() - 96 * 3600000).toISOString(), createdAtHuman: '4 天前' },
-]
-
 onMounted(async () => {
   isLoading.value = true
-  await new Promise(r => setTimeout(r, 300))
-  notifications.value = [...MOCK_NOTIFICATIONS]
+  try {
+    const res = await client.get('/notifications')
+    const items = res.data?.data?.notifications ?? []
+    notifications.value = items.map((n: Record<string, unknown>) => ({
+      id: n.id, type: n.type, title: n.title, body: n.body,
+      isRead: !!n.is_read, createdAt: n.created_at as string,
+      createdAtHuman: n.created_at ? new Date(n.created_at as string).toLocaleString('zh-TW') : '',
+    }))
+  } catch {
+    notifications.value = []
+  }
   isLoading.value = false
 })
 

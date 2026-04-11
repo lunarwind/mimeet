@@ -14,6 +14,13 @@ createRoot(document.getElementById('root')!).render(
         token: {
           colorPrimary: '#F0294E',
           borderRadius: 8,
+          colorBorder: '#D1D5DB',
+        },
+        components: {
+          Checkbox: {
+            colorBorder: '#9CA3AF',
+            borderRadiusSM: 4,
+          },
         },
       }}
     >

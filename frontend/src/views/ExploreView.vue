@@ -66,7 +66,7 @@ let observer: IntersectionObserver | null = null
 onMounted(() => {
   observer = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting && hasMore.value && !isLoadingMore.value) {
+      if (entries[0]?.isIntersecting && hasMore.value && !isLoadingMore.value) {
         fetchMore()
       }
     },

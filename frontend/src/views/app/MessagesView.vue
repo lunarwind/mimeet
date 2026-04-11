@@ -17,9 +17,9 @@ const searchQuery = ref('')
 const swipedId = ref<number | null>(null)
 let touchStartX = 0
 
-function onTouchStart(e: TouchEvent) { touchStartX = e.touches[0].clientX }
+function onTouchStart(e: TouchEvent) { touchStartX = e.touches[0]?.clientX ?? 0 }
 function onTouchEnd(e: TouchEvent, id: number) {
-  const diff = touchStartX - e.changedTouches[0].clientX
+  const diff = touchStartX - (e.changedTouches[0]?.clientX ?? 0)
   swipedId.value = diff > 60 ? id : null
 }
 function closeSwiped() { swipedId.value = null }

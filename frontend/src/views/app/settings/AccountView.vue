@@ -11,8 +11,11 @@ const authStore = useAuthStore()
 const uiStore = useUiStore()
 const { isUploading, uploadAvatar, uploadPhoto, error: uploadError } = useImageUpload()
 
+<<<<<<< HEAD
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+=======
+>>>>>>> develop
 // ── 表單資料 ──────────────────────────────────────────────
 const form = ref({
   nickname: '',
@@ -48,24 +51,27 @@ onMounted(() => {
   loadProfile()
 })
 
-function loadProfile() {
-  if (USE_MOCK && authStore.user) {
-    const u = authStore.user
+async function loadProfile() {
+  try {
+    const res = await (await import('@/api/client')).default.get('/me/settings')
+    const p = res.data.data.profile
     form.value = {
-      nickname: u.nickname,
-      birthDate: '1998-03-15',
-      location: '台北市',
-      height: 170,
-      weight: 60,
-      job: '軟體工程師',
-      introduction: '喜歡旅遊和攝影，假日常常帶著相機到處走走。',
+      nickname: p.nickname ?? '',
+      birthDate: p.birth_date ?? '',
+      location: p.city ?? '',
+      height: p.height ?? null,
+      weight: p.weight ?? null,
+      job: p.job ?? '',
+      introduction: p.introduction ?? '',
     }
-    avatarUrl.value = u.avatar || `https://i.pravatar.cc/200?img=${u.id}`
-    photos.value = [
-      `https://picsum.photos/seed/p${u.id}a/400/400`,
-      `https://picsum.photos/seed/p${u.id}b/400/400`,
-    ]
+    avatarUrl.value = p.avatar_url ?? null
     isDirty.value = false
+  } catch {
+    // Fallback: use auth store data
+    if (authStore.user) {
+      form.value.nickname = authStore.user.nickname
+      avatarUrl.value = authStore.user.avatar
+    }
   }
 }
 
@@ -124,9 +130,7 @@ async function saveProfile() {
   if (!isDirty.value) return
   isSaving.value = true
   try {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 500))
-    }
+    await (await import('@/api/client')).default.patch('/me/profile', { data: form.value })
     uiStore.showToast('資料已更新', 'success')
     isDirty.value = false
   } catch {

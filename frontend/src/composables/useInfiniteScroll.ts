@@ -39,7 +39,10 @@ export function useInfiniteScroll<T>(options: UseInfiniteScrollOptions<T>) {
       hasMore.value = result.hasMore
     } catch (e) {
       error.value = '載入失敗，請稍後再試'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
     } finally {
       isLoading.value = false
     }
@@ -56,7 +59,10 @@ export function useInfiniteScroll<T>(options: UseInfiniteScrollOptions<T>) {
       currentPage.value = nextPage
       hasMore.value = result.hasMore
     } catch (e) {
+<<<<<<< HEAD
       // Error silently handled — user can retry
+=======
+>>>>>>> develop
     } finally {
       isLoadingMore.value = false
     }
