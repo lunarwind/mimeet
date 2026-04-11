@@ -22,7 +22,6 @@ function copyText() {
 }
 function recallMsg() {
   showMenu.value = false
-  // TODO: emit recall
 }
 
 function formatTime(iso: string): string {

@@ -33,7 +33,7 @@ export function useChat() {
 
   function tryConnect() {
     retryCount++
-    // TODO: real Socket.IO connection
+    // NOTE: real Socket.IO connection (Phase 2)
     // socket = io(...)
     // socket.on('connect', () => { isConnected.value = true; retryCount = 0 })
     // socket.on('disconnect', () => { isConnected.value = false; if (retryCount < 3) tryConnect() })

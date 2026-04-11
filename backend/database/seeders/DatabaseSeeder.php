@@ -8,23 +8,15 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(SubscriptionPlanSeeder::class);
+        $this->call([
+            SubscriptionPlanSeeder::class,
+            AdminUserSeeder::class,
+            AdminPermissionsSeeder::class,
+            MemberLevelPermissionsSeeder::class,
+            SystemSettingsSeeder::class,
+        ]);
 
-        // Create admin user
-        \App\Models\User::firstOrCreate(
-            ['email' => 'admin@mimeet.tw'],
-            [
-                'password' => bcrypt('password'),
-                'nickname' => '管理員',
-                'gender' => 'male',
-                'membership_level' => 3,
-                'credit_score' => 100,
-                'status' => 'active',
-                'email_verified' => true,
-            ],
-        );
-
-        // Create test users
+        // Create test users in local environment
         if (app()->environment('local')) {
             \App\Models\User::factory(10)->create();
         }
