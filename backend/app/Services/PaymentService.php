@@ -106,29 +106,10 @@ class PaymentService
         ], fn ($v) => $v !== null));
 
         if ($rtnCode === '1') {
-<<<<<<< HEAD
-            $this->activateSubscription($order, $tradeNo);
-
-            // After payment is confirmed successful, issue invoice
-            $invoiceResult = app(ECPayService::class)->issueInvoice([
-                'order_number' => $order->order_number,
-                'customer_email' => $order->user->email ?? '',
-                'amount' => $order->amount,
-                'item_name' => $order->plan_name ?? 'MiMeet訂閱服務',
-                'carrier_type' => $order->carrier_type ?? '',
-                'carrier_num' => $order->carrier_num ?? '',
-                'love_code' => $order->love_code ?? '',
-            ]);
-
-            if ($invoiceResult['success']) {
-                $order->update(['ecpay_invoice_no' => $invoiceResult['invoice_no']]);
-            }
-=======
             $this->activateSubscription($order);
 
             // Issue electronic invoice
             $this->issueInvoiceForOrder($order);
->>>>>>> develop
 
             return '1|OK';
         }

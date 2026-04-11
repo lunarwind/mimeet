@@ -2,19 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
-<<<<<<< HEAD
-  Space, Typography, Statistic, Row, Col, message, Image, Result, Select, Drawer, Form,
-} from 'antd'
-import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, LockOutlined, EditOutlined } from '@ant-design/icons'
-import { getMemberDetail, getMemberScoreRecords, getMemberSubscriptions } from '../../mocks/members'
-import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
-=======
   Space, Typography, Statistic, Row, Col, message, Image, Result, Select, Divider, Switch,
   Drawer, Form, DatePicker,
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail } from '../../types/admin'
->>>>>>> develop
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -32,35 +24,6 @@ export default function MemberDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const uid = Number(id)
-<<<<<<< HEAD
-
-  // State for API data with mock fallback
-  const [member, setMember] = useState(getMemberDetail(uid))
-  const [scoreRecords, setScoreRecords] = useState(getMemberScoreRecords(uid))
-  const [subscriptions, setSubscriptions] = useState(getMemberSubscriptions(uid))
-
-  useEffect(() => {
-    // Try real API first, fall back to mock data on failure
-    apiClient.get(`/admin/members/${uid}`)
-      .then((res) => {
-        if (res.data?.data) setMember(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get(`/admin/members/${uid}/score-records`)
-      .then((res) => {
-        if (res.data?.data?.records) setScoreRecords(res.data.data.records)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get(`/admin/members/${uid}/subscriptions`)
-      .then((res) => {
-        if (res.data?.data?.subscriptions) setSubscriptions(res.data.data.subscriptions)
-      })
-      .catch(() => { /* keep mock data */ })
-  }, [uid])
-=======
->>>>>>> develop
 
   const [member, setMember] = useState<MemberDetail | null>(null)
   const [scoreRecords] = useState<Record<string, unknown>[]>([])
@@ -69,23 +32,6 @@ export default function MemberDetailPage() {
   const [adjustValue, setAdjustValue] = useState<number>(0)
   const [adjustReason, setAdjustReason] = useState('')
 
-<<<<<<< HEAD
-  // S12-09 Permission Modal state
-  const [permModalOpen, setPermModalOpen] = useState(false)
-  const [permLevel, setPermLevel] = useState<number>(0)
-  const [permScore, setPermScore] = useState<number>(0)
-  const [permStatus, setPermStatus] = useState<string>('active')
-  const [permSaving, setPermSaving] = useState(false)
-
-  // S12-10 Edit Drawer state
-  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
-  const [editForm] = Form.useForm()
-  const [editSaving, setEditSaving] = useState(false)
-
-  const authUser = useAuthStore((s) => s.user)
-  const isSuperAdmin = authUser?.role === 'super_admin'
-
-=======
   // Permissions modal state
   const [permModalOpen, setPermModalOpen] = useState(false)
   const [permLevel, setPermLevel] = useState<number>(0)
@@ -114,7 +60,6 @@ export default function MemberDetailPage() {
   }, [uid])
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>載入中...</div>
->>>>>>> develop
   if (!member) {
     return <Result status="404" title="找不到此會員" extra={<Button onClick={() => navigate('/members')}>返回列表</Button>} />
   }
@@ -163,17 +108,6 @@ export default function MemberDetailPage() {
     })
   }
 
-<<<<<<< HEAD
-  // S12-09 Permission Modal handlers
-  const openPermModal = () => {
-    setPermLevel(member.membership_level ?? member.level)
-    setPermScore(member.credit_score)
-    setPermStatus(member.status)
-    setPermModalOpen(true)
-  }
-
-  const handlePermSave = async () => {
-=======
   function openPermModal() {
     if (!member) return
     setPermLevel(member.membership_level)
@@ -184,35 +118,12 @@ export default function MemberDetailPage() {
   }
 
   async function handlePermSave() {
->>>>>>> develop
     setPermSaving(true)
     try {
       await apiClient.patch(`/admin/members/${uid}/permissions`, {
         membership_level: permLevel,
         credit_score: permScore,
         status: permStatus,
-<<<<<<< HEAD
-      })
-      message.success('會員權限已更新')
-      setPermModalOpen(false)
-    } catch (err: any) {
-      message.error(err.response?.data?.message || '更新失敗')
-    } finally {
-      setPermSaving(false)
-    }
-  }
-
-  // S12-10 Edit Drawer handlers
-  const openEditDrawer = () => {
-    editForm.setFieldsValue({
-      nickname: member.nickname,
-      introduction: member.introduction,
-      location: member.location,
-      job: member.job,
-      education: member.education,
-      height: member.height,
-      weight: member.weight,
-=======
         reason: permReason || '管理員調整權限',
       })
       message.success('會員權限已更新')
@@ -236,26 +147,10 @@ export default function MemberDetailPage() {
       occupation: member.job,
       education: member.education,
       bio: member.introduction,
->>>>>>> develop
     })
     setEditDrawerOpen(true)
   }
 
-<<<<<<< HEAD
-  const handleEditSave = async () => {
-    try {
-      const values = await editForm.validateFields()
-      setEditSaving(true)
-      await apiClient.patch(`/admin/members/${uid}/profile`, values)
-      message.success('會員資料已更新')
-      setEditDrawerOpen(false)
-    } catch (err: any) {
-      if (err.errorFields) return // Form validation error
-      message.error(err.response?.data?.message || '更新失敗')
-    } finally {
-      setEditSaving(false)
-    }
-=======
   async function handleEditSave() {
     try {
       const values = await editForm.validateFields()
@@ -279,7 +174,6 @@ export default function MemberDetailPage() {
       message.error('更新失敗')
     }
     setEditSaving(false)
->>>>>>> develop
   }
 
   const scoreColumns = [
@@ -336,25 +230,6 @@ export default function MemberDetailPage() {
                           valueStyle={{ color: CreditLevelColor[creditLevel], fontSize: 36, fontWeight: 800 }}
                         />
                       </div>
-<<<<<<< HEAD
-                      <Space direction="vertical" style={{ marginTop: 16, width: '100%' }}>
-                        <Space style={{ width: '100%', justifyContent: 'center' }}>
-                          <Button onClick={() => setAdjustModalOpen(true)}>調整分數</Button>
-                          <Button danger={member.status !== 'suspended'} onClick={handleSuspend}>
-                            {member.status === 'suspended' ? '解除停權' : '停權'}
-                          </Button>
-                        </Space>
-                        <Space style={{ width: '100%', justifyContent: 'center' }}>
-                          <Button icon={<LockOutlined />} onClick={openPermModal}>
-                            權限調整
-                          </Button>
-                          {isSuperAdmin && (
-                            <Button icon={<EditOutlined />} onClick={openEditDrawer}>
-                              編輯資料
-                            </Button>
-                          )}
-                        </Space>
-=======
                       <Space style={{ marginTop: 16, width: '100%', justifyContent: 'center' }} wrap>
                         <Button onClick={() => setAdjustModalOpen(true)}>調整分數</Button>
                         <Button danger={member.status !== 'suspended'} onClick={handleSuspend}>
@@ -363,7 +238,6 @@ export default function MemberDetailPage() {
                         <Button icon={<SettingOutlined />} onClick={openPermModal}>
                           權限調整
                         </Button>
->>>>>>> develop
                       </Space>
                     </Card>
                   </Col>
@@ -450,7 +324,6 @@ export default function MemberDetailPage() {
         ]}
       />
 
-      {/* Adjust Score Modal (existing) */}
       <Modal
         title="調整誠信分數"
         open={adjustModalOpen}
@@ -471,30 +344,6 @@ export default function MemberDetailPage() {
         </div>
       </Modal>
 
-<<<<<<< HEAD
-      {/* S12-09 Permission Override Modal */}
-      <Modal
-        title="權限調整"
-        open={permModalOpen}
-        onOk={handlePermSave}
-        onCancel={() => setPermModalOpen(false)}
-        okText="確認修改"
-        confirmLoading={permSaving}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Text strong>會員等級</Text>
-          <Select
-            value={permLevel}
-            onChange={setPermLevel}
-            style={{ width: '100%', marginTop: 4 }}
-          >
-            <Select.Option value={0}>Lv0 - 基本（未驗證）</Select.Option>
-            <Select.Option value={1}>Lv1 - 基本會員</Select.Option>
-            <Select.Option value={2}>Lv2 - 進階驗證會員</Select.Option>
-            <Select.Option value={3}>Lv3 - 付費會員</Select.Option>
-          </Select>
-        </div>
-=======
       {/* Permissions Modal */}
       <Modal
         title={<Space><SettingOutlined />權限 / 狀態調整 — {member.nickname}</Space>}
@@ -520,86 +369,11 @@ export default function MemberDetailPage() {
           </Select>
         </div>
 
->>>>>>> develop
         <div style={{ marginBottom: 16 }}>
           <Text strong>誠信分數</Text>
           <InputNumber
             value={permScore}
             onChange={(v) => setPermScore(v ?? 0)}
-<<<<<<< HEAD
-            min={0}
-            max={100}
-            style={{ width: '100%', marginTop: 4 }}
-          />
-        </div>
-        <div>
-          <Text strong>帳號狀態</Text>
-          <Select
-            value={permStatus}
-            onChange={setPermStatus}
-            style={{ width: '100%', marginTop: 4 }}
-          >
-            <Select.Option value="active">正常</Select.Option>
-            <Select.Option value="suspended">停權</Select.Option>
-          </Select>
-        </div>
-      </Modal>
-
-      {/* S12-10 Edit Profile Drawer (super_admin only) */}
-      <Drawer
-        title="編輯會員資料"
-        placement="right"
-        width={480}
-        open={editDrawerOpen}
-        onClose={() => setEditDrawerOpen(false)}
-        extra={
-          <Space>
-            <Button onClick={() => setEditDrawerOpen(false)}>取消</Button>
-            <Button type="primary" onClick={handleEditSave} loading={editSaving}>
-              儲存
-            </Button>
-          </Space>
-        }
-      >
-        <Form form={editForm} layout="vertical">
-          <Form.Item
-            name="nickname"
-            label="暱稱"
-            rules={[
-              { required: true, message: '請輸入暱稱' },
-              { max: 20, message: '暱稱最多 20 字' },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="introduction"
-            label="簡介"
-            rules={[{ max: 500, message: '簡介最多 500 字' }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-          <Form.Item name="location" label="地區">
-            <Input />
-          </Form.Item>
-          <Form.Item name="job" label="職業">
-            <Input />
-          </Form.Item>
-          <Form.Item name="education" label="學歷">
-            <Select>
-              <Select.Option value="高中">高中</Select.Option>
-              <Select.Option value="專科">專科</Select.Option>
-              <Select.Option value="大學">大學</Select.Option>
-              <Select.Option value="碩士">碩士</Select.Option>
-              <Select.Option value="博士">博士</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="height" label="身高 (cm)">
-            <InputNumber min={100} max={250} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="weight" label="體重 (kg)">
-            <InputNumber min={30} max={200} style={{ width: '100%' }} />
-=======
             min={0} max={100}
             style={{ width: '100%', marginTop: 4 }}
             addonAfter="/ 100"
@@ -705,7 +479,6 @@ export default function MemberDetailPage() {
           </Row>
           <Form.Item name="bio" label="自我介紹">
             <Input.TextArea rows={4} maxLength={500} showCount />
->>>>>>> develop
           </Form.Item>
         </Form>
       </Drawer>

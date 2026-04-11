@@ -5,15 +5,6 @@
 import client from './client'
 import type { Conversation, Message } from '@/types/chat'
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-function delay(ms: number) {
-  return new Promise(r => setTimeout(r, ms))
-}
-
-=======
->>>>>>> develop
 // ── 取得聊天列表 ──────────────────────────────────────────
 export async function fetchConversations(): Promise<Conversation[]> {
   const res = await client.get<{ data: { chats: Conversation[] } }>('/chats')

@@ -15,29 +15,11 @@ class DateInvitationController extends Controller
     ) {}
 
     /**
-<<<<<<< HEAD
-     * POST /api/v1/date-invitations — create invitation (legacy endpoint)
-=======
      * POST /api/v1/date-invitations — create invitation (legacy route)
->>>>>>> develop
      */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-<<<<<<< HEAD
-            'invitee_id' => 'required|integer|exists:users,id',
-            'date_time' => 'required|date|after:now',
-            'location_name' => 'nullable|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-        ]);
-
-        $invitation = $this->dateService->createInvitation(
-            $request->user(),
-            $request->only(['invitee_id', 'date_time', 'location_name', 'latitude', 'longitude']),
-        );
-
-=======
             'data.invitee_id' => 'required|integer|exists:users,id',
             'data.scheduled_at' => 'required|date|after:now',
             'data.location' => 'nullable|string|max:255',
@@ -61,7 +43,6 @@ class DateInvitationController extends Controller
 
         $invitation->load(['inviter:id,nickname,avatar_url', 'invitee:id,nickname,avatar_url']);
 
->>>>>>> develop
         return response()->json([
             'success' => true,
             'code' => 201,
@@ -69,12 +50,6 @@ class DateInvitationController extends Controller
             'data' => [
                 'invitation' => [
                     'id' => $invitation->id,
-<<<<<<< HEAD
-                    'qr_token' => $invitation->qr_token,
-                    'status' => $invitation->status,
-                    'date_time' => $invitation->date_time->toISOString(),
-                    'expires_at' => $invitation->expires_at->toISOString(),
-=======
                     'inviter_id' => $invitation->inviter_id,
                     'invitee_id' => $invitation->invitee_id,
                     'scheduled_at' => $invitation->date_time->toISOString(),
@@ -84,7 +59,6 @@ class DateInvitationController extends Controller
                     'status' => $invitation->status,
                     'qr_code' => $invitation->qr_token,
                     'qr_expires_at' => $invitation->expires_at->toISOString(),
->>>>>>> develop
                     'created_at' => $invitation->created_at,
                 ],
             ],
@@ -97,14 +71,6 @@ class DateInvitationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
-<<<<<<< HEAD
-
-        $invitations = DateInvitation::where('inviter_id', $userId)
-            ->orWhere('invitee_id', $userId)
-            ->with(['inviter:id,nickname,avatar_url', 'invitee:id,nickname,avatar_url'])
-            ->orderByDesc('created_at')
-            ->get();
-=======
         $status = $request->query('status');
         $type = $request->query('type'); // sent | received
 
@@ -125,15 +91,11 @@ class DateInvitationController extends Controller
 
         $invitations = $query->orderByDesc('created_at')
             ->paginate($request->query('per_page', 20));
->>>>>>> develop
 
         return response()->json([
             'success' => true,
             'code' => 200,
             'message' => '約會邀請列表查詢成功',
-<<<<<<< HEAD
-            'data' => ['invitations' => $invitations],
-=======
             'data' => [
                 'invitations' => $invitations->map(fn ($inv) => [
                     'id' => $inv->id,
@@ -158,33 +120,20 @@ class DateInvitationController extends Controller
                 'per_page' => $invitations->perPage(),
                 'total' => $invitations->total(),
             ],
->>>>>>> develop
         ]);
     }
 
     /**
-<<<<<<< HEAD
-     * PATCH /api/v1/date-invitations/{id}/response — accept or decline
-=======
      * PATCH /api/v1/date-invitations/{id}/response — accept or reject
->>>>>>> develop
      */
     public function respond(Request $request, int $id): JsonResponse
     {
         $request->validate([
-<<<<<<< HEAD
-            'data.response' => 'required|in:accepted,rejected',
-        ]);
-
-        $inv = DateInvitation::findOrFail($id);
-        $response = $request->input('data.response', 'accepted');
-=======
             'data.response' => 'required|string|in:accepted,rejected',
         ]);
 
         $inv = DateInvitation::findOrFail($id);
         $response = $request->input('data.response');
->>>>>>> develop
 
         try {
             if ($response === 'accepted') {
@@ -205,54 +154,6 @@ class DateInvitationController extends Controller
             'success' => true,
             'code' => 200,
             'message' => '約會邀請回應成功',
-<<<<<<< HEAD
-            'data' => ['invitation' => ['id' => $inv->id, 'status' => $inv->status]],
-        ]);
-    }
-
-    /**
-     * POST /api/v1/date-invitations/verify — QR scan verification
-     */
-    public function verify(Request $request): JsonResponse
-    {
-        $request->validate([
-            'token' => 'required|string',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
-        ]);
-
-        try {
-            $result = $this->dateService->verifyQrToken(
-                $request->input('token') ?? $request->input('data.qr_code'),
-                $request->user(),
-                $request->input('latitude') ? (float) $request->input('latitude') : null,
-                $request->input('longitude') ? (float) $request->input('longitude') : null,
-            );
-        } catch (\Exception $e) {
-            $errorMap = [
-                'TOKEN_NOT_FOUND' => 404,
-                'TOKEN_EXPIRED' => 422,
-                'TOKEN_ALREADY_USED' => 422,
-                'TOKEN_CANCELLED' => 422,
-                'NOT_PARTICIPANT' => 403,
-            ];
-            $httpCode = $errorMap[$e->getMessage()] ?? 400;
-
-            return response()->json([
-                'success' => false,
-                'error' => [
-                    'code' => $e->getMessage(),
-                    'message' => $e->getMessage(),
-                ],
-            ], $httpCode);
-        }
-
-        return response()->json([
-            'success' => true,
-            'code' => 200,
-            'message' => '約會驗證成功',
-            'data' => $result,
-=======
             'data' => [
                 'invitation' => [
                     'id' => $inv->id,
@@ -260,7 +161,6 @@ class DateInvitationController extends Controller
                     'responded_at' => now()->toISOString(),
                 ],
             ],
->>>>>>> develop
         ]);
     }
 

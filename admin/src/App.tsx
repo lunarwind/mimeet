@@ -13,14 +13,7 @@ import UserActivityLogsPage from './pages/logs/UserActivityLogsPage'
 import ChatLogsPage from './pages/chat-logs/ChatLogsPage'
 import VerificationsPage from './pages/verifications/VerificationsPage'
 import BroadcastsPage from './pages/broadcasts/BroadcastsPage'
-<<<<<<< HEAD
-import AdminUsersPage from './pages/settings/AdminUsersPage'
-import LevelPermissionsPage from './pages/settings/LevelPermissionsPage'
-=======
->>>>>>> develop
 import { useAuthStore } from './stores/authStore'
-const SeoPage = lazy(() => import('./pages/seo/SeoPage'))
-const AnnouncementsPage = lazy(() => import('./pages/announcements/AnnouncementsPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
@@ -46,21 +39,12 @@ export default function App() {
         <Route path="members/:id" element={<MemberDetailPage />} />
         <Route path="tickets" element={<TicketsPage />} />
         <Route path="payments" element={<PaymentsPage />} />
-        <Route path="verifications" element={<VerificationsPage />} />
-        <Route path="broadcasts" element={<BroadcastsPage />} />
         <Route path="settings/system" element={<SystemSettingsPage />} />
-        <Route path="settings/admins" element={<AdminUsersPage />} />
-        <Route path="settings/level-permissions" element={<LevelPermissionsPage />} />
         <Route path="chat-logs" element={<ChatLogsPage />} />
         <Route path="verifications" element={<VerificationsPage />} />
         <Route path="broadcasts" element={<BroadcastsPage />} />
         <Route path="logs" element={<ActivityLogsPage />} />
-<<<<<<< HEAD
-        <Route path="seo" element={<Suspense fallback={<div>Loading...</div>}><SeoPage /></Suspense>} />
-        <Route path="announcements" element={<Suspense fallback={<div>Loading...</div>}><AnnouncementsPage /></Suspense>} />
-=======
         <Route path="user-activity-logs" element={<UserActivityLogsPage />} />
->>>>>>> develop
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

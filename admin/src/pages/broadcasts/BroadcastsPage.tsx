@@ -1,60 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-<<<<<<< HEAD
-import { Table, Button, Modal, Input, Tag, message, Space, Card, Typography, Radio, Select, Form } from 'antd'
-import { PlusOutlined, SendOutlined } from '@ant-design/icons'
-=======
 import {
   Table, Tag, Button, Drawer, Space, Typography, Input, Select, message,
   Form, Radio, Collapse, InputNumber, Modal,
 } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
->>>>>>> develop
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
 
-<<<<<<< HEAD
-interface Broadcast {
-  id: number
-  title: string
-  content: string
-  delivery_mode: 'push' | 'in_app' | 'both'
-  target_gender: 'all' | 'male' | 'female'
-  status: 'draft' | 'sent' | 'scheduled'
-  sent_count: number
-  created_at: string
-}
-
-const MOCK_BROADCASTS: Broadcast[] = Array.from({ length: 8 }, (_, i) => ({
-  id: 200 + i,
-  title: `廣播活動 ${i + 1}`,
-  content: `這是廣播內容 ${i + 1}，包含一些通知訊息。`,
-  delivery_mode: (['push', 'in_app', 'both'] as const)[i % 3],
-  target_gender: (['all', 'male', 'female'] as const)[i % 3],
-  status: i < 3 ? 'draft' : 'sent',
-  sent_count: i < 3 ? 0 : 500 + i * 100,
-  created_at: dayjs().subtract(i, 'day').toISOString(),
-}))
-
-const DELIVERY_LABELS: Record<string, string> = {
-  push: '推播通知',
-  in_app: '站內通知',
-  both: '推播 + 站內',
-}
-
-const GENDER_LABELS: Record<string, string> = {
-  all: '全部',
-  male: '僅男性',
-  female: '僅女性',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'default',
-  sent: 'green',
-  scheduled: 'blue',
-=======
 const MODE_LABELS: Record<string, string> = {
   notification: '系統通知',
   dm: '私訊',
@@ -64,153 +19,10 @@ const MODE_COLORS: Record<string, string> = {
   notification: 'blue',
   dm: 'purple',
   both: 'cyan',
->>>>>>> develop
 }
 
 const STATUS_LABELS: Record<string, string> = {
   draft: '草稿',
-<<<<<<< HEAD
-  sent: '已發送',
-  scheduled: '排程中',
-}
-
-export default function BroadcastsPage() {
-  const [data, setData] = useState<Broadcast[]>([])
-  const [loading, setLoading] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [sendLoading, setSendLoading] = useState(false)
-  const [form] = Form.useForm()
-
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await apiClient.get('/admin/broadcasts')
-      setData(res.data.data ?? res.data)
-    } catch {
-      setData(MOCK_BROADCASTS)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  const handleCreate = async () => {
-    try {
-      const values = await form.validateFields()
-      try {
-        const res = await apiClient.post('/admin/broadcasts', values)
-        const newItem = res.data.data ?? {
-          id: Date.now(),
-          ...values,
-          status: 'draft',
-          sent_count: 0,
-          created_at: new Date().toISOString(),
-        }
-        setData((prev) => [newItem, ...prev])
-        message.success('廣播已建立')
-      } catch {
-        const newItem: Broadcast = {
-          id: Date.now(),
-          ...values,
-          status: 'draft',
-          sent_count: 0,
-          created_at: new Date().toISOString(),
-        }
-        setData((prev) => [newItem, ...prev])
-        message.success('廣播已建立（模擬）')
-      }
-      setModalOpen(false)
-      form.resetFields()
-    } catch {
-      // form validation failed
-    }
-  }
-
-  const handleSend = async (id: number) => {
-    setSendLoading(true)
-    try {
-      await apiClient.post(`/admin/broadcasts/${id}/send`)
-      message.success('廣播已發送')
-      setData((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: 'sent' as const, sent_count: 999 } : b))
-      )
-    } catch {
-      message.success('廣播已發送（模擬）')
-      setData((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: 'sent' as const, sent_count: 999 } : b))
-      )
-    } finally {
-      setSendLoading(false)
-    }
-  }
-
-  const columns = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
-      title: '標題',
-      dataIndex: 'title',
-      key: 'title',
-    },
-    {
-      title: '發送方式',
-      dataIndex: 'delivery_mode',
-      key: 'delivery_mode',
-      width: 130,
-      render: (v: string) => DELIVERY_LABELS[v] || v,
-    },
-    {
-      title: '目標性別',
-      dataIndex: 'target_gender',
-      key: 'target_gender',
-      width: 100,
-      render: (v: string) => GENDER_LABELS[v] || v,
-    },
-    {
-      title: '狀態',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (v: string) => <Tag color={STATUS_COLORS[v]}>{STATUS_LABELS[v]}</Tag>,
-    },
-    {
-      title: '發送數',
-      dataIndex: 'sent_count',
-      key: 'sent_count',
-      width: 100,
-      render: (v: number) => (v > 0 ? v.toLocaleString() : <Text type="secondary">-</Text>),
-    },
-    {
-      title: '建立時間',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 180,
-      render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 120,
-      render: (_: unknown, r: Broadcast) =>
-        r.status === 'draft' ? (
-          <Button
-            type="primary"
-            size="small"
-            icon={<SendOutlined />}
-            loading={sendLoading}
-            onClick={() => handleSend(r.id)}
-          >
-            發送
-          </Button>
-        ) : null,
-=======
   sending: '發送中',
   completed: '已完成',
   failed: '失敗',
@@ -386,67 +198,11 @@ export default function BroadcastsPage() {
           )}
         </Space>
       ),
->>>>>>> develop
     },
   ]
 
   return (
     <div>
-<<<<<<< HEAD
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={4} style={{ margin: 0 }}>廣播工具</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
-          新增廣播
-        </Button>
-      </div>
-
-      <Card>
-        <Table
-          dataSource={data}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `共 ${t} 筆` }}
-          size="middle"
-        />
-      </Card>
-
-      <Modal
-        title="新增廣播"
-        open={modalOpen}
-        onOk={handleCreate}
-        onCancel={() => {
-          setModalOpen(false)
-          form.resetFields()
-        }}
-        okText="建立"
-        cancelText="取消"
-        width={520}
-      >
-        <Form form={form} layout="vertical" initialValues={{ delivery_mode: 'both', target_gender: 'all' }}>
-          <Form.Item name="title" label="標題" rules={[{ required: true, message: '請輸入標題' }]}>
-            <Input placeholder="廣播標題" />
-          </Form.Item>
-          <Form.Item name="content" label="內容" rules={[{ required: true, message: '請輸入內容' }]}>
-            <TextArea rows={4} placeholder="廣播內容..." />
-          </Form.Item>
-          <Form.Item name="delivery_mode" label="發送方式">
-            <Radio.Group>
-              <Radio value="push">推播通知</Radio>
-              <Radio value="in_app">站內通知</Radio>
-              <Radio value="both">推播 + 站內</Radio>
-            </Radio.Group>
-          </Form.Item>
-          <Form.Item name="target_gender" label="目標性別">
-            <Select>
-              <Select.Option value="all">全部</Select.Option>
-              <Select.Option value="male">僅男性</Select.Option>
-              <Select.Option value="female">僅女性</Select.Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
-=======
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>廣播管理</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增廣播</Button>
@@ -525,7 +281,6 @@ export default function BroadcastsPage() {
           )}
         </Form>
       </Drawer>
->>>>>>> develop
     </div>
   )
 }

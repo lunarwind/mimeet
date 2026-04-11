@@ -12,18 +12,9 @@ import {
   DashboardOutlined,
   AuditOutlined,
   MessageOutlined,
-<<<<<<< HEAD
-  SearchOutlined,
-  NotificationOutlined,
-  SafetyCertificateOutlined,
-  SoundOutlined,
-  UserSwitchOutlined,
-  LockOutlined,
-=======
   SafetyCertificateOutlined,
   NotificationOutlined,
   HistoryOutlined,
->>>>>>> develop
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import type { AdminRole } from '../types/admin'
@@ -45,18 +36,9 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'chat-logs', icon: <MessageOutlined />, label: '聊天記錄', path: '/chat-logs', roles: ['super_admin', 'admin'] },
   { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/tickets', roles: ['super_admin', 'admin', 'cs'] },
   { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/payments', roles: ['super_admin', 'admin'] },
-<<<<<<< HEAD
-  { key: 'seo', icon: <SearchOutlined />, label: 'SEO 管理', path: '/seo', roles: ['super_admin', 'admin'] },
-  { key: 'announcements', icon: <NotificationOutlined />, label: '系統公告', path: '/announcements', roles: ['super_admin', 'admin'] },
-  { key: 'verifications', icon: <SafetyCertificateOutlined />, label: '驗證審核', path: '/verifications', roles: ['super_admin', 'admin'] },
-  { key: 'broadcasts', icon: <SoundOutlined />, label: '廣播工具', path: '/broadcasts', roles: ['super_admin', 'admin'] },
-=======
   { key: 'verifications', icon: <SafetyCertificateOutlined />, label: '驗證審核', path: '/verifications', roles: ['super_admin', 'admin'] },
   { key: 'broadcasts', icon: <NotificationOutlined />, label: '廣播訊息', path: '/broadcasts', roles: ['super_admin', 'admin'] },
->>>>>>> develop
   { key: 'settings', icon: <SettingOutlined />, label: '系統設定', path: '/settings/system', roles: ['super_admin'] },
-  { key: 'admins', icon: <UserSwitchOutlined />, label: '管理員帳號', path: '/settings/admins', roles: ['super_admin'] },
-  { key: 'level-perms', icon: <LockOutlined />, label: '等級權限', path: '/settings/level-permissions', roles: ['super_admin'] },
   { key: 'logs', icon: <AuditOutlined />, label: '操作日誌', path: '/logs', roles: ['super_admin'] },
   { key: 'user-activity', icon: <HistoryOutlined />, label: '用戶活動日誌', path: '/user-activity-logs', roles: ['super_admin'] },
 ]

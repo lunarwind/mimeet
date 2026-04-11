@@ -59,15 +59,5 @@ client.interceptors.response.use(
   },
 )
 
-<<<<<<< HEAD
-// Only enable mock adapter if explicitly requested via VITE_USE_MOCK=true
-if (import.meta.env.VITE_USE_MOCK === 'true') {
-  import('@/mocks/mockAdapter').then(({ setupMockAdapter }) => {
-    setupMockAdapter(client)
-  })
-}
-
-=======
 export { client as apiClient }
->>>>>>> develop
 export default client

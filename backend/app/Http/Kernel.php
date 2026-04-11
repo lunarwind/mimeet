@@ -62,15 +62,9 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'membership' => \App\Http\Middleware\RequireMembership::class,
-<<<<<<< HEAD
-        'admin.perm' => \App\Http\Middleware\AdminPermissionMiddleware::class,
-        'admin.log' => \App\Http\Middleware\LogAdminOperation::class,
-        'admin.user' => \App\Http\Middleware\EnsureAdminUser::class,
-=======
         'check.super_admin' => \App\Http\Middleware\CheckSuperAdmin::class,
         'admin.permission' => \App\Http\Middleware\CheckAdminPermission::class,
         'admin.log' => \App\Http\Middleware\LogAdminOperation::class,
         'admin.auth' => \App\Http\Middleware\EnsureAdminUser::class,
->>>>>>> develop
     ];
 }

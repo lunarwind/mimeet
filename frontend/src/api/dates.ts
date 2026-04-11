@@ -5,13 +5,6 @@
 import client from './client'
 import type { DateInvitation } from '@/types/chat'
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-function delay(ms: number) { return new Promise(r => setTimeout(r, ms)) }
-
-=======
->>>>>>> develop
 export async function fetchDates(): Promise<DateInvitation[]> {
   const res = await client.get<{ data: { invitations: DateInvitation[] } }>('/date-invitations')
   return res.data.data.invitations

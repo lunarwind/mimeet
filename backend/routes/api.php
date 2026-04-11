@@ -16,19 +16,6 @@ use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
-<<<<<<< HEAD
-use App\Http\Controllers\Admin\SystemControlController;
-use App\Http\Controllers\Admin\MailController;
-use App\Http\Controllers\Admin\SmsController;
-use App\Http\Controllers\Admin\SubscriptionSettingsController;
-use App\Http\Controllers\Admin\SeoController;
-use App\Http\Controllers\Admin\AnnouncementController;
-use App\Http\Controllers\Admin\MemberLevelPermissionController;
-use App\Http\Controllers\Admin\VerificationController;
-use App\Http\Controllers\Admin\BroadcastController;
-use App\Http\Controllers\Admin\AdminLogController;
-use App\Http\Controllers\Admin\AdminUserController;
-=======
 use App\Http\Controllers\Api\V1\Admin\SystemControlController;
 use App\Http\Controllers\Api\V1\Admin\DatasetController;
 use App\Http\Controllers\Api\V1\Admin\MemberLevelPermissionController;
@@ -39,19 +26,12 @@ use App\Http\Controllers\Api\V1\Admin\AdminCrudController;
 use App\Http\Controllers\Api\V1\VerificationPhotoController;
 use App\Http\Controllers\Api\V1\Admin\ECPaySettingController;
 use App\Http\Controllers\Api\V1\Admin\UserActivityLogController;
->>>>>>> develop
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 */
-
-// ─── Signed Media URL (outside versioned prefix) ─────────────
-Route::get('/media/{path}', [UserController::class, 'serveMedia'])
-    ->where('path', '.*')
-    ->name('media.serve')
-    ->middleware('signed');
 
 Route::prefix('api/v1')->group(function () {
 
@@ -91,14 +71,6 @@ Route::prefix('api/v1')->group(function () {
     // ─── Me (authenticated) — blocked users ──────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me/blocked-users', [UserController::class, 'blockedUsers']);
-
-        // Verification (S11-21) - user-facing
-        Route::prefix('me/verification')->group(function () {
-            Route::get('/status', [UserController::class, 'verificationStatus']);
-            Route::get('/photo-code', [UserController::class, 'verificationPhotoCode']);
-            Route::post('/apply', [UserController::class, 'verificationApply']);
-            Route::post('/photo', [UserController::class, 'verificationApply']); // alias for frontend VerifyView.vue
-        });
     });
 
     // ─── Subscriptions (authenticated) ───────────────────────────────
@@ -190,9 +162,6 @@ Route::prefix('api/v1')->group(function () {
         Route::patch('notifications/{id}/read', [NotificationController::class, 'markRead']);
     });
 
-    // ─── SEO redirect (public, no auth) (S10) ─────────────────────────
-    Route::get('/go/{slug}', [SeoController::class, 'redirect']);
-
     // ─── Admin ───────────────────────────────────────────────────────
     Route::prefix('admin')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:5,1');
@@ -201,13 +170,8 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/members', [AdminController::class, 'members']);
             Route::get('/members/{id}', [AdminController::class, 'memberDetail']);
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction']);
-<<<<<<< HEAD
-            Route::patch('/members/{id}/permissions', [AdminController::class, 'updateMemberPermissions']);
-            Route::patch('/members/{id}/profile', [AdminController::class, 'updateMemberProfile']);
-=======
             Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions']);
             Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile']);
->>>>>>> develop
             Route::get('/tickets', [AdminController::class, 'tickets']);
             Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket']);
             Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
@@ -215,8 +179,6 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/payments', [AdminController::class, 'payments']);
             Route::get('/settings', [AdminController::class, 'getSettings']);
             Route::patch('/settings', [AdminController::class, 'updateSettings']);
-            Route::get('/settings/ecpay', [AdminController::class, 'getEcpaySettings']);
-            Route::patch('/settings/ecpay', [AdminController::class, 'updateEcpaySettings']);
 
             // Chat logs (admin only)
             Route::get('/chat-logs/search', [ChatLogController::class, 'search']);
@@ -224,79 +186,17 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
             Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
 
-<<<<<<< HEAD
-            // Password confirmation (S9)
-            Route::post('/auth/confirm-password', [AdminController::class, 'confirmPassword']);
-
-            // System Control (S9)
-            Route::get('/system/status', [SystemControlController::class, 'status']);
-            Route::post('/system/mode', [SystemControlController::class, 'setMode']);
-            Route::post('/system/cache-clear', [SystemControlController::class, 'cacheClear']);
-
-            // Mail settings (S9)
-            Route::get('/settings/mail', [MailController::class, 'show']);
-            Route::patch('/settings/mail', [MailController::class, 'update']);
-            Route::post('/settings/mail/test', [MailController::class, 'test']);
-
-            // SMS settings (S9)
-            Route::get('/settings/sms', [SmsController::class, 'show']);
-            Route::patch('/settings/sms', [SmsController::class, 'update']);
-            Route::post('/settings/sms/test', [SmsController::class, 'test']);
-
-            // Subscription settings (S10)
-            Route::get('/settings/subscription-plans', [SubscriptionSettingsController::class, 'plans']);
-            Route::patch('/settings/subscription-plans/{id}', [SubscriptionSettingsController::class, 'updatePlan']);
-            Route::get('/settings/discounts', [SubscriptionSettingsController::class, 'discounts']);
-            Route::post('/settings/discounts', [SubscriptionSettingsController::class, 'storeDiscount']);
-            Route::patch('/settings/discounts/{id}', [SubscriptionSettingsController::class, 'updateDiscount']);
-
-            // SEO (S10)
-            Route::get('/seo/meta', [SeoController::class, 'metaIndex']);
-            Route::patch('/seo/meta/{id}', [SeoController::class, 'metaUpdate']);
-            Route::get('/seo/links', [SeoController::class, 'linkIndex']);
-            Route::post('/seo/links', [SeoController::class, 'linkStore']);
-            Route::patch('/seo/links/{id}', [SeoController::class, 'linkUpdate']);
-            Route::delete('/seo/links/{id}', [SeoController::class, 'linkDestroy']);
-            Route::get('/seo/links/{id}/stats', [SeoController::class, 'linkStats']);
-
-            // Announcements (S10)
-            Route::get('/announcements', [AnnouncementController::class, 'index']);
-            Route::post('/announcements', [AnnouncementController::class, 'store']);
-            Route::patch('/announcements/{id}', [AnnouncementController::class, 'update']);
-            Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
-
-            // Level permissions (S11)
-            Route::get('/level-permissions', [MemberLevelPermissionController::class, 'index']);
-            Route::patch('/level-permissions', [MemberLevelPermissionController::class, 'update']);
-
-            // Verifications (S11)
-            Route::get('/verifications/pending', [VerificationController::class, 'pending']);
-            Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
-
-            // Broadcasts (S11)
-=======
             // Verification review (Sprint 11)
             Route::get('/verifications', [VerificationController::class, 'index']);
             Route::get('/verifications/pending', [VerificationController::class, 'pending']);
             Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
 
             // Broadcasts (Sprint 11)
->>>>>>> develop
             Route::get('/broadcasts', [BroadcastController::class, 'index']);
             Route::post('/broadcasts', [BroadcastController::class, 'store']);
             Route::get('/broadcasts/{id}', [BroadcastController::class, 'show']);
             Route::post('/broadcasts/{id}/send', [BroadcastController::class, 'send']);
 
-<<<<<<< HEAD
-            // Admin operation logs (S11)
-            Route::get('/logs', [AdminLogController::class, 'index']);
-
-            // Admin user management (S11)
-            Route::get('/settings/admins', [AdminUserController::class, 'index']);
-            Route::post('/settings/admins', [AdminUserController::class, 'store']);
-            Route::patch('/settings/admins/{id}/role', [AdminUserController::class, 'updateRole']);
-            Route::delete('/settings/admins/{id}', [AdminUserController::class, 'destroy']);
-=======
             // Operation logs (Sprint 11)
             Route::get('/logs', [AdminLogController::class, 'index']);
 
@@ -338,7 +238,6 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('ecpay', [ECPaySettingController::class, 'index']);
                 Route::post('ecpay', [ECPaySettingController::class, 'update']);
             });
->>>>>>> develop
         });
     });
 

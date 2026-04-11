@@ -4,26 +4,18 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\SmsService;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
         $request->validate([
-<<<<<<< HEAD
-            'email' => 'required|email',
-=======
             'email' => 'required|email|unique:users,email',
->>>>>>> develop
             'password' => ['required', 'string', 'min:8', 'regex:/[a-zA-Z]/', 'regex:/[0-9]/'],
             'nickname' => 'required|string|max:20',
             'gender' => 'required|in:male,female',
@@ -117,65 +109,22 @@ class AuthController extends Controller
     public function verifyPhoneSend(Request $request): JsonResponse
     {
         $request->validate(['phone' => 'required|string']);
-        $phone = preg_replace('/[\s\-]/', '', $request->phone);
-
-        // Cooldown: 60 seconds between OTP sends
-        $cooldownKey = "otp:cooldown:{$phone}";
-        if (Cache::has($cooldownKey)) {
-            return response()->json([
-                'success' => false, 'code' => 429, 'message' => '請稍候再試，60 秒內只能發送一次驗證碼。',
-            ], 429);
-        }
-
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Store OTP in cache (10 minutes)
-        Cache::put("otp:phone:{$phone}", $code, 600);
-        Cache::put($cooldownKey, true, 60);
-
-        // Send via SmsService
-        $smsService = app(SmsService::class);
-        $sent = $smsService->sendOtp($phone, $code);
-
-        Log::info("[OTP] Phone verification for {$phone}: " . ($sent ? 'sent' : 'failed'));
+        // TODO: use SmsService to send real OTP
+        Log::info("[OTP] Phone verification code for {$request->phone}: {$code}");
 
         return response()->json([
             'success' => true, 'code' => 'PHONE_CODE_SENT', 'message' => '驗證碼已發送。',
-            'data' => ['expires_in' => 600],
+            'data' => ['expires_in' => 300],
         ]);
     }
 
     public function verifyPhoneConfirm(Request $request): JsonResponse
     {
         $request->validate(['phone' => 'required|string', 'code' => 'required|string|size:6']);
-        $phone = preg_replace('/[\s\-]/', '', $request->phone);
+        // TODO: verify against stored OTP code
 
-        // Check failure count (max 5 attempts, lock 30 min)
-        $failKey = "otp:fail:{$phone}";
-        $failures = (int) Cache::get($failKey, 0);
-        if ($failures >= 5) {
-            return response()->json([
-                'success' => false, 'code' => 429, 'message' => '驗證失敗次數過多，請 30 分鐘後再試。',
-            ], 429);
-        }
-
-        $storedCode = Cache::get("otp:phone:{$phone}");
-        if (!$storedCode || $storedCode !== $request->code) {
-            Cache::put($failKey, $failures + 1, 1800); // Lock for 30 min
-            return response()->json([
-                'success' => false, 'code' => 422, 'message' => '驗證碼不正確或已過期。',
-            ], 422);
-        }
-
-        // Success — clear OTP and failure count
-        Cache::forget("otp:phone:{$phone}");
-        Cache::forget($failKey);
-
-        // Update user phone
-        $user = $request->user();
-        $user->update(['phone' => $phone, 'phone_verified' => true]);
-
-        UserActivityLogService::logPhoneChange($user->id, $request);
+        UserActivityLogService::logPhoneChange($request->user()->id, $request);
 
         return response()->json(['success' => true, 'code' => 'PHONE_VERIFIED', 'message' => '手機驗證成功。']);
     }
@@ -183,65 +132,14 @@ class AuthController extends Controller
     public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
-
-        // Always return success to prevent email enumeration
-        $user = User::where('email', $request->email)->first();
-        if ($user) {
-            $token = Str::random(64);
-            DB::table('password_reset_tokens')->updateOrInsert(
-                ['email' => $request->email],
-                ['token' => Hash::make($token), 'created_at' => now()]
-            );
-
-            // In production: send email with reset link
-            // For now: log the token (email sending requires mail config)
-            $resetUrl = env('FRONTEND_URL', 'http://localhost:5173') . "/#/reset-password?token={$token}&email=" . urlencode($request->email);
-            Log::info("[Password Reset] URL for {$request->email}: {$resetUrl}");
-        }
-
+        // TODO: send password reset email
         return response()->json(['success' => true, 'code' => 'RESET_LINK_SENT', 'message' => '若此信箱已註冊，密碼重設連結已寄出。']);
     }
 
     public function resetPassword(Request $request): JsonResponse
     {
-        $request->validate([
-            'token' => 'required|string',
-            'email' => 'required|email',
-<<<<<<< HEAD
-            'password' => ['required', 'string', 'min:8', 'regex:/[a-zA-Z]/', 'regex:/[0-9]/', 'confirmed'],
-=======
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
->>>>>>> develop
-        ]);
-
-        $record = DB::table('password_reset_tokens')->where('email', $request->email)->first();
-        if (!$record || !Hash::check($request->token, $record->token)) {
-            return response()->json([
-                'success' => false, 'code' => 422, 'message' => '重設連結無效或已過期。',
-            ], 422);
-        }
-
-        // Check expiry (60 minutes)
-        if (now()->diffInMinutes($record->created_at) > 60) {
-            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
-            return response()->json([
-                'success' => false, 'code' => 422, 'message' => '重設連結已過期，請重新申請。',
-            ], 422);
-        }
-
-        $user = User::where('email', $request->email)->first();
-        if (!$user) {
-            return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此帳號。'], 404);
-        }
-
-        $user->update(['password' => Hash::make($request->password)]);
-
-        // Revoke all existing tokens (force re-login)
-        $user->tokens()->delete();
-
-        // Clean up reset token
-        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
-
+        $request->validate(['token' => 'required|string', 'email' => 'required|email', 'password' => 'required|string|min:8|confirmed']);
+        // TODO: verify reset token and update password
         return response()->json(['success' => true, 'code' => 'PASSWORD_RESET', 'message' => '密碼已重設，請重新登入。']);
     }
 }

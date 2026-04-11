@@ -5,11 +5,6 @@
  */
 import client from './client'
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-=======
->>>>>>> develop
 export interface AppealPayload {
   reason: string
   evidence?: string

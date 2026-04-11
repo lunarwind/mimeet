@@ -9,11 +9,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-=======
->>>>>>> develop
 const understood = ref(false)
 const deleteText = ref('')
 const showConfirmModal = ref(false)

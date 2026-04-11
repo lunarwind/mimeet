@@ -6,11 +6,6 @@
 import { ref } from 'vue'
 import client from '@/api/client'
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-=======
->>>>>>> develop
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -102,10 +97,6 @@ export function useImageUpload() {
       }
     } catch (e) {
       error.value = '上傳失敗，請稍後再試'
-<<<<<<< HEAD
-      // Error handled via error ref
-=======
->>>>>>> develop
       return null
     } finally {
       isUploading.value = false

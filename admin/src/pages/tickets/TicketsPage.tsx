@@ -1,16 +1,7 @@
-<<<<<<< HEAD
-import { useState, useMemo, useEffect } from 'react'
-import { Tabs, Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Image, Select, message } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
-import apiClient from '../../api/client'
-import { MOCK_TICKETS } from '../../mocks/members'
-import type { Ticket } from '../../types/admin'
-=======
 import { useState, useEffect } from 'react'
 import { Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
->>>>>>> develop
 import dayjs from 'dayjs'
 
 const { Title } = Typography
@@ -37,39 +28,10 @@ export default function TicketsPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-<<<<<<< HEAD
-  const [replyText, setReplyText] = useState('')
-  const [newStatus, setNewStatus] = useState<number | null>(null)
-  const [typeFilter, setTypeFilter] = useState<string>('all')
-  const [tickets, setTickets] = useState<Ticket[]>(MOCK_TICKETS)
-
-  useEffect(() => {
-    // Try real API first, fall back to mock data on failure
-    apiClient.get('/admin/tickets', { params: { per_page: 100 } })
-      .then((res) => {
-        if (res.data?.data?.tickets && res.data.data.tickets.length > 0) {
-          setTickets(res.data.data.tickets)
-        }
-      })
-      .catch(() => { /* keep mock data */ })
-  }, [])
-
-  const filtered = useMemo(() => {
-    let data = tickets.filter((t) => String(t.status) === activeTab)
-    if (search) {
-      data = data.filter((t) => t.ticket_number.includes(search) || t.title.includes(search))
-    }
-    if (typeFilter !== 'all') {
-      data = data.filter((t) => String(t.type) === typeFilter || t.type_label === typeFilter)
-    }
-    return data
-  }, [activeTab, search, typeFilter])
-=======
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
 
   useEffect(() => { fetchTickets() }, [page, statusFilter, typeFilter])
->>>>>>> develop
 
   async function fetchTickets() {
     setLoading(true)
@@ -115,15 +77,6 @@ export default function TicketsPage() {
     },
   ]
 
-<<<<<<< HEAD
-  const tabCounts = {
-    '1': tickets.filter((t) => t.status === 1).length,
-    '2': tickets.filter((t) => t.status === 2).length,
-    '3': tickets.filter((t) => t.status === 3).length,
-  }
-
-=======
->>>>>>> develop
   return (
     <div>
       <Title level={4} style={{ marginBottom: 16 }}>Ticket 回報管理</Title>

@@ -10,17 +10,6 @@ import {
 } from '@ant-design/icons'
 import * as echarts from 'echarts'
 import apiClient from '../../api/client'
-<<<<<<< HEAD
-import {
-  mockSummary,
-  mockLevelDistribution,
-  mockRegistrationChart,
-  mockHourlyChart,
-  mockRecentTickets,
-  mockRecentPayments,
-} from '../../mocks/dashboard'
-=======
->>>>>>> develop
 
 const { Title, Text } = Typography
 
@@ -64,69 +53,6 @@ export default function DashboardPage() {
     level_distribution: [], recent_tickets: [], recent_payments: [],
   })
 
-<<<<<<< HEAD
-  // State for API data with mock fallback
-  const [summary, setSummary] = useState(mockSummary)
-  const [levelDist, setLevelDist] = useState(mockLevelDistribution)
-  const [regChart, setRegChart] = useState(mockRegistrationChart)
-  const [hourlyChart, setHourlyChart] = useState(mockHourlyChart)
-  const [recentTickets, setRecentTickets] = useState(mockRecentTickets)
-  const [recentPayments, setRecentPayments] = useState(mockRecentPayments)
-
-  useEffect(() => {
-    // Try real API first, fall back to mock data on failure
-    apiClient.get('/admin/stats/summary')
-      .then((res) => {
-        if (res.data?.data) setSummary(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/stats/level-distribution')
-      .then((res) => {
-        if (res.data?.data) setLevelDist(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/stats/chart?type=registrations&granularity=daily')
-      .then((res) => {
-        if (res.data?.data) setRegChart(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/stats/chart?type=registrations&granularity=hourly')
-      .then((res) => {
-        if (res.data?.data) setHourlyChart(res.data.data)
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/tickets?status=1&per_page=5')
-      .then((res) => {
-        if (res.data?.data?.tickets) {
-          setRecentTickets(res.data.data.tickets.map((t: Record<string, unknown>) => ({
-            id: t.ticket_number || t.id,
-            type: t.type_label || t.type,
-            time: t.created_at,
-          })))
-        }
-      })
-      .catch(() => { /* keep mock data */ })
-
-    apiClient.get('/admin/payments?per_page=5&sort_by=paid_at_desc')
-      .then((res) => {
-        if (res.data?.data?.payments) {
-          setRecentPayments(res.data.data.payments.map((p: Record<string, unknown>) => ({
-            user: (p.user as Record<string, unknown>)?.nickname || 'Unknown',
-            plan: p.plan,
-            amount: p.amount,
-            time: p.paid_at,
-          })))
-        }
-      })
-      .catch(() => { /* keep mock data */ })
-  }, [])
-
-  const chartData = chartMode === '近 30 天（按天）' ? regChart : hourlyChart
-=======
   useEffect(() => {
     loadDashboardData()
   }, [])
@@ -185,7 +111,6 @@ export default function DashboardPage() {
 
   // Empty chart data when DB is clean
   const emptyChart = { labels: [] as string[], male: [] as number[], female: [] as number[] }
->>>>>>> develop
 
   const lineOption: echarts.EChartsOption = {
     tooltip: { trigger: 'axis' },
@@ -205,13 +130,8 @@ export default function DashboardPage() {
       right: 10,
       top: 'center',
       formatter: (name: string) => {
-<<<<<<< HEAD
-        const item = levelDist.find((d) => d.name === name)
-        return `${name}  ${item?.value ?? ''}`
-=======
         const item = stats.level_distribution.find((d) => d.name === name)
         return `${name}  ${item?.value ?? 0}`
->>>>>>> develop
       },
     },
     series: [
@@ -219,11 +139,7 @@ export default function DashboardPage() {
         type: 'pie',
         radius: ['45%', '70%'],
         center: ['35%', '50%'],
-<<<<<<< HEAD
-        data: levelDist,
-=======
         data: stats.level_distribution,
->>>>>>> develop
         label: { show: false },
       },
     ],
@@ -237,67 +153,29 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]}>
         <Col span={6}>
           <Card>
-<<<<<<< HEAD
-            <Statistic
-              title="今日新增會員"
-              value={summary.today_new_members}
-              prefix={<UserOutlined />}
-              suffix={<TrendSuffix pct={summary.today_new_members_pct} />}
-            />
-=======
             <Statistic title="會員總數" value={stats.total_members} prefix={<UserOutlined />} />
->>>>>>> develop
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-<<<<<<< HEAD
-            <Statistic
-              title="本月收入"
-              value={`NT$ ${summary.month_revenue.toLocaleString()}`}
-              prefix={<DollarOutlined />}
-              suffix={<TrendSuffix pct={summary.month_revenue_pct} />}
-            />
-=======
             <Statistic title="付款總額" value={`NT$ ${stats.month_revenue.toLocaleString()}`} prefix={<DollarOutlined />} />
->>>>>>> develop
           </Card>
         </Col>
         <Col span={6}>
           <Card>
-<<<<<<< HEAD
-            <Statistic
-              title="付費會員數"
-              value={summary.paid_members_total}
-              prefix={<CrownOutlined />}
-              suffix={<TrendSuffix pct={summary.paid_members_pct} />}
-            />
-=======
             <Statistic title="付費會員數" value={stats.paid_members} prefix={<CrownOutlined />} />
->>>>>>> develop
           </Card>
         </Col>
         <Col span={6}>
           <Card>
             <Statistic
               title="待處理 Ticket"
-<<<<<<< HEAD
-              value={summary.pending_tickets}
-              prefix={<FileExclamationOutlined />}
-              valueStyle={summary.pending_tickets > 10 ? { color: '#F0294E' } : undefined}
-              suffix={
-                summary.pending_tickets > 10 ? (
-                  <Badge dot>
-                    <WarningOutlined style={{ color: '#F0294E' }} />
-                  </Badge>
-=======
               value={stats.pending_tickets}
               prefix={<FileExclamationOutlined />}
               valueStyle={stats.pending_tickets > 10 ? { color: '#F0294E' } : undefined}
               suffix={
                 stats.pending_tickets > 10 ? (
                   <Badge dot><WarningOutlined style={{ color: '#F0294E' }} /></Badge>
->>>>>>> develop
                 ) : null
               }
             />
@@ -335,16 +213,6 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={12}>
           <Card title="最新 Ticket" extra={<a onClick={() => navigate('/tickets')}>查看全部</a>}>
-<<<<<<< HEAD
-            <List
-              dataSource={recentTickets}
-              renderItem={(item) => (
-                <List.Item>
-                  <Tag color="orange">{item.type}</Tag> {item.id} <Text type="secondary">{item.time}</Text>
-                </List.Item>
-              )}
-            />
-=======
             {stats.recent_tickets.length === 0 ? (
               <Text type="secondary">目前無回報案件</Text>
             ) : (
@@ -357,22 +225,10 @@ export default function DashboardPage() {
                 )}
               />
             )}
->>>>>>> develop
           </Card>
         </Col>
         <Col span={12}>
           <Card title="最新付款" extra={<a onClick={() => navigate('/payments')}>查看全部</a>}>
-<<<<<<< HEAD
-            <List
-              dataSource={recentPayments}
-              renderItem={(item) => (
-                <List.Item>
-                  {item.user} <Tag color="blue">{item.plan}</Tag> <Text strong>NT${item.amount}</Text>{' '}
-                  <Text type="secondary">{item.time}</Text>
-                </List.Item>
-              )}
-            />
-=======
             {stats.recent_payments.length === 0 ? (
               <Text type="secondary">目前無支付記錄</Text>
             ) : (
@@ -386,7 +242,6 @@ export default function DashboardPage() {
                 )}
               />
             )}
->>>>>>> develop
           </Card>
         </Col>
       </Row>

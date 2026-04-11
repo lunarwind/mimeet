@@ -11,10 +11,6 @@ onMounted(async () => {
   try {
     reports.value = await fetchReportHistory()
   } catch {
-<<<<<<< HEAD
-    // Error silently handled — empty state shown
-=======
->>>>>>> develop
   } finally {
     isLoading.value = false
   }

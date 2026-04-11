@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import {
-  Tabs, Table, Button, Modal, Form, Input, Switch, Tag, Space, Typography, message, Popconfirm, Card, Statistic, Row, Col,
+  Tabs, Table, Button, Modal, Form, Input, Tag, Space, Typography, message, Popconfirm, Card, Statistic, Row, Col,
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, BarChartOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 interface MetaTag {
   id: number

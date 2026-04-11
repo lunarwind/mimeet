@@ -45,10 +45,6 @@ class GdprService
         Log::info("[GDPR] User #{$user->id} cancelled deletion request");
     }
 
-    /**
-     * Phase 1: Anonymize PII and quarantine media files.
-     * Media files are moved to the quarantine disk rather than deleted immediately.
-     */
     public function anonymizeUser(User $user): void
     {
         if ($user->status === 'deleted') {
@@ -57,19 +53,11 @@ class GdprService
 
         $email = $user->email;
 
-        // Move user media files to quarantine before anonymizing
-        $this->quarantineUserMedia($user);
-
         DB::transaction(function () use ($user) {
-<<<<<<< HEAD
-            // Use DB::table to bypass fillable protection for admin-only fields
-            DB::table('users')->where('id', $user->id)->update([
-=======
             // Quarantine user's uploaded files before anonymizing
             $this->quarantineUserFiles($user);
 
             $user->forceFill([
->>>>>>> develop
                 'email' => "deleted_{$user->id}@removed.mimeet",
                 'phone' => null,
                 'nickname' => '已刪除用戶',
@@ -89,78 +77,6 @@ class GdprService
         Log::info("[GDPR] User #{$user->id} anonymized (original email: {$email})");
     }
 
-<<<<<<< HEAD
-    /**
-     * Move user media files to quarantine disk for deferred deletion.
-     */
-    private function quarantineUserMedia(User $user): void
-    {
-        $sourceDisk = Storage::disk('private');
-        $quarantineDisk = Storage::disk('quarantine');
-        $userMediaPath = "users/{$user->id}";
-
-        if (!$sourceDisk->exists($userMediaPath)) {
-            Log::info("[GDPR] No media files found for user #{$user->id}");
-            return;
-        }
-
-        $files = $sourceDisk->allFiles($userMediaPath);
-        $quarantineBase = "user_{$user->id}/" . now()->format('Ymd_His');
-
-        foreach ($files as $file) {
-            try {
-                $contents = $sourceDisk->get($file);
-                $quarantineDisk->put("{$quarantineBase}/{$file}", $contents);
-                $sourceDisk->delete($file);
-            } catch (\Exception $e) {
-                Log::warning("[GDPR] Failed to quarantine file {$file} for user #{$user->id}: {$e->getMessage()}");
-            }
-        }
-
-        Log::info("[GDPR] Quarantined " . count($files) . " media files for user #{$user->id}");
-    }
-
-    /**
-     * Phase 2: Delete quarantined files that are older than 30 days.
-     * Called by a scheduled command.
-     */
-    public function purgeExpiredQuarantineFiles(): int
-    {
-        $quarantineDisk = Storage::disk('quarantine');
-        $cutoff = now()->subDays(30);
-        $deletedCount = 0;
-
-        $directories = $quarantineDisk->directories();
-        foreach ($directories as $userDir) {
-            $timestampDirs = $quarantineDisk->directories($userDir);
-            foreach ($timestampDirs as $timestampDir) {
-                // Extract timestamp from directory name (format: Ymd_His)
-                $dirName = basename($timestampDir);
-                try {
-                    $dirDate = \Carbon\Carbon::createFromFormat('Ymd_His', $dirName);
-                } catch (\Exception $e) {
-                    continue;
-                }
-
-                if ($dirDate && $dirDate->lt($cutoff)) {
-                    $files = $quarantineDisk->allFiles($timestampDir);
-                    foreach ($files as $file) {
-                        $quarantineDisk->delete($file);
-                        $deletedCount++;
-                    }
-                    $quarantineDisk->deleteDirectory($timestampDir);
-                    Log::info("[GDPR] Purged quarantine directory: {$timestampDir}");
-                }
-            }
-
-            // Clean up empty user directories
-            if (empty($quarantineDisk->allFiles($userDir))) {
-                $quarantineDisk->deleteDirectory($userDir);
-            }
-        }
-
-        return $deletedCount;
-=======
     // ═════════════════════════════════════════════════════════════════
     //  Quarantine — move files instead of deleting immediately
     // ═════════════════════════════════════════════════════════════════
@@ -265,6 +181,5 @@ class GdprService
     public function purgeOldActivityLogs(int $days): int
     {
         return UserActivityLog::where('created_at', '<=', now()->subDays($days))->delete();
->>>>>>> develop
     }
 }

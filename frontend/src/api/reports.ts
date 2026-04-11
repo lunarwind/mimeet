@@ -5,15 +5,6 @@
  */
 import client from './client'
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-=======
->>>>>>> develop
 export interface CreateReportPayload {
   type: number
   reportedUserId?: number

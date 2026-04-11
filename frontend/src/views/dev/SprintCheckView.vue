@@ -869,78 +869,6 @@ const groups: CheckGroup[] = [
       { id: 's13-ws-3', label: 'presence channel 回傳資料僅含 id + nickname' },
     ],
   },
-  // ═══════════════════════════════════════════════════════════
-  //  Sprint 12 — 金流升級 + 認證隔離 + 資料治理
-  // ═══════════════════════════════════════════════════════════
-  {
-    title: 'S12 ECPay 金流升級',
-    items: [
-      { id: 's12-ec-1', label: 'ECPay 金鑰從 SystemSetting DB 讀取（非 .env 硬編碼）' },
-      { id: 's12-ec-2', label: '電子發票 API 串接（POST einvoice.ecpay.com.tw/B2CInvoice/Issue）' },
-      { id: 's12-ec-3', label: '訂單含 ecpay_trade_no / invoice_no / ecpay_payment_date 欄位' },
-      { id: 's12-ec-4', label: '後台 ECPay Tab 可切換 sandbox/production' },
-      { id: 's12-ec-5', label: '後台支付紀錄顯示綠界交易序號 + 發票號碼' },
-    ],
-  },
-  {
-    title: 'S12 Multi-Guard 認證隔離',
-    items: [
-      { id: 's12-mg-1', label: 'admin_users 資料表存在（獨立於 users）' },
-      { id: 's12-mg-2', label: 'AdminUser model 含 HasApiTokens trait' },
-      { id: 's12-mg-3', label: 'EnsureAdminUser middleware 驗證 tokenable_type' },
-      { id: 's12-mg-4', label: '前台 Token 無法存取 /admin/* API（回傳 401）' },
-      { id: 's12-mg-5', label: '後台 Token 無法存取 /users/me API（回傳 401）' },
-    ],
-  },
-  {
-    title: 'S12 會員權限 + 資料治理',
-    items: [
-      { id: 's12-dt-1', label: 'PATCH /admin/members/{id}/permissions 可調整等級/分數/狀態' },
-      { id: 's12-dt-2', label: 'PATCH /admin/members/{id}/profile super_admin 可編輯用戶資料' },
-      { id: 's12-dt-3', label: 'UserActivityLog 記錄登入/修改資料/上傳照片事件' },
-      { id: 's12-dt-4', label: 'data_retention_days 設定存在且可在後台調整' },
-      { id: 's12-dt-5', label: 'ProcessGdprDeletions 排程讀取 data_retention_days' },
-    ],
-  },
-  // ═══════════════════════════════════════════════════════════
-  //  Sprint 14 — 資安實作
-  // ═══════════════════════════════════════════════════════════
-  {
-    title: 'S14 Rate Limiting + Token',
-    items: [
-      { id: 's14-rl-1', label: '前台登入 throttle:5,1（5次/分鐘）' },
-      { id: 's14-rl-2', label: '後台登入 throttle:5,1' },
-      { id: 's14-rl-3', label: 'OTP 發送/驗證 throttle:5,1' },
-      { id: 's14-rl-4', label: 'Users API throttle:60,1' },
-      { id: 's14-rl-5', label: 'Sanctum Token 24h 過期（config/sanctum.php expiration: 1440）' },
-    ],
-  },
-  {
-    title: 'S14 安全防護',
-    items: [
-      { id: 's14-sec-1', label: 'SecurityHeaders middleware 全域套用（X-Frame-Options: DENY）' },
-      { id: 's14-sec-2', label: 'Response 含 X-Content-Type-Options: nosniff' },
-      { id: 's14-sec-3', label: 'Response 含 Referrer-Policy header' },
-      { id: 's14-sec-4', label: 'phone 欄位 encrypted cast（User model）' },
-      { id: 's14-sec-5', label: '密碼要求英數混合 min:8（註冊 API）' },
-      { id: 's14-sec-6', label: 'User $fillable 不含 credit_score/status/membership_level' },
-      { id: 's14-sec-7', label: '上傳檔案 magic bytes 驗證（finfo_file）' },
-    ],
-  },
-  // ═══════════════════════════════════════════════════════════
-  //  Sprint 15 — MVP 系統改善（規劃中）
-  // ═══════════════════════════════════════════════════════════
-  {
-    title: 'S15 效能與上線準備',
-    items: [
-      { id: 's15-perf-1', label: 'API p95 response time < 300ms' },
-      { id: 's15-perf-2', label: '前台首頁 LCP < 2s' },
-      { id: 's15-perf-3', label: 'N+1 Query 已修復（eager loading）' },
-      { id: 's15-perf-4', label: 'Redis 快取策略完善' },
-      { id: 's15-perf-5', label: '壓力測試 1000 concurrent 通過' },
-      { id: 's15-perf-6', label: '上線 checklist 全部完成' },
-    ],
-  },
 ]
 
 const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0)
@@ -999,11 +927,7 @@ function groupPassCount(group: CheckGroup): number {
     <!-- Header -->
     <header class="check-header">
       <div class="check-header__left">
-<<<<<<< HEAD
-        <h1 class="check-header__title">Sprint 3-8 檢核清單（驗證完成）</h1>
-=======
-        <h1 class="check-header__title">Sprint 3–15 檢核清單</h1>
->>>>>>> develop
+        <h1 class="check-header__title">Sprint 3–13 檢核清單</h1>
         <p class="check-header__sub">點擊圓圈切換：未測 → 通過 → 失敗</p>
       </div>
       <div class="check-header__right">

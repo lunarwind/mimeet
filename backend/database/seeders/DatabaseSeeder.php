@@ -8,19 +8,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-<<<<<<< HEAD
-        $this->call([
-            SubscriptionPlanSeeder::class,
-            AdminUserSeeder::class,
-            AdminPermissionsSeeder::class,
-            MemberLevelPermissionsSeeder::class,
-            SystemSettingsSeeder::class,
-        ]);
-
-        // Create test users in local environment
-        if (app()->environment('local')) {
-            \App\Models\User::factory(10)->create();
-=======
         // System data (all environments)
         $this->call(SubscriptionPlanSeeder::class);
         $this->call(MemberLevelPermissionsSeeder::class);
@@ -40,7 +27,6 @@ class DatabaseSeeder extends Seeder
         // Test data (local/staging only)
         if (app()->environment(['local', 'staging'])) {
             $this->call(TestDataSeeder::class);
->>>>>>> develop
         }
     }
 }

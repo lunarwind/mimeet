@@ -1,16 +1,7 @@
-<<<<<<< HEAD
-import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar } from 'antd'
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
-import apiClient from '../../api/client'
-import { MOCK_MEMBERS } from '../../mocks/members'
-=======
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar } from 'antd'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
->>>>>>> develop
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -35,45 +26,10 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-<<<<<<< HEAD
-  const [members, setMembers] = useState<MemberListItem[]>(MOCK_MEMBERS)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    // Try real API first, fall back to mock data on failure
-    setLoading(true)
-    apiClient.get('/admin/members', { params: { per_page: 100 } })
-      .then((res) => {
-        if (res.data?.data?.members && res.data.data.members.length > 0) {
-          setMembers(res.data.data.members)
-        }
-      })
-      .catch(() => { /* keep mock data */ })
-      .finally(() => setLoading(false))
-  }, [])
-
-  const filtered = useMemo(() => {
-    let data = [...members]
-    if (search) {
-      const q = search.toLowerCase()
-      data = data.filter((m) => m.nickname.includes(q) || m.email.toLowerCase().includes(q))
-    }
-    if (genderFilter !== 'all') data = data.filter((m) => m.gender === genderFilter)
-    if (levelFilter !== null) data = data.filter((m) => m.level === levelFilter)
-    if (creditFilter !== 'all') {
-      const ranges: Record<string, [number, number]> = { top: [91, 100], good: [61, 90], normal: [31, 60], low: [0, 30] }
-      const [min, max] = ranges[creditFilter] || [0, 100]
-      data = data.filter((m) => m.credit_score >= min && m.credit_score <= max)
-    }
-    if (statusFilter !== 'all') data = data.filter((m) => m.status === statusFilter)
-    return data
-  }, [search, genderFilter, levelFilter, creditFilter, statusFilter, members])
-=======
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
 
   useEffect(() => { fetchMembers() }, [page, statusFilter])
->>>>>>> develop
 
   async function fetchMembers() {
     setLoading(true)
@@ -165,15 +121,9 @@ export default function MembersPage() {
       <Table
         dataSource={members}
         columns={columns}
-<<<<<<< HEAD
-        rowKey="uid"
-        loading={loading}
-        pagination={{ pageSize: 20, showTotal: (total) => `共 ${total} 筆` }}
-=======
         rowKey="id"
         loading={loading}
         pagination={{ current: page, pageSize: 20, total, onChange: setPage, showTotal: (t) => `共 ${t} 筆` }}
->>>>>>> develop
         size="middle"
         locale={{ emptyText: '目前無會員資料' }}
       />

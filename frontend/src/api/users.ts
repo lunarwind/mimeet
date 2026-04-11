@@ -6,11 +6,6 @@
 import client from './client'
 import type { ExploreUser, SearchUsersResponse } from '@/types/explore'
 
-<<<<<<< HEAD
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-=======
->>>>>>> develop
 // ── 用戶個人資料型別 ──────────────────────────────────────
 export interface UserProfileData {
   id: number

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -19,16 +18,9 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     /**
-<<<<<<< HEAD
-     * User-editable fields only. Admin-only fields (credit_score, status,
-     * membership_level) are intentionally excluded to prevent mass-assignment
-     * attacks. Backend services that need to update these fields should use
-     * DB::table('users')->where(...)->update([...]) or $user->forceFill([...]).
-=======
      * User-editable fields only.
      * Admin-only fields (credit_score, status, membership_level) are managed
      * via CreditScoreService::adjust() and explicit $user->update() in admin controllers.
->>>>>>> develop
      */
     protected $fillable = [
         'email',
@@ -87,14 +79,6 @@ class User extends Authenticatable
         'password' => 'hashed',
         'phone' => 'encrypted',
     ];
-
-    protected function phone(): Attribute
-    {
-        return Attribute::make(
-            get: fn($value) => $value ? decrypt($value) : null,
-            set: fn($value) => $value ? encrypt($value) : null,
-        );
-    }
 
     public function getPrivacySettingsAttribute($value): array
     {

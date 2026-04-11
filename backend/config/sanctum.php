@@ -26,11 +26,7 @@ return [
     |--------------------------------------------------------------------------
     */
 
-<<<<<<< HEAD
-    'expiration' => env('SANCTUM_TOKEN_EXPIRATION', 1440), // 24 hours for users
-=======
     'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION', 1440), // 24h for users, admin tokens managed separately
->>>>>>> develop
 
     /*
     |--------------------------------------------------------------------------
