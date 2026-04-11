@@ -1338,6 +1338,12 @@ ws.onopen = function() {
 ### 5.1 約會邀請管理
 
 #### 5.1.1 創建約會邀請
+
+> **觸發場景（v1.3 更新）：**
+> 1. 聊天頁 QR icon（原有）
+> 2. 個人資料頁「📅 邀請約會」按鈕（v1.3 新增，自動建立對話後開啟 Bottom Sheet）
+> 兩個入口共用此 API，payload 格式相同。從個人資料頁發起時，latitude/longitude 傳 null。
+
 ```http
 POST /api/v1/date-invitations
 Authorization: Bearer {access_token}
@@ -1466,45 +1472,52 @@ per_page: 20
 
 #### 5.2.1 QR碼掃描驗證
 ```http
-POST /api/v1/date-invitations/verify
+POST /api/v1/dates/verify
 Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
 
+> **實作版本（v1.3 更新）**：前端掃碼後自動取得 GPS 座標（`navigator.geolocation`），
+> 若用戶拒絕授權則 latitude/longitude 傳 null，後端仍接受但 GPS 驗證不通過（得 +2 而非 +5）。
+
 **請求參數：**
 ```json
 {
-  "data": {
-    "qr_code": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-    "location_lat": 25.0341,
-    "location_lng": 121.5646,
-    "verification_photo": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAA..."
-  }
+  "token": "64字元hex QR token",
+  "latitude": 25.0341,
+  "longitude": 121.5646
 }
 ```
 
-**成功回應 (200)：**
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `token` | 是 | QR code 掃碼取得的 token（`bin2hex(random_bytes(32))`） |
+| `latitude` | 否 | GPS 緯度（`navigator.geolocation` 取得，拒絕授權時傳 null） |
+| `longitude` | 否 | GPS 經度 |
+
+**成功回應 — 雙方都已掃碼 (200)：**
 ```json
 {
   "success": true,
   "code": 200,
-  "message": "約會驗證成功",
+  "message": "驗證處理完成",
   "data": {
-    "verification": {
-      "invitation_id": 123,
-      "user_id": 123,
-      "checkin_time": "2024-12-25T19:05:00Z",
-      "location_lat": 25.0341,
-      "location_lng": 121.5646,
-      "distance_from_target": 15.5,
-      "is_valid": true,
-      "credit_score_awarded": 5
-    },
-    "invitation_status": {
-      "both_checked_in": true,
-      "status": "completed",
-      "completed_at": "2024-12-25T19:05:00Z"
-    }
+    "status": "completed",
+    "score_awarded": 5,
+    "gps_passed": true
+  }
+}
+```
+
+**成功回應 — 僅一方掃碼 (200)：**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "驗證處理完成",
+  "data": {
+    "status": "waiting",
+    "message": "等待對方掃碼"
   }
 }
 ```

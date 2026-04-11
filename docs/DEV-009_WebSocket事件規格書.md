@@ -35,7 +35,7 @@
 | 項目 | 選型 | 版本 |
 |------|------|------|
 | WS Server | Laravel Reverb | 1.x |
-| 前端 WS 客戶端 | Laravel Echo + socket.io-client | Echo 1.x + Socket.IO 4.x |
+| 前端 WS 客戶端 | socket.io-client（直接使用，未安裝 Laravel Echo） | 4.x |
 | 廣播驅動 | Reverb（取代 Pusher） | — |
 | 前端認證 | Sanctum Cookie（SPA 模式） | — |
 
