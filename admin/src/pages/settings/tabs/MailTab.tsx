@@ -43,8 +43,10 @@ export default function MailTab() {
     try {
       await apiClient.patch('/admin/settings/mail', form.getFieldsValue())
       message.success('Email 設定已更新')
-    } catch {
-      message.error('儲存失敗')
+    } catch (err: unknown) {
+      const resp = (err as { response?: { data?: { message?: string; error?: { message?: string } } } })?.response?.data
+      const msg = resp?.error?.message || resp?.message || '儲存失敗'
+      message.error(typeof msg === 'string' ? msg : '儲存失敗，請稍後再試')
     }
     setSaveLoading(false)
   }

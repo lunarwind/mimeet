@@ -127,7 +127,7 @@ class SystemControlController extends Controller
             config(['mail.mailers.smtp.password' => $request->password]);
         }
 
-        Log::info("[SystemControl] Mail settings updated by admin #{$admin->id}");
+        try { Log::info("[SystemControl] Mail settings updated by admin #{$admin->id}"); } catch (\Throwable) {}
 
         return response()->json(['success' => true, 'data' => ['message' => 'Email 設定已更新']]);
     }
