@@ -13,7 +13,7 @@ class FcmService
             return true;
         }
 
-        // TODO: 生產環境 FCM HTTP v1 API
+        // NOTE: 生產環境需實作 FCM HTTP v1 API
         // $serverKey = config('services.fcm.server_key');
         return false;
     }
