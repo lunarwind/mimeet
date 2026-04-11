@@ -149,20 +149,27 @@ class SystemControlController extends Controller
         $passEnc = SystemSetting::get('mail.password_encrypted', '');
         $pass = $passEnc ? (function () use ($passEnc) { try { return Crypt::decryptString($passEnc); } catch (\Throwable) { return $passEnc; } })() : config('mail.mailers.smtp.password');
 
+        $encryption = ($enc === 'null' || $enc === 'none' || !$enc) ? null : $enc;
+
         config([
+            'mail.default' => 'smtp',
+            'mail.mailers.smtp.transport' => 'smtp',
             'mail.mailers.smtp.host' => $host,
             'mail.mailers.smtp.port' => $port,
-            'mail.mailers.smtp.encryption' => $enc === 'null' ? null : $enc,
+            'mail.mailers.smtp.encryption' => $encryption,
             'mail.mailers.smtp.username' => $user,
             'mail.mailers.smtp.password' => $pass,
             'mail.from.address' => $from,
             'mail.from.name' => $fromName,
         ]);
 
+        // Purge cached mailer so it picks up new config
+        Mail::purge('smtp');
+
         $debug[] = '[' . now()->format('H:i:s') . '] 開始 SMTP 測試';
         $debug[] = "  Host       : {$host}";
         $debug[] = "  Port       : {$port}";
-        $debug[] = '  Encryption : ' . ($enc ?: 'none');
+        $debug[] = '  Encryption : ' . ($encryption ?: 'none');
         $debug[] = "  Username   : {$user}";
         $debug[] = "  From       : {$from}";
         $debug[] = '  To         : ' . $request->test_email;
