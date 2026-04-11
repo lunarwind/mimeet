@@ -17,9 +17,11 @@
 ### 1-1. Clone 與安裝
 
 ```bash
-# Clone 專案
+# Clone 專案（私有 repo，需先設定 SSH key 或 Personal Access Token）
 mkdir -p /var/www/mimeet && cd /var/www/mimeet
-git clone https://github.com/lunarwind/mimeet.git .
+git clone git@github.com:lunarwind/mimeet.git .
+# 若無 SSH key，可用 HTTPS + PAT：
+# git clone https://<GITHUB_USER>:<TOKEN>@github.com/lunarwind/mimeet.git .
 
 # 後端
 cd backend
