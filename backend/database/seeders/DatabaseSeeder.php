@@ -24,8 +24,8 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        // Test data (local/staging only)
-        if (app()->environment(['local', 'staging'])) {
+        // Test data (local only — requires fakerphp/faker dev dependency)
+        if (app()->environment('local')) {
             $this->call(TestDataSeeder::class);
         }
     }
