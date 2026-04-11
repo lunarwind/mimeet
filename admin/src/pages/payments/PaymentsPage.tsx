@@ -69,7 +69,7 @@ export default function PaymentsPage() {
     {
       title: '', key: 'actions', width: 50, fixed: 'right' as const,
       render: (_: unknown, r: Payment) => (
-        <EyeOutlined style={{ cursor: 'pointer', color: '#1677ff' }} onClick={() => setDetailRecord(r)} title="查看詳情" />
+        <EyeOutlined style={{ cursor: 'pointer', color: '#F0294E' }} onClick={() => setDetailRecord(r)} title="查看詳情" />
       ),
     },
   ]

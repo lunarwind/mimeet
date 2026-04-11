@@ -420,7 +420,7 @@ const features = [
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #6EF09A;
+  background: #10B981;
   animation: pulse-dot 2s ease-in-out infinite;
 }
 @keyframes pulse-dot {

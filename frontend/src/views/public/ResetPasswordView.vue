@@ -332,7 +332,7 @@ function goForgot() { router.push('/forgot-password') }
 .btn-main:hover:not(:disabled) { background: var(--pd); transform: translateY(-1px); }
 .btn-main:disabled { opacity: 0.75; cursor: not-allowed; }
 .btn-green { background: #10B981; box-shadow: 0 4px 14px rgba(16,185,129,0.28); }
-.btn-green:hover:not(:disabled) { background: #059669; }
+.btn-green:hover:not(:disabled) { background: #10B981; }
 .spinner-wrap { display: flex; align-items: center; gap: 8px; }
 .spinner { animation: spin 0.9s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
