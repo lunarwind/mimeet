@@ -20,7 +20,7 @@
 
 連線：
 ```bash
-ssh root@YOUR_IP
+ssh root@YOUR_SERVER_IP
 ```
 
 ---
@@ -62,7 +62,7 @@ apt install -y nginx mysql-server redis-server git supervisor ufw
 
 ### 防火牆
 ```bash
-ufw allow OpenSSH && ufw allow 80 && ufw allow 3000 && ufw allow 3001 && ufw allow 8080
+ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw allow 8080
 ufw --force enable
 ```
 
@@ -109,9 +109,9 @@ nano .env
 ```env
 APP_ENV=staging
 APP_DEBUG=true
-APP_URL=http://YOUR_IP
+APP_URL=http://api.mimeet.lunarwind.org
 DB_PASSWORD=YOUR_DB_PASSWORD
-SANCTUM_STATEFUL_DOMAINS=YOUR_IP,YOUR_IP:3000,YOUR_IP:3001
+SANCTUM_STATEFUL_DOMAINS=mimeet.lunarwind.org,admin.mimeet.lunarwind.org,api.mimeet.lunarwind.org
 MAIL_MAILER=log
 SMS_PROVIDER=disabled
 ```
@@ -131,7 +131,7 @@ php artisan config:cache && php artisan route:cache
 ```bash
 cd /var/www/mimeet/frontend
 cat > .env << EOF
-VITE_API_BASE_URL=http://YOUR_IP/api/v1
+VITE_API_BASE_URL=http://api.mimeet.lunarwind.org/api/v1
 EOF
 npm ci && npm run build
 ```
@@ -143,7 +143,7 @@ npm ci && npm run build
 ```bash
 cd /var/www/mimeet/admin
 cat > .env << EOF
-VITE_API_BASE_URL=http://YOUR_IP/api/v1
+VITE_API_BASE_URL=http://api.mimeet.lunarwind.org/api/v1
 EOF
 npm ci && npm run build
 ```
@@ -152,12 +152,22 @@ npm ci && npm run build
 
 ## 9. Nginx 設定
 
+先設定 DNS（Cloudflare 或 lunarwind.org DNS）：
+
+| 子網域 | Type | Value |
+|--------|------|-------|
+| `api.mimeet` | A | YOUR_SERVER_IP |
+| `mimeet` | A | YOUR_SERVER_IP |
+| `admin.mimeet` | A | YOUR_SERVER_IP |
+
+然後建立 Nginx 設定（三個子網域全部在 port 80）：
+
 ```bash
 cat > /etc/nginx/sites-available/mimeet << 'EOF'
-# API
+# ── API (api.mimeet.lunarwind.org) ──
 server {
     listen 80;
-    server_name _;
+    server_name api.mimeet.lunarwind.org;
     root /var/www/mimeet/backend/public;
     index index.php;
     client_max_body_size 10M;
@@ -176,23 +186,28 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_read_timeout 86400;
     }
+    location /storage { alias /var/www/mimeet/backend/storage/app/public; }
     location ~ /\.(env|git) { deny all; return 404; }
 }
 
-# Frontend
+# ── Frontend (mimeet.lunarwind.org) ──
 server {
-    listen 3000;
+    listen 80;
+    server_name mimeet.lunarwind.org;
     root /var/www/mimeet/frontend/dist;
     index index.html;
     location / { try_files $uri $uri/ /index.html; }
+    location ~* \.(js|css|png|jpg|ico|svg|woff2?)$ { expires 7d; }
 }
 
-# Admin
+# ── Admin (admin.mimeet.lunarwind.org) ──
 server {
-    listen 3001;
+    listen 80;
+    server_name admin.mimeet.lunarwind.org;
     root /var/www/mimeet/admin/dist;
     index index.html;
     location / { try_files $uri $uri/ /index.html; }
+    location ~* \.(js|css|png|jpg|ico|svg|woff2?)$ { expires 7d; }
 }
 EOF
 
@@ -242,16 +257,16 @@ php artisan db:seed --force
 ## 12. 驗證
 
 ```bash
-curl -s http://YOUR_IP/api/v1/admin/auth/login \
+curl -s http://api.mimeet.lunarwind.org/api/v1/admin/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@mimeet.tw","password":"ChangeMe@2026"}'
 ```
 
 | 服務 | URL |
 |------|-----|
-| API | http://YOUR_IP/api/v1/... |
-| 前台 | http://YOUR_IP:3000 |
-| Admin | http://YOUR_IP:3001 |
+| API Health | http://api.mimeet.lunarwind.org/api/v1/admin/auth/login |
+| 前台 | http://mimeet.lunarwind.org |
+| Admin 後台 | http://admin.mimeet.lunarwind.org |
 
 ---
 
