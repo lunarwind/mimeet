@@ -76,8 +76,8 @@ export function useChat() {
         }
         // Update unread count in store
         if (msg.conversationId) {
-          const current = chatStore.unreadCounts.get(msg.conversationId) ?? 0
-          chatStore.setUnread(msg.conversationId, current + 1)
+          const conv = chatStore.conversations.find(c => c.id === msg.conversationId)
+          if (conv) conv.unreadCount++
         }
       }
     })
