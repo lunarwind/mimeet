@@ -82,7 +82,7 @@ export function getMemberDetail(uid: number): MemberDetail | null {
   }
 }
 
-export function getMemberScoreRecords(uid: number): ScoreRecord[] {
+export function getMemberScoreRecords(_uid: number): ScoreRecord[] {
   const records: ScoreRecord[] = []
   const events = [
     { delta: 10, reason: 'Email 驗證完成', operator: '系統' },

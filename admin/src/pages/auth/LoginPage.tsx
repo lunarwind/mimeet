@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { Card, Form, Input, Button, Alert, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
+import type { AdminUser } from '../../types/admin'
 import apiClient from '../../api/client'
 
 const { Title, Text } = Typography
@@ -56,7 +57,7 @@ export default function LoginPage() {
         const mock = MOCK_ACCOUNTS[values.email]
         if (mock && values.password === 'password') {
           const { defaultRoute, ...userData } = mock
-          login(userData)
+          login(userData as AdminUser)
           navigate(defaultRoute, { replace: true })
           return
         }

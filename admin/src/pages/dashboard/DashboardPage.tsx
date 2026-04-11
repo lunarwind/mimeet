@@ -25,7 +25,7 @@ const { Title, Text } = Typography
 
 function EChart({ option, style }: { option: echarts.EChartsOption; style?: React.CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<echarts.ECharts>()
+  const chartRef = useRef<echarts.ECharts | null>(null)
 
   useEffect(() => {
     if (!ref.current) return

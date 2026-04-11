@@ -108,6 +108,8 @@ export interface PaymentRecord {
   payment_method: string
   status: 'paid' | 'failed' | 'refunded' | 'pending'
   paid_at: string
+  ecpay_trade_no?: string
+  ecpay_invoice_no?: string | null
 }
 
 export type CreditLevel = 'top' | 'good' | 'normal' | 'low'
