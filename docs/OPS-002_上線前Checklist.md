@@ -78,16 +78,55 @@ npm run build
 
 ## 2. 環境設定（.env）
 
-- [ ] `APP_ENV=production`
-- [ ] `APP_DEBUG=false`
-- [ ] `APP_URL` 設定為正式域名（如 `https://api.mimeet.tw`）
-- [ ] `APP_KEY` 已透過 `php artisan key:generate` 產生
-- [ ] DB 連線設定完成（`DB_HOST` / `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD`）
-- [ ] Redis 連線設定完成（`REDIS_HOST` / `REDIS_PASSWORD`）
-- [ ] `ECPAY_IS_SANDBOX=true`（測試階段保持 true，正式上線改 false）
-- [ ] `SUPER_ADMIN_PASSWORD` 已改為強密碼
-- [ ] `ADMIN_PASSWORD` 已改為強密碼
-- [ ] `CS_PASSWORD` 已改為強密碼
+`cp .env.example .env` 後，以下為**必須修改**的項目：
+
+```env
+# ── 基本 ──
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.mimeet.lunarwind.org   # 改為你的正式域名
+
+# ── 資料庫 ──
+DB_HOST=127.0.0.1
+DB_DATABASE=mimeet
+DB_USERNAME=your_db_user
+DB_PASSWORD=your_strong_db_password
+
+# ── Redis ──
+REDIS_PASSWORD=your_redis_password
+
+# ── Sanctum（重要！前後端跨域認證） ──
+# 填入所有前端域名，逗號分隔，不含 http/https
+SANCTUM_STATEFUL_DOMAINS=mimeet.lunarwind.org,admin.mimeet.lunarwind.org,api.mimeet.lunarwind.org
+
+# ── Mail ──
+# 測試階段用 log（不發信），正式用 smtp
+MAIL_MAILER=log
+# 正式 SMTP 範例：
+# MAIL_MAILER=smtp
+# MAIL_HOST=smtp.gmail.com
+# MAIL_PORT=587
+# MAIL_USERNAME=your@gmail.com
+# MAIL_PASSWORD=app-password
+# MAIL_ENCRYPTION=tls
+
+# ── SMS ──
+# disabled = 不發簡訊（只寫 log），正式環境改為 twilio 或 mitake
+SMS_PROVIDER=disabled
+
+# ── ECPay ──
+ECPAY_IS_SANDBOX=true   # 測試保持 true，正式上線改 false 並填入正式金鑰
+# ECPAY_MERCHANT_ID=你的正式商店代號
+# ECPAY_HASH_KEY=你的正式 HashKey
+# ECPAY_HASH_IV=你的正式 HashIV
+
+# ── Admin 帳號（務必修改！） ──
+SUPER_ADMIN_PASSWORD=一個很強的密碼
+ADMIN_PASSWORD=另一個強密碼
+CS_PASSWORD=另一個強密碼
+```
+
+完整變數列表參考 `backend/.env.example`。
 
 ---
 
