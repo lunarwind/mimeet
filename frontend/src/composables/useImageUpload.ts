@@ -6,8 +6,11 @@
 import { ref } from 'vue'
 import client from '@/api/client'
 
+<<<<<<< HEAD
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+=======
+>>>>>>> develop
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
@@ -16,10 +19,6 @@ type UploadContext = 'avatar' | 'profile_photo' | 'report_image'
 interface UploadResult {
   url: string
   originalFilename: string
-}
-
-function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /** Canvas 壓縮產生縮圖預覽（200x200） */
@@ -82,19 +81,6 @@ export function useImageUpload() {
     isUploading.value = true
 
     try {
-      if (USE_MOCK) {
-        // 模擬上傳進度
-        for (let i = 0; i <= 100; i += 20) {
-          uploadProgress.value = i
-          await delay(300)
-        }
-        const randomId = Math.floor(Math.random() * 70) + 1
-        return {
-          url: `https://i.pravatar.cc/400?img=${randomId}`,
-          originalFilename: file.name,
-        }
-      }
-
       const formData = new FormData()
       formData.append('file', file)
       formData.append('context', context)
@@ -116,7 +102,10 @@ export function useImageUpload() {
       }
     } catch (e) {
       error.value = '上傳失敗，請稍後再試'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
       return null
     } finally {
       isUploading.value = false

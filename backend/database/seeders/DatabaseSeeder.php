@@ -8,6 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+<<<<<<< HEAD
         $this->call([
             SubscriptionPlanSeeder::class,
             AdminUserSeeder::class,
@@ -19,6 +20,27 @@ class DatabaseSeeder extends Seeder
         // Create test users in local environment
         if (app()->environment('local')) {
             \App\Models\User::factory(10)->create();
+=======
+        // System data (all environments)
+        $this->call(SubscriptionPlanSeeder::class);
+        $this->call(MemberLevelPermissionsSeeder::class);
+        $this->call(AdminPermissionsSeeder::class);
+
+        // Admin account in admin_users table (separate from frontend users)
+        \App\Models\AdminUser::firstOrCreate(
+            ['email' => env('ADMIN_EMAIL', 'admin@mimeet.tw')],
+            [
+                'password' => bcrypt(env('ADMIN_PASSWORD', 'ChangeMe@2026')),
+                'name' => env('ADMIN_NAME', 'Super Admin'),
+                'role' => 'super_admin',
+                'is_active' => true,
+            ],
+        );
+
+        // Test data (local/staging only)
+        if (app()->environment(['local', 'staging'])) {
+            $this->call(TestDataSeeder::class);
+>>>>>>> develop
         }
     }
 }

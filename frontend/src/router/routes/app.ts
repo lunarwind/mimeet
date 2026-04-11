@@ -56,6 +56,18 @@ export const appRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, minLevel: 1 },
   },
   {
+    path: '/app/favorites',
+    name: 'favorites',
+    component: () => import('@/views/app/FavoritesView.vue'),
+    meta: { requiresAuth: true, minLevel: 1 },
+  },
+  {
+    path: '/app/visitors',
+    name: 'visitors',
+    component: () => import('@/views/app/VisitorsView.vue'),
+    meta: { requiresAuth: true, minLevel: 1 },
+  },
+  {
     path: '/app/reports',
     name: 'reports',
     component: () => import('@/views/app/ReportsView.vue'),

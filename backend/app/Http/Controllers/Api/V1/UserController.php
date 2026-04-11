@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+<<<<<<< HEAD
 use App\Models\UserVerification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,75 +11,54 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+=======
+use App\Models\User;
+use App\Services\GdprService;
+use App\Services\UserActivityLogService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+>>>>>>> develop
 
 class UserController extends Controller
 {
-    /**
-     * Get current user profile.
-     */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
-
         return response()->json([
-            'success' => true,
-            'code' => 'USER_PROFILE',
-            'message' => 'OK',
-            'data' => [
-                'user' => $user,
-            ],
+            'success' => true, 'code' => 'USER_PROFILE', 'message' => 'OK',
+            'data' => ['user' => $request->user()],
         ]);
     }
 
-    /**
-     * Update current user profile.
-     */
     public function update(Request $request): JsonResponse
     {
-        // Reject immutable fields
         if ($request->has('birth_date') || $request->has('gender')) {
-            return response()->json([
-                'success' => false,
-                'code' => 'IMMUTABLE_FIELD',
-                'message' => '生日與性別設定後無法修改。',
-            ], 422);
+            return response()->json(['success' => false, 'code' => 'IMMUTABLE_FIELD', 'message' => '生日與性別設定後無法修改。'], 422);
         }
 
         $request->validate([
             'nickname' => 'sometimes|string|max:20',
             'bio' => 'sometimes|string|max:500',
-            'avatar_url' => 'sometimes|string|url',
+            'avatar_url' => 'sometimes|string',
             'height' => 'sometimes|integer|min:100|max:250',
             'location' => 'sometimes|string|max:50',
             'occupation' => 'sometimes|string|max:50',
             'education' => 'sometimes|string|in:high_school,bachelor,master,phd,other',
             'interests' => 'sometimes|array',
-            'interests.*' => 'string|max:20',
         ]);
 
-        // Mock: return updated user
         $user = $request->user();
-        $updatedFields = $request->only([
-            'nickname', 'bio', 'avatar_url', 'height',
-            'location', 'occupation', 'education', 'interests',
-        ]);
+        $fields = $request->only(['nickname', 'bio', 'avatar_url', 'height', 'location', 'occupation', 'education', 'interests']);
+        $user->update($fields);
+
+        UserActivityLogService::logProfileUpdate($user->id, array_keys($fields), $request);
 
         return response()->json([
-            'success' => true,
-            'code' => 'PROFILE_UPDATED',
-            'message' => '個人資料已更新。',
-            'data' => [
-                'user' => array_merge(
-                    $user ? $user->toArray() : [],
-                    $updatedFields
-                ),
-            ],
+            'success' => true, 'code' => 'PROFILE_UPDATED', 'message' => '個人資料已更新。',
+            'data' => ['user' => $user->fresh()],
         ]);
     }
 
-    /**
-     * Search/explore users with filters.
-     */
     public function search(Request $request): JsonResponse
     {
         $request->validate([
@@ -86,41 +66,71 @@ class UserController extends Controller
             'age_min' => 'sometimes|integer|min:18',
             'age_max' => 'sometimes|integer|max:99',
             'location' => 'sometimes|string',
-            'page' => 'sometimes|integer|min:1',
             'per_page' => 'sometimes|integer|min:1|max:50',
         ]);
 
-        // Mock user list
-        $mockUsers = [];
-        for ($i = 1; $i <= 10; $i++) {
-            $mockUsers[] = [
-                'id' => 'usr_mock' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'nickname' => 'User' . $i,
-                'gender' => $i % 2 === 0 ? 'female' : 'male',
-                'age' => rand(20, 35),
-                'avatar_url' => null,
-                'bio' => '嗨，我是 User' . $i,
-                'location' => '台北',
-                'membership_level' => rand(0, 2),
-            ];
-        }
+        $query = User::where('status', 'active')
+            ->where('id', '!=', $request->user()?->id);
+
+        // Privacy: hide users who opted out of search
+        $query->where(function ($q) {
+            $q->whereNull('privacy_settings')
+              ->orWhereRaw("JSON_EXTRACT(privacy_settings, '$.show_in_search') != 'false'");
+        });
+
+        if ($request->filled('gender')) $query->where('gender', $request->gender);
+        if ($request->filled('location')) $query->where('location', 'like', "%{$request->location}%");
+
+        $perPage = (int) $request->input('per_page', 20);
+        $users = $query->orderByDesc('last_active_at')->paginate($perPage);
 
         return response()->json([
-            'success' => true,
-            'code' => 'SEARCH_RESULTS',
-            'message' => 'OK',
+            'success' => true, 'code' => 'SEARCH_RESULTS', 'message' => 'OK',
             'data' => [
-                'users' => $mockUsers,
+                'users' => $users->map(fn (User $u) => [
+                    'id' => $u->id, 'nickname' => $u->nickname, 'gender' => $u->gender,
+                    'avatar_url' => $u->avatar_url, 'location' => $u->location,
+                    'membership_level' => $u->membership_level, 'credit_score' => $u->credit_score,
+                ]),
                 'pagination' => [
-                    'current_page' => (int) $request->input('page', 1),
-                    'per_page' => (int) $request->input('per_page', 20),
-                    'total' => 100,
-                    'last_page' => 5,
+                    'current_page' => $users->currentPage(), 'per_page' => $users->perPage(),
+                    'total' => $users->total(), 'last_page' => $users->lastPage(),
                 ],
             ],
         ]);
     }
 
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此用戶'], 404);
+        }
+
+        // Record profile visit (don't record self-visits)
+        $viewerId = $request->user()?->id;
+        if ($viewerId && $viewerId !== $id) {
+            \Illuminate\Support\Facades\DB::table('user_profile_visits')->insert([
+                'visitor_id' => $viewerId,
+                'visited_user_id' => $id,
+                'created_at' => now(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true, 'code' => 'USER_DETAIL', 'message' => 'OK',
+            'data' => ['user' => [
+                'id' => $user->id, 'nickname' => $user->nickname, 'gender' => $user->gender,
+                'avatar_url' => $user->avatar_url, 'bio' => $user->bio, 'location' => $user->location,
+                'occupation' => $user->occupation, 'education' => $user->education,
+                'interests' => $user->interests, 'membership_level' => $user->membership_level,
+                'credit_score' => $user->credit_score,
+                'email_verified' => $user->email_verified, 'phone_verified' => $user->phone_verified,
+            ]],
+        ]);
+    }
+
+<<<<<<< HEAD
     /**
      * Get a user profile by ID.
      */
@@ -158,13 +168,13 @@ class UserController extends Controller
      * Upload a photo for the current user.
      * Stores on private disk; serves via signed URL.
      */
+=======
+>>>>>>> develop
     public function uploadPhoto(Request $request): JsonResponse
     {
-        $request->validate([
-            'photo' => 'required|image|max:5120',
-            'is_primary' => 'sometimes|boolean',
-        ]);
+        $request->validate(['photo' => 'required|image|mimes:jpeg,png,gif,webp|max:5120']);
 
+<<<<<<< HEAD
         $file = $request->file('photo');
 
         // Magic bytes validation — reject files whose bytes don't match declared type
@@ -245,140 +255,145 @@ class UserController extends Controller
     /**
      * Get user settings page data.
      */
+=======
+        // S13-10: Magic bytes validation (not just extension)
+        $file = $request->file('photo');
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $realMime = finfo_file($finfo, $file->getRealPath());
+        finfo_close($finfo);
+        $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($realMime, $allowed, true)) {
+            return response()->json([
+                'success' => false, 'code' => 422, 'message' => '檔案格式不合法（偽裝 MIME 偵測）',
+            ], 422);
+        }
+
+        $path = Storage::disk('public')->put('photos/' . $request->user()->id, $file);
+
+        UserActivityLogService::logPhotoChange($request->user()->id, 'upload', $request);
+
+        return response()->json([
+            'success' => true, 'code' => 'PHOTO_UPLOADED', 'message' => '照片已上傳。',
+            'data' => ['photo' => [
+                'url' => Storage::disk('public')->url($path),
+                'is_primary' => $request->boolean('is_primary', false),
+                'created_at' => now()->toISOString(),
+            ]],
+        ], 201);
+    }
+
+>>>>>>> develop
     public function settings(Request $request): JsonResponse
     {
+        $user = $request->user();
         return response()->json([
-            'success' => true,
-            'code' => 'USER_SETTINGS',
-            'message' => 'OK',
+            'success' => true, 'code' => 'USER_SETTINGS', 'message' => 'OK',
             'data' => [
-                'notification_preferences' => [
-                    'new_message' => true,
-                    'new_follower' => true,
-                    'date_invitation' => true,
-                    'system' => true,
-                ],
-                'privacy' => [
-                    'show_online_status' => true,
-                    'allow_search' => true,
-                    'show_distance' => false,
-                ],
+                'privacy' => $user->privacy_settings,
                 'account' => [
-                    'email_verified' => true,
-                    'phone_verified' => false,
+                    'email_verified' => $user->email_verified,
+                    'phone_verified' => $user->phone_verified,
                 ],
             ],
         ]);
     }
 
-    /**
-     * Get users the current user is following.
-     */
     public function following(Request $request): JsonResponse
     {
+        $userId = $request->user()->id;
+        $follows = \Illuminate\Support\Facades\DB::table('user_follows')
+            ->where('follower_id', $userId)
+            ->join('users', 'users.id', '=', 'user_follows.following_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url', 'users.credit_score', 'users.last_active_at', 'user_follows.created_at as followed_at')
+            ->orderByDesc('user_follows.created_at')
+            ->paginate($request->query('per_page', 20));
+
         return response()->json([
-            'success' => true,
-            'code' => 'FOLLOWING_LIST',
-            'message' => 'OK',
-            'data' => [
-                'users' => [],
-                'pagination' => [
-                    'current_page' => 1,
-                    'per_page' => 20,
-                    'total' => 0,
-                    'last_page' => 1,
-                ],
-            ],
+            'success' => true, 'code' => 'FOLLOWING_LIST', 'message' => 'OK',
+            'data' => ['users' => $follows->items()],
+            'pagination' => ['current_page' => $follows->currentPage(), 'per_page' => $follows->perPage(), 'total' => $follows->total()],
         ]);
     }
 
-    /**
-     * Get profile visitors.
-     */
     public function visitors(Request $request): JsonResponse
     {
+        $userId = $request->user()->id;
+        $visitors = \Illuminate\Support\Facades\DB::table('user_profile_visits')
+            ->where('visited_user_id', $userId)
+            ->join('users', 'users.id', '=', 'user_profile_visits.visitor_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url', 'users.credit_score', 'user_profile_visits.created_at as visited_at')
+            ->orderByDesc('user_profile_visits.created_at')
+            ->paginate($request->query('per_page', 20));
+
         return response()->json([
-            'success' => true,
-            'code' => 'VISITORS_LIST',
-            'message' => 'OK',
-            'data' => [
-                'visitors' => [],
-                'pagination' => [
-                    'current_page' => 1,
-                    'per_page' => 20,
-                    'total' => 0,
-                    'last_page' => 1,
-                ],
-            ],
+            'success' => true, 'code' => 'VISITORS_LIST', 'message' => 'OK',
+            'data' => ['visitors' => $visitors->items()],
+            'pagination' => ['current_page' => $visitors->currentPage(), 'per_page' => $visitors->perPage(), 'total' => $visitors->total()],
         ]);
     }
 
-    /**
-     * Follow a user.
-     */
-    public function follow(Request $request, string $id): JsonResponse
+    public function follow(Request $request, int $id): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'code' => 'FOLLOWED',
-            'message' => '已追蹤。',
-        ]);
+        $userId = $request->user()->id;
+        if ($userId === $id) {
+            return response()->json(['success' => false, 'message' => '不能追蹤自己'], 422);
+        }
+        \Illuminate\Support\Facades\DB::table('user_follows')->updateOrInsert(
+            ['follower_id' => $userId, 'following_id' => $id],
+            ['created_at' => now()]
+        );
+        return response()->json(['success' => true, 'code' => 'FOLLOWED', 'message' => '已追蹤。']);
     }
 
-    /**
-     * Unfollow a user.
-     */
-    public function unfollow(Request $request, string $id): JsonResponse
+    public function unfollow(Request $request, int $id): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'code' => 'UNFOLLOWED',
-            'message' => '已取消追蹤。',
-        ]);
+        \Illuminate\Support\Facades\DB::table('user_follows')
+            ->where('follower_id', $request->user()->id)
+            ->where('following_id', $id)
+            ->delete();
+        return response()->json(['success' => true, 'code' => 'UNFOLLOWED', 'message' => '已取消追蹤。']);
     }
 
-    /**
-     * Block a user.
-     */
-    public function block(Request $request, string $id): JsonResponse
+    public function block(Request $request, int $id): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'code' => 'BLOCKED',
-            'message' => '已封鎖該用戶。',
-        ]);
+        $userId = $request->user()->id;
+        if ($userId === $id) {
+            return response()->json(['success' => false, 'message' => '不能封鎖自己'], 422);
+        }
+        \Illuminate\Support\Facades\DB::table('user_blocks')->updateOrInsert(
+            ['blocker_id' => $userId, 'blocked_id' => $id],
+            ['created_at' => now()]
+        );
+        // Also unfollow both directions
+        \Illuminate\Support\Facades\DB::table('user_follows')
+            ->where(fn ($q) => $q->where(['follower_id' => $userId, 'following_id' => $id])->orWhere(['follower_id' => $id, 'following_id' => $userId]))
+            ->delete();
+        return response()->json(['success' => true, 'code' => 'BLOCKED', 'message' => '已封鎖該用戶。']);
     }
 
-    /**
-     * Unblock a user.
-     */
-    public function unblock(Request $request, string $id): JsonResponse
+    public function unblock(Request $request, int $id): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'code' => 'UNBLOCKED',
-            'message' => '已解除封鎖。',
-        ]);
+        \Illuminate\Support\Facades\DB::table('user_blocks')
+            ->where('blocker_id', $request->user()->id)
+            ->where('blocked_id', $id)
+            ->delete();
+        return response()->json(['success' => true, 'code' => 'UNBLOCKED', 'message' => '已解除封鎖。']);
     }
 
-    /**
-     * Get blocked users list.
-     */
     public function blockedUsers(Request $request): JsonResponse
     {
+        $userId = $request->user()->id;
+        $blocked = \Illuminate\Support\Facades\DB::table('user_blocks')
+            ->where('blocker_id', $userId)
+            ->join('users', 'users.id', '=', 'user_blocks.blocked_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url', 'user_blocks.created_at as blocked_at')
+            ->orderByDesc('user_blocks.created_at')
+            ->paginate($request->query('per_page', 20));
+
         return response()->json([
-            'success' => true,
-            'code' => 'BLOCKED_USERS',
-            'message' => 'OK',
-            'data' => [
-                'users' => [],
-                'pagination' => [
-                    'current_page' => 1,
-                    'per_page' => 20,
-                    'total' => 0,
-                    'last_page' => 1,
-                ],
-            ],
+            'success' => true, 'code' => 'BLOCKED_USERS', 'message' => 'OK',
+            'data' => ['users' => $blocked->items()],
+            'pagination' => ['current_page' => $blocked->currentPage(), 'per_page' => $blocked->perPage(), 'total' => $blocked->total()],
         ]);
     }
 

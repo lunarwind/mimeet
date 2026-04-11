@@ -1,6 +1,13 @@
+# Environment files (never commit secrets)
 .env
 .env.local
 .env.*.local
+**/.env
+**/.env.testing
+**/.env.development
+**/.env.production
+!**/.env.example
+
 node_modules/
 vendor/
 *.log

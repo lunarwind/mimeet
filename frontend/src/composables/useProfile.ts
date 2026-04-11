@@ -51,7 +51,10 @@ export function useProfile() {
       return data
     } catch (e) {
       error.value = '無法載入用戶資料'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
       return null
     } finally {
       isLoading.value = false
@@ -71,7 +74,10 @@ export function useProfile() {
       // 更新快取
       if (profile.value) setCache(userId, profile.value)
     } catch (e) {
+<<<<<<< HEAD
       // Silently fail — UI state not changed on error
+=======
+>>>>>>> develop
     }
   }
 

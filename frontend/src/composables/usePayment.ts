@@ -13,6 +13,7 @@ import type {
   TrialInfo,
 } from '@/types/payment'
 
+<<<<<<< HEAD
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 function delay(ms: number) {
@@ -60,6 +61,8 @@ const MOCK_PLANS: SubscriptionPlan[] = [
   },
 ]
 
+=======
+>>>>>>> develop
 export function usePayment() {
   const authStore = useAuthStore()
 
@@ -81,17 +84,15 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      if (USE_MOCK) {
-        await delay(300)
-        plans.value = MOCK_PLANS
-        return MOCK_PLANS
-      }
       const res = await client.get<{ data: { plans: SubscriptionPlan[] } }>('/subscriptions/plans')
       plans.value = res.data.data.plans
       return plans.value
     } catch (e) {
       error.value = '載入方案失敗'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
       return []
     } finally {
       isLoading.value = false
@@ -102,28 +103,15 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      if (USE_MOCK) {
-        await delay(200)
-        if (isPaid.value) {
-          const sub: CurrentSubscription = {
-            planType: 'monthly',
-            planName: '月費方案',
-            expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
-            autoRenew: true,
-            daysRemaining: 30,
-          }
-          currentSubscription.value = sub
-          return sub
-        }
-        currentSubscription.value = null
-        return null
-      }
       const res = await client.get<{ data: { subscription: CurrentSubscription | null } }>('/subscriptions/me')
       currentSubscription.value = res.data.data.subscription
       return currentSubscription.value
     } catch (e) {
       error.value = '載入訂閱狀態失敗'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
       return null
     } finally {
       isLoading.value = false
@@ -134,20 +122,16 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      if (USE_MOCK) {
-        await delay(500)
-        return {
-          orderUrl: '#/app/shop?mock_payment=success',
-          orderId: `ORD${Date.now()}`,
-        }
-      }
       const res = await client.post<{ data: CreateOrderResponse }>('/subscriptions/orders', {
         data: { plan_type: planType },
       })
       return res.data.data
     } catch (e) {
       error.value = '建立訂單失敗'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
       return null
     } finally {
       isLoading.value = false
@@ -158,15 +142,14 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      if (USE_MOCK) {
-        await delay(500)
-        return true
-      }
       await client.post('/subscriptions/cancel-request', { data: { reason } })
       return true
     } catch (e) {
       error.value = '取消訂閱失敗'
+<<<<<<< HEAD
       // Error handled via error ref
+=======
+>>>>>>> develop
       return false
     } finally {
       isLoading.value = false
@@ -176,22 +159,14 @@ export function usePayment() {
   async function fetchTrialInfo(): Promise<TrialInfo | null> {
     isLoading.value = true
     try {
-      if (USE_MOCK) {
-        await delay(200)
-        const info: TrialInfo = {
-          available: true,
-          price: 199,
-          durationDays: 30,
-          isEligible: !isPaid.value,
-        }
-        trialInfo.value = info
-        return info
-      }
       const res = await client.get<{ data: TrialInfo }>('/subscription/trial')
       trialInfo.value = res.data.data
       return trialInfo.value
     } catch (e) {
+<<<<<<< HEAD
       // Error silently handled
+=======
+>>>>>>> develop
       return null
     } finally {
       isLoading.value = false
@@ -201,13 +176,6 @@ export function usePayment() {
   async function purchaseTrial(): Promise<CreateOrderResponse | null> {
     isLoading.value = true
     try {
-      if (USE_MOCK) {
-        await delay(500)
-        return {
-          orderUrl: '#/app/shop?mock_payment=trial_success',
-          orderId: `TRIAL${Date.now()}`,
-        }
-      }
       const res = await client.post<{ data: CreateOrderResponse }>('/subscription/trial/purchase', {
         data: { payment_method: 'green_world' },
       })
@@ -222,16 +190,14 @@ export function usePayment() {
 
   async function toggleAutoRenew(value: boolean): Promise<boolean> {
     try {
-      if (USE_MOCK) {
-        await delay(300)
-        if (currentSubscription.value) currentSubscription.value.autoRenew = value
-        return true
-      }
       await client.patch('/me/subscription/auto-renew', { auto_renew: value })
       if (currentSubscription.value) currentSubscription.value.autoRenew = value
       return true
     } catch (e) {
+<<<<<<< HEAD
       // Error silently handled
+=======
+>>>>>>> develop
       return false
     }
   }

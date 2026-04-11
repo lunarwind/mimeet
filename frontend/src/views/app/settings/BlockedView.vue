@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { unblockUser } from '@/api/users'
 import { useUiStore } from '@/stores/ui'
+import client from '@/api/client'
 
 const uiStore = useUiStore()
 
@@ -18,17 +19,16 @@ const isLoading = ref(false)
 const showConfirmModal = ref(false)
 const pendingUnblock = ref<BlockedUser | null>(null)
 
-// ── Mock Data ──
-const MOCK_BLOCKED: BlockedUser[] = [
-  { id: 10, nickname: '品睿', avatar: 'https://i.pravatar.cc/80?img=10', blockedAt: '2026-03-20T10:00:00Z' },
-  { id: 22, nickname: '浩然', avatar: 'https://i.pravatar.cc/80?img=22', blockedAt: '2026-03-15T14:30:00Z' },
-  { id: 35, nickname: '子晴', avatar: 'https://i.pravatar.cc/80?img=35', blockedAt: '2026-02-28T09:00:00Z' },
-]
-
 onMounted(async () => {
   isLoading.value = true
-  await new Promise(r => setTimeout(r, 300))
-  blockedUsers.value = [...MOCK_BLOCKED]
+  try {
+    const res = await client.get('/me/blocked-users')
+    blockedUsers.value = (res.data?.data?.users ?? []).map((u: Record<string, unknown>) => ({
+      id: u.id, nickname: u.nickname, avatar: u.avatar_url, blockedAt: u.blocked_at,
+    }))
+  } catch {
+    blockedUsers.value = []
+  }
   isLoading.value = false
 })
 

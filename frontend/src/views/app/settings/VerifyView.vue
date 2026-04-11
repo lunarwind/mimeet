@@ -3,12 +3,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import client from '@/api/client'
+import { requestVerificationCode, uploadVerificationPhoto, getVerificationStatus } from '@/api/verification'
+import type { VerificationStatusResponse } from '@/api/verification'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 // ── 狀態 ──────────────────────────────────────────────────
-type Step = 'overview' | 'sms-send' | 'sms-verify' | 'advanced-guide' | 'advanced-photo'
+type Step = 'overview' | 'sms-send' | 'sms-verify' | 'advanced-guide' | 'advanced-photo' | 'advanced-pending'
 
 const currentStep = ref<Step>('overview')
 const isLoading = ref(false)
@@ -69,28 +71,45 @@ async function verifySmsCode() {
   }
 }
 
-// ── 進階驗證 ──────────────────────────────────────────────
+// ── 進階驗證（Lv1.5 女性 / Lv2 男性）──────────────────────
 const photoCode = ref('')
 const photoCodeExpiry = ref('')
 const photoUrl = ref('')
 const advancedSubmitting = ref(false)
 const advancedError = ref<string | null>(null)
+const verificationStatus = ref<VerificationStatusResponse | null>(null)
+const verificationRejectReason = ref<string | null>(null)
 
 const isFemale = computed(() => authStore.user?.gender === 'female')
+const lv15Verified = computed(() => (authStore.user?.membership_level ?? 0) >= 1.5)
+
+// Check existing verification status on mount
+onMounted(async () => {
+  if (isFemale.value && !lv15Verified.value) {
+    try {
+      const status = await getVerificationStatus()
+      verificationStatus.value = status
+      if (status.status === 'pending_review') {
+        currentStep.value = 'advanced-pending'
+      } else if (status.status === 'rejected') {
+        verificationRejectReason.value = status.reject_reason ?? null
+      }
+    } catch { /* ignore */ }
+  }
+})
 
 async function startAdvancedVerification() {
-  currentStep.value = 'advanced-guide'
   if (isFemale.value) {
+    currentStep.value = 'advanced-guide'
     try {
-      const res = await client.get<{
-        success: boolean
-        data: { code: string; expires_at: string }
-      }>('/me/verification/photo-code')
-      photoCode.value = res.data.data.code
-      photoCodeExpiry.value = res.data.data.expires_at
+      const data = await requestVerificationCode()
+      photoCode.value = data.random_code
+      photoCodeExpiry.value = data.expires_at
     } catch {
       advancedError.value = '無法取得驗證碼'
     }
+  } else {
+    currentStep.value = 'advanced-guide'
   }
 }
 
@@ -99,14 +118,15 @@ async function submitAdvancedPhoto() {
   advancedSubmitting.value = true
   advancedError.value = null
   try {
-    await client.post('/me/verification/photo', {
-      photo_url: photoUrl.value,
-      random_code: photoCode.value,
-    })
-    await authStore.initialize()
-    currentStep.value = 'overview'
-  } catch {
-    advancedError.value = '提交失敗，請重試'
+    await uploadVerificationPhoto(photoUrl.value, photoCode.value)
+    currentStep.value = 'advanced-pending'
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: { error?: { code?: string; message?: string } } } })?.response?.data?.error
+    if (msg?.code === 'VERIFICATION_EXPIRED') {
+      advancedError.value = '驗證碼已過期，請重新申請'
+    } else {
+      advancedError.value = msg?.message ?? '提交失敗，請重試'
+    }
   } finally {
     advancedSubmitting.value = false
   }
@@ -164,10 +184,10 @@ function goBack() {
         <span v-else class="verify-card__check">✓</span>
       </div>
 
-      <!-- 進階驗證 -->
-      <div class="verify-card" :class="{ 'verify-card--done': advancedVerified }">
+      <!-- 進階驗證（Lv1.5 女性 / Lv2 男性）-->
+      <div class="verify-card" :class="{ 'verify-card--done': lv15Verified || advancedVerified }">
         <div class="verify-card__icon">
-          <svg v-if="advancedVerified" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-if="lv15Verified || advancedVerified" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
           <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -175,19 +195,28 @@ function goBack() {
           </svg>
         </div>
         <div class="verify-card__info">
-          <h3 class="verify-card__title">進階驗證</h3>
+          <h3 class="verify-card__title">{{ isFemale ? '真人驗證 (Lv1.5)' : '進階驗證' }}</h3>
           <p class="verify-card__sub">
-            {{ advancedVerified ? '已完成驗證' : (isFemale ? '上傳手持證件自拍照' : '信用卡小額驗證') }}
+            <template v-if="lv15Verified || advancedVerified">已完成驗證</template>
+            <template v-else-if="verificationStatus?.status === 'pending_review'">審核中，請耐心等待</template>
+            <template v-else-if="verificationStatus?.status === 'rejected'">驗證未通過，可重新申請</template>
+            <template v-else>{{ isFemale ? '上傳含隨機碼的自拍照' : '信用卡小額驗證' }}</template>
           </p>
         </div>
         <button
-          v-if="!advancedVerified"
+          v-if="!lv15Verified && !advancedVerified && verificationStatus?.status !== 'pending_review'"
           class="verify-card__btn"
           @click="startAdvancedVerification"
         >
-          驗證
+          {{ verificationStatus?.status === 'rejected' ? '重新驗證' : '驗證' }}
         </button>
+        <Tag v-else-if="verificationStatus?.status === 'pending_review'" class="verify-card__tag" style="background:#FEF3C7;color:#92400E;border:none;font-size:12px;">審核中</Tag>
         <span v-else class="verify-card__check">✓</span>
+      </div>
+
+      <!-- Rejection reason if applicable -->
+      <div v-if="verificationStatus?.status === 'rejected' && verificationRejectReason" class="verify-reject-notice">
+        未通過原因：{{ verificationRejectReason }}
       </div>
     </div>
 
@@ -316,6 +345,22 @@ function goBack() {
           {{ advancedSubmitting ? '提交中…' : '提交驗證' }}
         </button>
         <p class="verify-note">審核通常在 24 小時內完成</p>
+      </div>
+    </div>
+
+    <!-- Pending Review -->
+    <div v-else-if="currentStep === 'advanced-pending'" class="verify-content">
+      <div class="verify-step" style="text-align: center;">
+        <div class="verify-pending-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <h2 class="verify-step__title">照片已送出</h2>
+        <p class="verify-step__desc">您的驗證照片正在審核中，通常在 24 小時內完成。審核通過後您將自動升級為 Lv1.5 驗證會員，誠信分數 +15。</p>
+        <button class="verify-submit" style="background: #64748B;" @click="currentStep = 'overview'">
+          返回
+        </button>
       </div>
     </div>
   </div>
@@ -627,5 +672,23 @@ function goBack() {
   text-align: center;
   font-size: 12px;
   color: #94A3B8;
+}
+
+.verify-reject-notice {
+  margin: -4px 16px 10px;
+  padding: 8px 12px;
+  background: #FEF2F2;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #991B1B;
+}
+
+.verify-pending-icon {
+  margin-bottom: 16px;
+}
+
+.verify-card__tag {
+  flex-shrink: 0;
+  border-radius: 6px;
 }
 </style>

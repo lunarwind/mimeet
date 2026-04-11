@@ -36,6 +36,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
+<<<<<<< HEAD
     // Try real API first
     try {
       const res = await apiClient.post('/admin/auth/login', {
@@ -67,6 +68,24 @@ export default function LoginPage() {
 
     setAttempts((a) => a + 1)
     setError('Email 或密碼不正確')
+=======
+    // Simulate network delay
+    await new Promise((r) => setTimeout(r, 500))
+
+    try {
+      const res = await apiClient.post('/admin/auth/login', {
+        email: values.email,
+        password: values.password,
+      })
+      const { admin, token } = res.data.data
+      login({ id: admin.id, name: admin.name, email: admin.email, role: admin.role }, token)
+      navigate('/dashboard', { replace: true })
+    } catch {
+      setAttempts((a) => a + 1)
+      setError('Email 或密碼不正確')
+    }
+    setLoading(false)
+>>>>>>> develop
   }
 
   return (
@@ -106,13 +125,9 @@ export default function LoginPage() {
 
         {import.meta.env.DEV && (
           <div style={{ marginTop: 16, padding: 12, background: '#FFFBEB', borderRadius: 8, fontSize: 12 }}>
-            <Text strong style={{ color: '#92400E' }}>DEV Mock 帳號：</Text>
+            <Text strong style={{ color: '#92400E' }}>管理員帳號：</Text>
             <br />
-            <Text style={{ color: '#92400E' }}>super_admin: admin@mimeet.tw / password</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>admin: mod@mimeet.tw / password</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>cs: cs@mimeet.tw / password</Text>
+            <Text style={{ color: '#92400E' }}>admin@mimeet.tw / ChangeMe@2026</Text>
           </div>
         )}
       </Card>

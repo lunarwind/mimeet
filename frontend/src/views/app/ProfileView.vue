@@ -6,18 +6,34 @@ import { blockUser } from '@/api/users'
 import { getCreditLevel, CreditLevelLabel } from '@/types/user'
 import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfile'
+import { useDateInviteFromProfile } from '@/composables/useDateInviteFromProfile'
+import DateInviteBottomSheet from '@/components/date/DateInviteBottomSheet.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const { profile, isLoading, error, fetchProfile, toggleFavorite: doToggleFavorite } = useProfile()
+
+// 約會邀請
+const userId = computed(() => Number(route.params.id))
+const {
+  isEligibleToInvite,
+  isLoading: dateInviteLoading,
+  showBottomSheet,
+  form: dateForm,
+  successMessage,
+  handleInviteClick,
+  handleSubmit: doDateSubmit,
+  handleCancel: handleDateCancel,
+} = useDateInviteFromProfile(
+  () => userId.value,
+  () => profile.value?.membership_level ?? 0,
+)
 const bioExpanded = ref(false)
 const currentPhotoIndex = ref(0)
 const showMoreMenu = ref(false)
 
 // ── 計算屬性 ──────────────────────────────────────────────
-const userId = computed(() => Number(route.params.id))
-
 const creditLevel = computed(() => {
   if (!profile.value) return null
   const level = getCreditLevel(profile.value.credit_score)
@@ -248,6 +264,15 @@ function goBack() {
           傳送訊息
         </button>
         <button
+          v-if="isEligibleToInvite"
+          class="profile-actions__btn profile-actions__btn--secondary"
+          :disabled="dateInviteLoading"
+          @click="handleInviteClick"
+        >
+          <span v-if="dateInviteLoading" class="profile-actions__spinner" />
+          <span v-else>📅 邀請約會</span>
+        </button>
+        <button
           class="profile-actions__btn"
           :class="profile.is_favorited ? 'profile-actions__btn--fav-active' : 'profile-actions__btn--secondary'"
           @click="toggleFavorite"
@@ -292,6 +317,22 @@ function goBack() {
         </div>
       </section>
     </template>
+
+    <!-- 約會邀請 Bottom Sheet -->
+    <DateInviteBottomSheet
+      v-if="showBottomSheet && profile"
+      :target-nickname="profile.nickname"
+      :form="dateForm"
+      :is-loading="dateInviteLoading"
+      @update:form="dateForm = $event"
+      @submit="doDateSubmit(profile.nickname)"
+      @cancel="handleDateCancel"
+    />
+
+    <!-- 成功 Toast -->
+    <Transition name="toast">
+      <div v-if="successMessage" class="profile-toast">{{ successMessage }}</div>
+    </Transition>
   </div>
 </template>
 
@@ -655,9 +696,13 @@ function goBack() {
 }
 
 .profile-actions__btn--secondary {
-  background: #fff;
-  color: #334155;
-  border: 1.5px solid #E2E8F0;
+  background: transparent;
+  color: #374151;
+  border: 1.5px solid #E5E7EB;
+}
+.profile-actions__btn--secondary:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
 }
 
 .profile-actions__btn--fav-active {
@@ -724,5 +769,39 @@ function goBack() {
   object-fit: cover;
   background: #F1F5F9;
   display: block;
+}
+
+/* ── 約會邀請按鈕 spinner ── */
+.profile-actions__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #D1D5DB;
+  border-top-color: #374151;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 成功 Toast ── */
+.profile-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #065F46;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 2000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.toast-enter-active { animation: toastIn 0.3s ease-out; }
+.toast-leave-active { animation: toastIn 0.3s ease-in reverse; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 </style>

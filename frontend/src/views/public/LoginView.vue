@@ -235,8 +235,8 @@ function goLanding() { router.push('/') }
 </template>
 
 <style scoped>
-/* ── Variables ──────────────────────────────── */
-:root {
+/* ── Variables（定義在元件根元素，避免 scoped :root 失效）── */
+.login-root {
   --p:     #F0294E;
   --pd:    #D01A3C;
   --pl:    #FFF5F7;

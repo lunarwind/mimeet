@@ -264,7 +264,7 @@ const features = [
 
 <style scoped>
 /* ─── CSS Variables ─────────────────────────────────── */
-:root {
+.landing-root {
   --primary: #F0294E;
   --primary-dark: #D01A3C;
   --primary-light: #FFF5F7;

@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -18,10 +19,16 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     /**
+<<<<<<< HEAD
      * User-editable fields only. Admin-only fields (credit_score, status,
      * membership_level) are intentionally excluded to prevent mass-assignment
      * attacks. Backend services that need to update these fields should use
      * DB::table('users')->where(...)->update([...]) or $user->forceFill([...]).
+=======
+     * User-editable fields only.
+     * Admin-only fields (credit_score, status, membership_level) are managed
+     * via CreditScoreService::adjust() and explicit $user->update() in admin controllers.
+>>>>>>> develop
      */
     protected $fillable = [
         'email',
@@ -43,10 +50,11 @@ class User extends Authenticatable
         'preferences',
         'profile',
         'last_active_at',
-        'suspended_at',
-        'delete_requested_at',
-        'deleted_at',
     ];
+
+    // Admin-only fields (credit_score, status, membership_level, suspended_at,
+    // delete_requested_at, deleted_at) are NOT in $fillable.
+    // Admin controllers use $user->forceFill([...])->save() for these fields.
 
     /**
      * The attributes that should be hidden for serialization.
@@ -77,6 +85,7 @@ class User extends Authenticatable
         'delete_requested_at' => 'datetime',
         'deleted_at' => 'datetime',
         'password' => 'hashed',
+        'phone' => 'encrypted',
     ];
 
     protected function phone(): Attribute
