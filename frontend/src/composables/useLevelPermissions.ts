@@ -33,10 +33,10 @@ export function useLevelPermissions() {
   const permissions = computed<LevelPermissions>(() => {
     const l = level.value
     // Find exact match or nearest lower level
-    if (PERMISSION_MAP[l]) return PERMISSION_MAP[l]
+    if (PERMISSION_MAP[l]) return PERMISSION_MAP[l]!
     const levels = Object.keys(PERMISSION_MAP).map(Number).sort((a, b) => b - a)
     const match = levels.find(k => k <= l) ?? 0
-    return PERMISSION_MAP[match]
+    return PERMISSION_MAP[match]!
   })
 
   return {

@@ -140,7 +140,9 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   for (let i = result.length - 1; i > 0; i--) {
     s = (s * 16807 + 0) % 2147483647
     const j = s % (i + 1)
-    ;[result[i], result[j]] = [result[j], result[i]]
+    const temp = result[j]!
+    result[j] = result[i]!
+    result[i] = temp
   }
   return result
 }
@@ -156,16 +158,16 @@ function buildMockUsers(): ExploreUser[] {
   for (let i = 0; i < 50; i++) {
     const id = i + 1
     const isMale = i < 25
-    const nickname = isMale ? MALE_NAMES[i] : FEMALE_NAMES[i - 25]
+    const nickname = isMale ? MALE_NAMES[i]! : FEMALE_NAMES[i - 25]!
     const verifyLevel = shuffledVerify[i]
 
     users.push({
       id,
       nickname,
       age: 20 + (i % 28),                            // 20~47 歲
-      location: shuffledCities[i],
+      location: shuffledCities[i]!,
       avatar: `https://i.pravatar.cc/150?img=${id}`,
-      creditScore: shuffledCredits[i],
+      creditScore: shuffledCredits[i]!,
       isOnline: ONLINE_IDS.has(id),
       lastActiveAt: ONLINE_IDS.has(id)
         ? new Date().toISOString()
@@ -273,11 +275,11 @@ export function mockFetchUserProfile(userId: number): UserProfileData | null {
     avatar: user.avatar,
     credit_score: user.creditScore,
     membership_level: user.membershipLevel,
-    introduction: BIOS[idx % BIOS.length],
+    introduction: BIOS[idx % BIOS.length]!,
     height: 155 + (idx % 35),
     weight: 45 + (idx % 40),
-    job: JOBS[idx % JOBS.length],
-    education: EDUCATIONS[idx % EDUCATIONS.length],
+    job: JOBS[idx % JOBS.length]!,
+    education: EDUCATIONS[idx % EDUCATIONS.length]!,
     photos: [
       { id: 1, url: `https://picsum.photos/seed/user${userId}a/400/400`, is_avatar: true, order: 0 },
       { id: 2, url: `https://picsum.photos/seed/user${userId}b/400/400`, is_avatar: false, order: 1 },

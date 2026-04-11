@@ -83,5 +83,5 @@ const AUTO_REPLIES = [
 ]
 
 export function randomReply(): string {
-  return AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)]
+  return AUTO_REPLIES[Math.floor(Math.random() * AUTO_REPLIES.length)] ?? ''
 }

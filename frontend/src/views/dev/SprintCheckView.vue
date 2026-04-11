@@ -669,7 +669,7 @@ function cycle(id: string) {
   const order: CheckState[] = ['none', 'pass', 'fail']
   const cur = getState(id)
   const next = order[(order.indexOf(cur) + 1) % order.length]
-  states.value[id] = next
+  states.value[id] = next ?? 'none'
 }
 
 function resetAll() { states.value = {} }

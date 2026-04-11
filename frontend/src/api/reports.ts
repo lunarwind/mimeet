@@ -66,16 +66,16 @@ export async function fetchReportHistory(): Promise<ReportRecord[]> {
     return [
       {
         id: 1, ticketNumber: 'REPORT-20260401-00001', type: 1,
-        typeLabel: TYPE_LABELS[1], title: '對方傳送騷擾訊息',
-        status: 2, statusLabel: STATUS_LABELS[2],
+        typeLabel: TYPE_LABELS[1] ?? '', title: '對方傳送騷擾訊息',
+        status: 2, statusLabel: STATUS_LABELS[2] ?? '',
         adminReply: '經查證屬實，已對違規用戶進行處理',
         createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
         processedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
       },
       {
         id: 2, ticketNumber: 'REPORT-20260405-00002', type: 3,
-        typeLabel: TYPE_LABELS[3], title: '疑似詐騙行為',
-        status: 1, statusLabel: STATUS_LABELS[1],
+        typeLabel: TYPE_LABELS[3] ?? '', title: '疑似詐騙行為',
+        status: 1, statusLabel: STATUS_LABELS[1] ?? '',
         adminReply: null,
         createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
         processedAt: null,
