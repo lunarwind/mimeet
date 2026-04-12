@@ -34,7 +34,7 @@ export interface LoginResponse {
 }
 
 export function login(payload: LoginPayload): Promise<LoginResponse['data']> {
-  return client.post('/auth/login', { data: payload }).then(r => r.data.data)
+  return client.post('/auth/login', payload).then(r => r.data.data)
 }
 
 export function logout(): Promise<void> {
@@ -46,7 +46,7 @@ export function getMe() {
 }
 
 export function forgotPassword(email: string) {
-  return client.post('/auth/forgot-password', { data: { email } })
+  return client.post('/auth/forgot-password', { email })
 }
 
 export function resetPassword(payload: {
@@ -55,7 +55,7 @@ export function resetPassword(payload: {
   password: string
   password_confirmation: string
 }) {
-  return client.post('/auth/reset-password', { data: payload })
+  return client.post('/auth/reset-password', payload)
 }
 
 export interface RegisterPayload {
@@ -72,13 +72,13 @@ export interface RegisterPayload {
 }
 
 export function register(payload: RegisterPayload) {
-  return client.post('/auth/register', { data: payload })
+  return client.post('/auth/register', payload)
 }
 
 export function verifyEmail(payload: { verification_code: string; email: string }) {
-  return client.post('/auth/verify-email', { data: payload }).then(r => r.data)
+  return client.post('/auth/verify-email', payload).then(r => r.data)
 }
 
 export function resendVerification(email: string) {
-  return client.post('/auth/resend-verification', { data: { email } })
+  return client.post('/auth/resend-verification', { email })
 }

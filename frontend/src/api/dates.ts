@@ -11,7 +11,7 @@ export async function fetchDates(): Promise<DateInvitation[]> {
 }
 
 export async function respondToDate(id: number, response: 'accepted' | 'rejected'): Promise<void> {
-  await client.patch(`/date-invitations/${id}/response`, { data: { response } })
+  await client.patch(`/date-invitations/${id}/response`, { response })
 }
 
 export interface VerifyResult {

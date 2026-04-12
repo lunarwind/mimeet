@@ -56,7 +56,7 @@ export async function createReport(payload: CreateReportPayload): Promise<{ tick
 
   const res = await client.post<{
     data: { report: { report_number: string } }
-  }>('/reports', { data: payload })
+  }>('/reports', payload)
   return { ticketNumber: res.data.data.report.report_number }
 }
 
