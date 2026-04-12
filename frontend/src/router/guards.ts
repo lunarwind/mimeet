@@ -9,19 +9,19 @@ export function setupRouterGuards(router: Router) {
 
     // Public pages — always allow
     if (!requiresAuth) {
-      // Redirect logged-in users away from login/register
-      if (isLoggedIn && (to.name === 'login' || to.name === 'register')) {
-        return { name: 'explore' }
+      // Redirect logged-in users: / and /login → /app/explore
+      if (isLoggedIn && (to.name === 'landing' || to.name === 'login')) {
+        return { path: '/app/explore' }
       }
-      return // pass through
+      return true // pass through
     }
 
-    // Protected page but not logged in → login
+    // Protected page but not logged in → login (with redirect query)
     if (!isLoggedIn) {
-      return { name: 'login' }
+      return { path: '/login', query: { redirect: to.fullPath } }
     }
 
     // Logged in + protected page → allow
-    // (suspended/level checks are done at component level)
+    return true
   })
 }
