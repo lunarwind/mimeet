@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Mail\VerificationMail;
 use App\Models\User;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -34,6 +39,16 @@ class AuthController extends Controller
         ]);
 
         $token = $user->createToken('register')->plainTextToken;
+
+        // Generate 6-digit verification code and send email
+        $verifyCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put("email_verify:{$user->email}", $verifyCode, 600); // 10 min TTL
+
+        try {
+            Mail::to($user->email)->send(new VerificationMail($verifyCode, $user->nickname));
+        } catch (\Throwable $e) {
+            try { Log::warning('[Register] Email send failed: ' . $e->getMessage()); } catch (\Throwable) {}
+        }
 
         return response()->json([
             'success' => true,
@@ -101,9 +116,47 @@ class AuthController extends Controller
 
     public function verifyEmail(Request $request): JsonResponse
     {
-        $request->validate(['verification_code' => 'required|string|size:6']);
-        // TODO: implement real email verification with codes table
+        $request->validate([
+            'verification_code' => 'required|string|size:6',
+            'email' => 'required|email',
+        ]);
+
+        $storedCode = Cache::get("email_verify:{$request->email}");
+
+        if (!$storedCode || $storedCode !== $request->verification_code) {
+            return response()->json([
+                'success' => false, 'code' => 422, 'message' => '驗證碼不正確或已過期。',
+            ], 422);
+        }
+
+        // Mark email as verified
+        $user = User::where('email', $request->email)->first();
+        if ($user) {
+            $user->forceFill(['email_verified' => true])->save();
+        }
+
+        Cache::forget("email_verify:{$request->email}");
+
         return response()->json(['success' => true, 'code' => 'EMAIL_VERIFIED', 'message' => '信箱驗證成功。']);
+    }
+
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['success' => true, 'message' => '若信箱已註冊，驗證碼已重新發送。']);
+        }
+
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put("email_verify:{$request->email}", $code, 600);
+
+        try {
+            Mail::to($request->email)->send(new VerificationMail($code, $user->nickname));
+        } catch (\Throwable) {}
+
+        return response()->json(['success' => true, 'message' => '驗證碼已重新發送。']);
     }
 
     public function verifyPhoneSend(Request $request): JsonResponse

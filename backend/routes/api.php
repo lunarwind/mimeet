@@ -40,6 +40,7 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
         Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
+        Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:3,1');
         Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
         Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     });
