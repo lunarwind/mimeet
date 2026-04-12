@@ -40,7 +40,8 @@ export default function LoginPage() {
     // Try real API first
     try {
       const res = await apiClient.post('/admin/auth/login', {
-        data: { email: values.email, password: values.password },
+        email: values.email,
+        password: values.password,
       })
       if (res.data?.data?.user) {
         const user = res.data.data.user
