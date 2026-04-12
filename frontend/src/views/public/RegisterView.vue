@@ -176,7 +176,13 @@ async function verifyOtp() {
   otpError.value = ''
   try {
     await verifyEmail({ verification_code: code, email: registeredEmail.value })
-    router.push('/app/explore')
+    // Email verified → go to SMS verification (Step 4)
+    if (step2.phone) {
+      goStep(4)
+      sendSmsCode()
+    } else {
+      router.push('/app/explore')
+    }
   } catch {
     otpError.value = '驗證碼不正確或已過期'
     otpDigits.value = ['', '', '', '', '', '']
@@ -201,6 +207,66 @@ async function resendOtp() {
 }
 
 const otpFilled = computed(() => otpDigits.value.every(d => d !== ''))
+
+// ── Step 4 SMS 驗證 ─────────────────────────────
+const smsDigits = ref<string[]>(['', '', '', '', '', ''])
+const smsRefs = ref<HTMLInputElement[]>([])
+const smsError = ref('')
+const isSmsVerifying = ref(false)
+const smsCountdown = ref(0)
+let smsTimer: ReturnType<typeof setInterval> | null = null
+
+function startSmsCountdown() {
+  smsCountdown.value = 60
+  if (smsTimer) clearInterval(smsTimer)
+  smsTimer = setInterval(() => {
+    smsCountdown.value--
+    if (smsCountdown.value <= 0 && smsTimer) { clearInterval(smsTimer); smsTimer = null }
+  }, 1000)
+}
+
+async function sendSmsCode() {
+  try {
+    const client = (await import('@/api/client')).default
+    await client.post('/auth/verify-phone/send', { phone: step2.phone })
+    startSmsCountdown()
+  } catch {
+    smsError.value = '簡訊發送失敗，請稍後再試'
+  }
+}
+
+function onSmsInput(idx: number, e: Event) {
+  const val = (e.target as HTMLInputElement).value.replace(/\D/g, '')
+  smsDigits.value[idx] = val.slice(-1)
+  smsError.value = ''
+  if (val && idx < 5) nextTick(() => smsRefs.value[idx + 1]?.focus())
+  if (smsDigits.value.every(d => d)) verifySms()
+}
+
+function onSmsKeydown(idx: number, e: KeyboardEvent) {
+  if (e.key === 'Backspace' && !smsDigits.value[idx] && idx > 0) {
+    smsDigits.value[idx - 1] = ''
+    nextTick(() => smsRefs.value[idx - 1]?.focus())
+  }
+}
+
+async function verifySms() {
+  const code = smsDigits.value.join('')
+  if (code.length < 6) return
+  isSmsVerifying.value = true
+  smsError.value = ''
+  try {
+    const client = (await import('@/api/client')).default
+    await client.post('/auth/verify-phone/confirm', { phone: step2.phone, code })
+    router.push('/app/explore')
+  } catch {
+    smsError.value = '驗證碼不正確或已過期'
+    smsDigits.value = ['', '', '', '', '', '']
+    nextTick(() => smsRefs.value[0]?.focus())
+  } finally {
+    isSmsVerifying.value = false
+  }
+}
 
 function goLogin() { router.push('/login') }
 function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
@@ -235,9 +301,9 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
     <!-- 進度指示 -->
     <div class="progress-wrap">
       <div class="step-dots">
-        <div v-for="s in 3" :key="s" class="step-dot" :class="{ active: s === currentStep, done: s < currentStep }" />
+        <div v-for="s in 4" :key="s" class="step-dot" :class="{ active: s === currentStep, done: s < currentStep }" />
       </div>
-      <span class="step-label">{{ currentStep }} / 3</span>
+      <span class="step-label">{{ currentStep }} / 4</span>
     </div>
 
     <!-- Step 容器 -->
@@ -497,6 +563,42 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
           </div>
 
           <p class="step3-hint">收不到信？請檢查垃圾郵件資料夾</p>
+        </div>
+
+        <!-- ═══ Step 4：SMS 手機驗證 ═══ -->
+        <div v-if="currentStep === 4" class="step-card step3-card">
+          <div class="envelope-icon">📱</div>
+          <h2 class="step-title">手機驗證</h2>
+          <p class="step-sub">驗證碼已發送至 {{ step2.phone }}</p>
+
+          <div class="otp-row">
+            <input
+              v-for="(_, idx) in smsDigits"
+              :key="'sms-' + idx"
+              :ref="(el) => { if (el) smsRefs[idx] = el as HTMLInputElement }"
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              class="otp-input"
+              :class="{ filled: smsDigits[idx], error: smsError }"
+              :value="smsDigits[idx]"
+              @input="onSmsInput(idx, $event)"
+              @keydown="onSmsKeydown(idx, $event)"
+            />
+          </div>
+
+          <p v-if="smsError" class="field-error otp-error">{{ smsError }}</p>
+
+          <button class="btn-primary" :disabled="isSmsVerifying || smsDigits.some(d => !d)" @click="verifySms">
+            {{ isSmsVerifying ? '驗證中…' : '完成驗證' }}
+          </button>
+
+          <div class="resend-row">
+            <span v-if="smsCountdown > 0" class="resend-countdown">{{ smsCountdown }} 秒後可重新發送</span>
+            <button v-else class="resend-btn" @click="sendSmsCode">重新發送簡訊驗證碼</button>
+          </div>
+
+          <button class="link-btn" @click="router.push('/app/explore')">稍後再驗證</button>
         </div>
 
       </Transition>
