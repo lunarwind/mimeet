@@ -43,10 +43,10 @@ export default function LoginPage() {
         email: values.email,
         password: values.password,
       })
-      if (res.data?.data?.user) {
-        const user = res.data.data.user
-        if (res.data.data.tokens?.access_token) {
-          localStorage.setItem('admin_token', res.data.data.tokens.access_token)
+      if (res.data?.data?.admin) {
+        const user = res.data.data.admin
+        if (res.data.data.token) {
+          localStorage.setItem('admin_token', res.data.data.token)
         }
         login({ id: user.id, name: user.name || user.nickname, email: user.email, role: user.role })
         navigate(user.role === 'cs' ? '/tickets' : '/dashboard', { replace: true })
