@@ -57,8 +57,8 @@ function LogsContent() {
       const params: Record<string, string | number | boolean> = { page, per_page: 50, show_ip: showIp }
       if (actionFilter !== 'all') params.action_type = actionFilter
       const res = await apiClient.get('/admin/logs', { params })
-      setLogs(res.data.data.logs)
-      setTotal(res.data.pagination?.total ?? 0)
+      setLogs(res.data.data.logs ?? res.data.data ?? [])
+      setTotal(res.data.data.pagination?.total ?? 0)
     } catch { /* ignore */ }
     setLoading(false)
   }, [page, showIp, actionFilter])

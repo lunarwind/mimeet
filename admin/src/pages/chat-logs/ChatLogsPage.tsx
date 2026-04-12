@@ -79,8 +79,8 @@ function ChatLogsContent() {
       const params: Record<string, string | number> = { keyword, page, per_page: 20 }
       if (searchUserId) params.user_id = searchUserId
       const res = await apiClient.get('/admin/chat-logs/search', { params })
-      setSearchResults(res.data.data)
-      setSearchTotal(res.data.meta?.total ?? 0)
+      setSearchResults(res.data.data?.results ?? res.data.data ?? [])
+      setSearchTotal(res.data.data?.pagination?.total ?? 0)
       setSearchPage(page)
     } catch {
       setSearchResults([])
@@ -97,8 +97,8 @@ function ChatLogsContent() {
         params: { user_a: convUserA, user_b: convUserB, page, per_page: 50 },
       })
       setConvData(res.data.data)
-      setConvMessages(res.data.data.messages)
-      setConvTotal(res.data.meta?.total ?? 0)
+      setConvMessages(res.data.data?.messages ?? [])
+      setConvTotal(res.data.data?.pagination?.total ?? 0)
       setConvPage(page)
     } catch {
       setConvData(null)
