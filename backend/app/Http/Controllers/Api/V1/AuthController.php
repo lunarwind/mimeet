@@ -45,9 +45,16 @@ class AuthController extends Controller
         Cache::put("email_verify:{$user->email}", $verifyCode, 600); // 10 min TTL
 
         try {
-            Mail::to($user->email)->send(new VerificationMail($verifyCode, $user->nickname));
+            $mailService = new \App\Services\MailService();
+            $mailService->send(
+                $user->email,
+                '【MiMeet】Email 驗證碼',
+                (new VerificationMail($verifyCode, $user->nickname))->render(),
+            );
         } catch (\Throwable $e) {
-            try { Log::warning('[Register] Email send failed: ' . $e->getMessage()); } catch (\Throwable) {}
+            // Fallback: try Laravel Mail directly
+            try { Mail::to($user->email)->send(new VerificationMail($verifyCode, $user->nickname)); } catch (\Throwable) {}
+            try { Log::warning('[Register] Email send: ' . $e->getMessage()); } catch (\Throwable) {}
         }
 
         return response()->json([

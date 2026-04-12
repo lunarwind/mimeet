@@ -36,6 +36,7 @@
     32 => 'App\\Providers\\AuthServiceProvider',
     33 => 'App\\Providers\\EventServiceProvider',
     34 => 'App\\Providers\\RouteServiceProvider',
+    35 => 'App\\Providers\\DynamicConfigServiceProvider',
   ),
   'eager' => 
   array (
@@ -59,6 +60,7 @@
     17 => 'App\\Providers\\AuthServiceProvider',
     18 => 'App\\Providers\\EventServiceProvider',
     19 => 'App\\Providers\\RouteServiceProvider',
+    20 => 'App\\Providers\\DynamicConfigServiceProvider',
   ),
   'deferred' => 
   array (

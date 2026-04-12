@@ -30,6 +30,8 @@ class SystemControlController extends Controller
                 'version' => SystemSetting::get('app.version', '1.0.0'),
             ],
             'mail' => [
+                'driver' => SystemSetting::get('mail.driver', 'smtp'),
+                'resend_api_key' => SystemSetting::get('mail.resend_api_key') ? substr(SystemSetting::get('mail.resend_api_key'), 0, 8) . '****' : '',
                 'host' => SystemSetting::get('mail.host', 'mailpit'),
                 'port' => (int) SystemSetting::get('mail.port', 1025),
                 'encryption' => SystemSetting::get('mail.encryption', 'null'),
@@ -105,25 +107,51 @@ class SystemControlController extends Controller
     public function updateMail(Request $request): JsonResponse
     {
         $request->validate([
+            'driver' => 'sometimes|in:smtp,resend',
+            'resend_api_key' => 'sometimes|nullable|string',
             'host' => 'sometimes|string|max:255',
             'port' => 'sometimes|integer|between:1,65535',
             'encryption' => 'sometimes|in:null,tls,ssl',
             'username' => 'sometimes|string|max:255',
             'password' => 'sometimes|nullable|string',
+            'smtp_host' => 'sometimes|string|max:255',
+            'smtp_port' => 'sometimes|integer',
+            'smtp_encryption' => 'sometimes|in:null,tls,ssl',
+            'smtp_username' => 'sometimes|string|max:255',
+            'smtp_password' => 'sometimes|nullable|string',
             'from_address' => 'sometimes|email',
             'from_name' => 'sometimes|string|max:100',
         ]);
 
         $admin = $request->user();
+
+        // Driver selection
+        if ($request->has('driver')) {
+            SystemSetting::set('mail.driver', $request->input('driver'), $admin->id);
+        }
+
+        // Resend API key
+        if ($request->filled('resend_api_key') && !preg_match('/^\*+$/', $request->input('resend_api_key'))) {
+            SystemSetting::set('mail.resend_api_key', $request->input('resend_api_key'), $admin->id);
+        }
+
+        // SMTP fields (support both old and new key names)
         $nonSensitive = ['host', 'port', 'encryption', 'username', 'from_address', 'from_name'];
         foreach ($nonSensitive as $key) {
             if ($request->has($key)) {
                 SystemSetting::set("mail.{$key}", $request->input($key), $admin->id);
             }
         }
+        // Also support smtp_ prefixed keys
+        foreach (['smtp_host' => 'host', 'smtp_port' => 'port', 'smtp_encryption' => 'encryption', 'smtp_username' => 'username'] as $newKey => $oldKey) {
+            if ($request->has($newKey)) {
+                SystemSetting::set("mail.{$oldKey}", $request->input($newKey), $admin->id);
+            }
+        }
 
-        if ($request->filled('password')) {
-            SystemSetting::set('mail.password_encrypted', Crypt::encryptString($request->password), $admin->id);
+        if ($request->filled('password') || $request->filled('smtp_password')) {
+            $pw = $request->input('password') ?? $request->input('smtp_password');
+            SystemSetting::set('mail.password_encrypted', Crypt::encryptString($pw), $admin->id);
         }
 
         try { Log::info("[SystemControl] Mail settings updated by admin #{$admin->id}"); } catch (\Throwable) {}
@@ -133,50 +161,22 @@ class SystemControlController extends Controller
 
     public function testMail(Request $request): JsonResponse
     {
-        $request->validate(['test_email' => 'required|email']);
+        $request->validate(['test_email' => 'sometimes|email', 'to' => 'sometimes|email']);
+        $to = $request->input('test_email') ?? $request->input('to');
+        if (!$to) return response()->json(['success' => false, 'message' => '請提供收件人 Email'], 422);
+
         $start = microtime(true);
         $debug = [];
         $success = false;
         $errorDetail = null;
+        $driver = SystemSetting::get('mail.driver', 'smtp');
 
-        // Apply DB-stored mail settings for this request
-        $host = SystemSetting::get('mail.host', config('mail.mailers.smtp.host'));
-        $port = (int) SystemSetting::get('mail.port', config('mail.mailers.smtp.port'));
-        $enc = SystemSetting::get('mail.encryption', config('mail.mailers.smtp.encryption'));
-        $user = SystemSetting::get('mail.username', config('mail.mailers.smtp.username'));
-        $from = SystemSetting::get('mail.from_address', config('mail.from.address'));
-        $fromName = SystemSetting::get('mail.from_name', config('mail.from.name'));
-        $passEnc = SystemSetting::get('mail.password_encrypted', '');
-        $pass = $passEnc ? (function () use ($passEnc) { try { return Crypt::decryptString($passEnc); } catch (\Throwable) { return $passEnc; } })() : config('mail.mailers.smtp.password');
-
-        $encryption = ($enc === 'null' || $enc === 'none' || !$enc) ? null : $enc;
-
-        config([
-            'mail.default' => 'smtp',
-            'mail.mailers.smtp.transport' => 'smtp',
-            'mail.mailers.smtp.host' => $host,
-            'mail.mailers.smtp.port' => $port,
-            'mail.mailers.smtp.encryption' => $encryption,
-            'mail.mailers.smtp.username' => $user,
-            'mail.mailers.smtp.password' => $pass,
-            'mail.from.address' => $from,
-            'mail.from.name' => $fromName,
-        ]);
-
-        // Purge cached mailer so it picks up new config
-        Mail::purge('smtp');
-
-        $debug[] = '[' . now()->format('H:i:s') . '] 開始 SMTP 測試';
-        $debug[] = "  Host       : {$host}";
-        $debug[] = "  Port       : {$port}";
-        $debug[] = '  Encryption : ' . ($encryption ?: 'none');
-        $debug[] = "  Username   : {$user}";
-        $debug[] = "  From       : {$from}";
-        $debug[] = '  To         : ' . $request->test_email;
-        $debug[] = '  Password   : ' . ($pass ? '****（已設定）' : '（未設定）');
+        $debug[] = '[' . now()->format('H:i:s') . "] 開始 Email 測試（driver: {$driver}）";
+        $debug[] = "  To: {$to}";
 
         try {
-            Mail::mailer('smtp')->to($request->test_email)->send(new TestMail());
+            $mailService = new \App\Services\MailService();
+            $mailService->send($to, '【MiMeet】Email 設定測試', '<h2>MiMeet Email 測試成功</h2><p>此為後台發送的測試信件。</p><p>時間：' . now() . '</p>');
             $ms = round((microtime(true) - $start) * 1000);
             $success = true;
             $debug[] = "[" . now()->format('H:i:s') . "] ✅ 發送成功（{$ms}ms）";
@@ -187,9 +187,9 @@ class SystemControlController extends Controller
             $debug[] = "[" . now()->format('H:i:s') . "] ❌ 發送失敗（{$ms}ms）";
             $debug[] = "  錯誤類型 : " . get_class($e);
             $debug[] = "  錯誤訊息 : {$msg}";
-            if (str_contains($msg, 'Connection refused')) $debug[] = '  診斷建議 : 無法連線，請確認 Host/Port 是否正確';
+            if (str_contains($msg, 'Connection refused')) $debug[] = '  診斷建議 : SMTP Port 被封鎖，建議改用 Resend API';
+            elseif (str_contains($msg, 'Resend')) $debug[] = '  診斷建議 : 請確認 Resend API Key 是否正確';
             elseif (str_contains($msg, 'Authentication')) $debug[] = '  診斷建議 : 認證失敗，請確認帳號/密碼';
-            elseif (str_contains($msg, 'SSL') || str_contains($msg, 'TLS')) $debug[] = '  診斷建議 : SSL/TLS 握手失敗，嘗試切換加密方式';
             elseif (str_contains($msg, 'timeout')) $debug[] = '  診斷建議 : 連線逾時，確認防火牆是否開放 Port';
         }
 
