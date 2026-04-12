@@ -18,17 +18,6 @@ interface Broadcast {
   created_at: string
 }
 
-const MOCK_BROADCASTS: Broadcast[] = Array.from({ length: 8 }, (_, i) => ({
-  id: 200 + i,
-  title: `廣播活動 ${i + 1}`,
-  content: `這是廣播內容 ${i + 1}，包含一些通知訊息。`,
-  delivery_mode: (['push', 'in_app', 'both'] as const)[i % 3],
-  target_gender: (['all', 'male', 'female'] as const)[i % 3],
-  status: i < 3 ? 'draft' : 'sent',
-  sent_count: i < 3 ? 0 : 500 + i * 100,
-  created_at: dayjs().subtract(i, 'day').toISOString(),
-}))
-
 const DELIVERY_LABELS: Record<string, string> = {
   push: '推播通知',
   in_app: '站內通知',
@@ -64,9 +53,9 @@ export default function BroadcastsPage() {
     setLoading(true)
     try {
       const res = await apiClient.get('/admin/broadcasts')
-      setData(res.data.data ?? res.data)
+      setData(res.data.data?.broadcasts ?? res.data.data ?? [])
     } catch {
-      setData(MOCK_BROADCASTS)
+      setData([])
     } finally {
       setLoading(false)
     }
