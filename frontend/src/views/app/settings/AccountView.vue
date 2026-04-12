@@ -125,7 +125,7 @@ async function saveProfile() {
   if (!isDirty.value) return
   isSaving.value = true
   try {
-    await (await import('@/api/client')).default.patch('/me/profile', { data: form.value })
+    await (await import('@/api/client')).default.patch('/me/profile', form.value)
     uiStore.showToast('資料已更新', 'success')
     isDirty.value = false
   } catch {

@@ -50,9 +50,9 @@ onUnmounted(() => {
 async function autoVerifyByToken(token: string) {
   try {
     const res = await verifyEmail({ verification_code: token, email: email.value })
-    if (res?.data?.tokens?.access_token) {
-      authStore.setToken(res.data.tokens.access_token)
-      authStore.setUser(res.data.user)
+    if (res?.data?.token || res?.data?.data?.token) {
+      authStore.setToken(res.data?.token ?? res.data?.data?.token ?? '')
+      authStore.setUser(res.data?.user ?? res.data?.data?.user)
     }
     state.value = 'success'
     // 3 秒後自動跳轉
