@@ -45,10 +45,8 @@ export default function LoginPage() {
       })
       if (res.data?.data?.admin) {
         const user = res.data.data.admin
-        if (res.data.data.token) {
-          localStorage.setItem('admin_token', res.data.data.token)
-        }
-        login({ id: user.id, name: user.name || user.nickname, email: user.email, role: user.role })
+        const token = res.data.data.token || ''
+        login({ id: user.id, name: user.name || user.nickname, email: user.email, role: user.role }, token)
         navigate(user.role === 'cs' ? '/tickets' : '/dashboard', { replace: true })
         return
       }
