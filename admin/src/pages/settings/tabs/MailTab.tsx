@@ -60,11 +60,16 @@ export default function MailTab() {
     <Card>
       <Segmented options={['SendGrid', '其他 SMTP']} onChange={(v) => applyPreset(v as string)} style={{ marginBottom: 24 }} />
 
-      <Form form={form} layout="vertical" style={{ maxWidth: 500 }}>
+      <Form form={form} layout="vertical" style={{ maxWidth: 500 }} onValuesChange={(changed) => {
+        // Auto-suggest encryption when port changes
+        if (changed.port === 465) form.setFieldValue('encryption', 'ssl')
+        else if (changed.port === 587) form.setFieldValue('encryption', 'tls')
+        else if (changed.port === 25) form.setFieldValue('encryption', 'null')
+      }}>
         <Form.Item label="SMTP 主機" name="host"><Input /></Form.Item>
         <Form.Item label="Port" name="port"><InputNumber style={{ width: '100%' }} /></Form.Item>
-        <Form.Item label="加密" name="encryption">
-          <Select options={[{ value: 'null', label: '無' }, { value: 'tls', label: 'TLS' }, { value: 'ssl', label: 'SSL' }]} />
+        <Form.Item label="加密" name="encryption" extra="Port 465 → SSL，Port 587 → TLS">
+          <Select options={[{ value: 'null', label: '無' }, { value: 'tls', label: 'TLS (Port 587)' }, { value: 'ssl', label: 'SSL (Port 465)' }]} />
         </Form.Item>
         <Form.Item label="使用者名稱" name="username"><Input /></Form.Item>
         <Form.Item label="密碼" name="password"><Input.Password placeholder="留空保留現有密碼" /></Form.Item>
