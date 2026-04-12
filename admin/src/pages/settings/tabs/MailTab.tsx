@@ -31,7 +31,7 @@ export default function MailTab() {
     setTestLoading(true)
     setTestResult(null)
     try {
-      const res = await apiClient.post('/admin/settings/mail/test', { test_email: testEmail })
+      const res = await apiClient.post('/admin/settings/mail/test', { test_email: testEmail }, { timeout: 30000 })
       setTestResult(res.data)
     } catch (err: unknown) {
       const resp = (err as { response?: { data?: Record<string, unknown>; status?: number }; message?: string })?.response

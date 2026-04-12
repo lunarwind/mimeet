@@ -8,7 +8,7 @@ const apiClient = axios.create({
     Accept: 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
   },
-  timeout: 10000,
+  timeout: 15000,
 })
 
 // Request interceptor: attach XSRF-TOKEN from cookie

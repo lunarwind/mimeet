@@ -9,7 +9,7 @@ const client: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 })
 
 // Request Interceptor：自動帶上 token
