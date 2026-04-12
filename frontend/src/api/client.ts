@@ -28,10 +28,10 @@ client.interceptors.response.use(
     const uiStore = useUiStore()
 
     if (error.response?.status === 401) {
-      // Token 過期或未登入
+      // Token 過期或未登入 — clear state, let guard handle redirect
       localStorage.removeItem('auth_token')
       localStorage.removeItem('member_level')
-      window.location.hash = '/login'
+      // Don't force redirect here — let router guard handle it on next navigation
       return Promise.reject(error)
     }
 
