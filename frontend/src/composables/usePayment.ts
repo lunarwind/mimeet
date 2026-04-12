@@ -65,7 +65,7 @@ export function usePayment() {
     error.value = null
     try {
       const res = await client.post<{ data: CreateOrderResponse }>('/subscriptions/orders', {
-        data: { plan_type: planType },
+        plan_id: planType,
       })
       return res.data.data
     } catch (e) {
@@ -80,7 +80,7 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      await client.post('/subscriptions/cancel-request', { data: { reason } })
+      await client.post('/subscriptions/cancel-request', { reason })
       return true
     } catch (e) {
       error.value = '取消訂閱失敗'
@@ -107,7 +107,7 @@ export function usePayment() {
     isLoading.value = true
     try {
       const res = await client.post<{ data: CreateOrderResponse }>('/subscription/trial/purchase', {
-        data: { payment_method: 'green_world' },
+        payment_method: 'credit_card',
       })
       return res.data.data
     } catch (e) {

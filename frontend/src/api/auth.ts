@@ -24,11 +24,9 @@ export interface LoginResponse {
       membership_level: number
       verified: string
     }
-    tokens: {
+    token: string
+    tokens?: {
       access_token: string
-      refresh_token: string
-      token_type: string
-      expires_in: number
     }
   }
 }
