@@ -61,14 +61,9 @@ export function resetPassword(payload: {
 export interface RegisterPayload {
   email: string
   password: string
-  password_confirmation: string
   nickname: string
   gender: 'male' | 'female'
   birth_date: string
-  group: number
-  terms_accepted: boolean
-  privacy_accepted: boolean
-  anti_fraud_read: boolean
 }
 
 export function register(payload: RegisterPayload) {

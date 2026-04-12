@@ -93,29 +93,27 @@ async function submitStep2() {
   isSubmitting.value = true
   try {
     const birthDate = `${step1.birthYear}-${String(step1.birthMonth).padStart(2,'0')}-${String(step1.birthDay).padStart(2,'0')}`
-    await register({
+    const res = await register({
       email: step2.email,
       password: step2.password,
-      password_confirmation: step2.passwordConfirm,
       nickname: step1.nickname.trim(),
       gender: step1.gender as 'male' | 'female',
       birth_date: birthDate,
-      group: step1.gender === 'male' ? 1 : 2,
-      terms_accepted: step2.agreeTerms,
-      privacy_accepted: step2.agreeTerms,
-      anti_fraud_read: true,
     })
+    // Store token from registration response
+    const token = res.data?.data?.token ?? res.data?.token ?? ''
+    if (token) authStore.setToken(token)
     registeredEmail.value = step2.email
     goStep(3)
   } catch (err: any) {
-    const details = err?.response?.data?.error?.details
-    if (details) {
-      details.forEach((d: any) => {
-        if (d.field === 'email') step2Errors.email = d.message
-        else if (d.field === 'phone') step2Errors.phone = d.message
-      })
+    const errors = err?.response?.data?.errors
+    if (errors) {
+      if (errors.email) step2Errors.email = errors.email[0]
+      if (errors.password) step2Errors.password = errors.password[0]
+      if (errors.nickname) step2Errors.email = errors.nickname[0]
+      if (errors.birth_date) step2Errors.email = errors.birth_date[0]
     } else {
-      step2Errors.email = '註冊失敗，請稍後再試'
+      step2Errors.email = err?.response?.data?.message ?? '註冊失敗，請稍後再試'
     }
   } finally {
     isSubmitting.value = false
@@ -177,9 +175,7 @@ async function verifyOtp() {
   isVerifying.value = true
   otpError.value = ''
   try {
-    const res = await verifyEmail({ verification_code: code, email: registeredEmail.value })
-    authStore.setToken(res.data?.tokens?.access_token ?? '')
-    authStore.setUser(res.data?.user)
+    await verifyEmail({ verification_code: code, email: registeredEmail.value })
     router.push('/app/explore')
   } catch {
     otpError.value = '驗證碼不正確或已過期'
