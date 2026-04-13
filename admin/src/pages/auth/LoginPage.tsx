@@ -34,21 +34,27 @@ export default function LoginPage() {
         email: values.email,
         password: values.password,
       })
-      if (res.data?.data?.admin) {
-        const user = res.data.data.admin
-        const token = res.data.data.token || ''
-        login({ id: user.id, name: user.name || user.nickname, email: user.email, role: user.role }, token)
-        navigate(user.role === 'cs' ? '/tickets' : '/dashboard', { replace: true })
+      const admin = res.data?.data?.admin
+      const token = res.data?.data?.token || ''
+      if (!admin || !token) {
+        setError('登入失敗：伺服器回應格式異常')
         return
       }
-    } catch {
-      // API unavailable — show error
+      login({ id: admin.id, name: admin.name || admin.nickname, email: admin.email, role: admin.role }, token)
+      navigate(admin.role === 'cs' ? '/tickets' : '/dashboard', { replace: true })
+      return
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string }; status?: number } }
+      const msg = axiosErr?.response?.data?.message
+      if (axiosErr?.response?.status === 429) {
+        setError('請稍後再試，您已嘗試過多次')
+      } else {
+        setAttempts((a) => a + 1)
+        setError(msg || 'Email 或密碼不正確')
+      }
     } finally {
       setLoading(false)
     }
-
-    setAttempts((a) => a + 1)
-    setError('Email 或密碼不正確')
   }
 
   return (
