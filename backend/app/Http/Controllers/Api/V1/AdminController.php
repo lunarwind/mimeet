@@ -245,6 +245,22 @@ class AdminController extends Controller
     }
 
     /**
+     * DELETE /api/v1/admin/members/{id}
+     */
+    public function deleteMember(Request $request, int $id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => '會員不存在'], 404);
+        }
+
+        try { Log::info('[Admin] Member deleted', ['member_id' => $id, 'by' => $request->user()?->id]); } catch (\Throwable) {}
+        $user->delete();
+
+        return response()->json(['success' => true, 'message' => '會員已刪除']);
+    }
+
+    /**
      * PATCH /api/v1/admin/members/{id}/profile
      * Update a user's profile fields. Super-admin only.
      * Manually logs before/after snapshot to admin_operation_logs.

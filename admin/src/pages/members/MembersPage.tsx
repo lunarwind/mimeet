@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar } from 'antd'
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message } from 'antd'
+import { SearchOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -59,6 +59,17 @@ export default function MembersPage() {
     setTimeout(fetchMembers, 0)
   }
 
+  async function handleDeleteMember(id: number) {
+    try {
+      await apiClient.delete(`/admin/members/${id}`)
+      message.success('會員已刪除')
+      fetchMembers()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg || '刪除失敗')
+    }
+  }
+
   const columns = [
     {
       title: '暱稱', dataIndex: 'nickname', key: 'nickname',
@@ -100,9 +111,21 @@ export default function MembersPage() {
       render: (d: string) => d ? dayjs(d).format('MM/DD HH:mm') : '—',
     },
     {
-      title: '操作', key: 'actions', width: 80,
+      title: '操作', key: 'actions', width: 160,
       render: (_: unknown, record: Member) => (
-        <Button type="link" size="small" onClick={() => navigate(`/members/${record.id}`)}>查看</Button>
+        <Space>
+          <Button type="link" size="small" onClick={() => navigate(`/members/${record.id}`)}>查看</Button>
+          <Popconfirm
+            title="確定刪除此會員？"
+            description={`${record.nickname ?? record.email} 將被刪除`}
+            onConfirm={() => handleDeleteMember(record.id)}
+            okText="確定刪除"
+            okButtonProps={{ danger: true }}
+            cancelText="取消"
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>刪除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
