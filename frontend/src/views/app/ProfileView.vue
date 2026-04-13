@@ -231,9 +231,9 @@ function goBack() {
         </p>
         <!-- 驗證徽章 -->
         <div class="profile-info__badges">
-          <VerifyBadge type="email" :verified="profile.verification_status.email_verified" />
-          <VerifyBadge type="phone" :verified="profile.verification_status.phone_verified" />
-          <VerifyBadge type="advanced" :verified="profile.verification_status.verified" />
+          <VerifyBadge type="email" :verified="profile.email_verified" />
+          <VerifyBadge type="phone" :verified="profile.phone_verified" />
+          <VerifyBadge type="advanced" :verified="profile.advanced_verified" />
         </div>
         <!-- 數據摘要 -->
         <div class="profile-info__stats">

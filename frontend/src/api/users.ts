@@ -10,33 +10,24 @@ import type { ExploreUser, SearchUsersResponse } from '@/types/explore'
 export interface UserProfileData {
   id: number
   nickname: string
-  age: number
+  age: number | null
   gender: 'male' | 'female'
-  location: string
+  location: string | null
   avatar: string | null
   credit_score: number
   membership_level: number
   introduction: string | null
   height: number | null
-  weight: number | null
   job: string | null
   education: string | null
   photos: { id: number; url: string; is_avatar: boolean; order: number }[]
-  verification_status: {
-    email_verified: boolean
-    phone_verified: boolean
-    verified: boolean
-    credit_card_verified: boolean
-  }
+  email_verified: boolean
+  phone_verified: boolean
+  advanced_verified: boolean
   online_status: 'online' | 'offline'
   last_active_at: string | null
   is_favorited: boolean
   is_blocked: boolean
-  stats: {
-    profile_views: number
-    messages_received: number
-    likes_received: number
-  }
   created_at: string
 }
 
