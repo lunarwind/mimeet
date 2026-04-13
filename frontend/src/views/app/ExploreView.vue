@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import BottomNav from '@/components/layout/BottomNav.vue'
 import UserCard from '@/components/explore/UserCard.vue'
 import FilterBottomSheet from '@/components/explore/FilterBottomSheet.vue'
 import ExploreEmptyState from '@/components/explore/ExploreEmptyState.vue'
@@ -199,6 +200,8 @@ function clearSearch() {
       @reset="onResetFilter"
       @close="showFilterSheet = false"
     />
+
+    <BottomNav />
   </div>
 </template>
 
@@ -209,7 +212,8 @@ function clearSearch() {
 .explore-view {
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - 64px - 52px);
+  min-height: 100dvh;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
   background: #F8F9FB;
 }
 

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import BottomNav from '@/components/layout/BottomNav.vue'
 import client from '@/api/client'
 
 const router = useRouter()
@@ -87,11 +88,12 @@ onMounted(() => fetchVisitors())
         </div>
       </div>
     </div>
+    <BottomNav />
   </div>
 </template>
 
 <style scoped>
-.vis-page { min-height: 100svh; background: #F9F9FB; }
+.vis-page { min-height: 100svh; background: #F9F9FB; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .vis-header { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #E5E7EB; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 52px; }
 .back-btn { width: 40px; height: 40px; border-radius: 10px; background: transparent; border: none; display: flex; align-items: center; justify-content: center; color: #6B7280; cursor: pointer; }
 .page-title { font-size: 16px; font-weight: 600; color: #111827; }
