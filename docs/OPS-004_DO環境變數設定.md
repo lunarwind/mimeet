@@ -52,8 +52,8 @@
 
 | 變數 | Online Test | Production |
 |------|------------|-----------|
-| VITE_API_BASE_URL | http://api.mimeet.lunarwind.org/api/v1 | https://api.mimeet.tw/api/v1 |
-| VITE_WS_HOST | api.mimeet.lunarwind.org | api.mimeet.tw |
+| VITE_API_BASE_URL | http://api.mimeet.online/api/v1 | https://api.mimeet.tw/api/v1 |
+| VITE_WS_HOST | api.mimeet.online | api.mimeet.tw |
 | VITE_WS_PORT | 8080 | 8080 |
 | VITE_WS_KEY | 同 REVERB_APP_KEY | 同 REVERB_APP_KEY |
 | VITE_WS_SCHEME | http | https |
@@ -62,7 +62,7 @@
 
 | 變數 | Online Test | Production |
 |------|------------|-----------|
-| VITE_API_BASE_URL | http://api.mimeet.lunarwind.org/api/v1 | https://api.mimeet.tw/api/v1 |
+| VITE_API_BASE_URL | http://api.mimeet.online/api/v1 | https://api.mimeet.tw/api/v1 |
 
 ---
 
