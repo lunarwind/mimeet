@@ -13,6 +13,12 @@ class ResetToCleanState extends Command
 
     // Tables to truncate (child tables first for FK order)
     private const TRUNCATE_TABLES = [
+        'user_profile_visits',
+        'user_follows',
+        'user_blocks',
+        'user_activity_logs',
+        'user_verifications',
+        'broadcast_campaigns',
         'report_followups',
         'report_images',
         'reports',
