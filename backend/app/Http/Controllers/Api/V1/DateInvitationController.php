@@ -129,11 +129,11 @@ class DateInvitationController extends Controller
     public function respond(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'data.response' => 'required|string|in:accepted,rejected',
+            'response' => 'required|string|in:accepted,rejected',
         ]);
 
         $inv = DateInvitation::findOrFail($id);
-        $response = $request->input('data.response');
+        $response = $request->input('response');
 
         try {
             if ($response === 'accepted') {

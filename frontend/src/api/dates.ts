@@ -5,9 +5,39 @@
 import client from './client'
 import type { DateInvitation } from '@/types/chat'
 
+// ── Raw API response type (snake_case) ───────────────────
+interface RawDateInvitation {
+  id: number
+  inviter: { id: number; nickname: string; avatar: string | null } | null
+  invitee: { id: number; nickname: string; avatar: string | null } | null
+  scheduled_at: string | null
+  location: string | null
+  status: string
+  created_at: string
+}
+
+function transformInvitation(raw: RawDateInvitation): DateInvitation {
+  return {
+    id: raw.id,
+    inviterId: raw.inviter?.id ?? 0,
+    inviteeId: raw.invitee?.id ?? 0,
+    inviterNickname: raw.inviter?.nickname ?? '',
+    inviteeNickname: raw.invitee?.nickname ?? '',
+    inviterAvatar: raw.inviter?.avatar ?? null,
+    inviteeAvatar: raw.invitee?.avatar ?? null,
+    status: raw.status as DateInvitation['status'],
+    scheduledAt: raw.scheduled_at ?? '',
+    location: raw.location,
+    qrToken: null,
+    expiresAt: null,
+    creditScoreChange: null,
+    createdAt: raw.created_at,
+  }
+}
+
 export async function fetchDates(): Promise<DateInvitation[]> {
-  const res = await client.get<{ data: { invitations: DateInvitation[] } }>('/date-invitations')
-  return res.data.data.invitations
+  const res = await client.get<{ data: { invitations: RawDateInvitation[] } }>('/date-invitations')
+  return res.data.data.invitations.map(transformInvitation)
 }
 
 export async function respondToDate(id: number, response: 'accepted' | 'rejected'): Promise<void> {

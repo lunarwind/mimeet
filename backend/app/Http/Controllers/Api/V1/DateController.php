@@ -52,8 +52,8 @@ class DateController extends Controller
             'invitee_id' => 'required|integer|exists:users,id',
             'date_time' => 'required|date|after:now',
             'location_name' => 'nullable|string|max:255',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $invitation = $this->dateService->createInvitation(
