@@ -309,7 +309,7 @@ export default function MemberDetailPage() {
             children: (
               <Table
                 dataSource={[
-                  { id: 1, operator: 'admin@mimeet.tw', action: '查看會員資料', created_at: new Date().toISOString() },
+                  { id: 1, operator: 'chuck@lunarwind.org', action: '查看會員資料', created_at: new Date().toISOString() },
                 ]}
                 columns={[
                   { title: '時間', dataIndex: 'created_at', key: 'created_at', render: (d: string) => dayjs(d).format('YYYY/MM/DD HH:mm') },

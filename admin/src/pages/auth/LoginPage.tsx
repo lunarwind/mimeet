@@ -10,9 +10,9 @@ const { Title, Text } = Typography
 
 // Mock credentials for fallback when backend is unavailable
 const MOCK_ACCOUNTS: Record<string, { id: number; name: string; email: string; role: string; defaultRoute: string }> = {
-  'admin@mimeet.tw': { id: 1, name: '管理員', email: 'admin@mimeet.tw', role: 'super_admin', defaultRoute: '/dashboard' },
+  'chuck@lunarwind.org': { id: 1, name: '管理員', email: 'chuck@lunarwind.org', role: 'super_admin', defaultRoute: '/dashboard' },
   'cs@mimeet.tw': { id: 2, name: '客服人員', email: 'cs@mimeet.tw', role: 'cs', defaultRoute: '/tickets' },
-  'mod@mimeet.tw': { id: 3, name: '管理員B', email: 'mod@mimeet.tw', role: 'admin', defaultRoute: '/dashboard' },
+  'admin@mimeet.tw': { id: 3, name: '管理員B', email: 'admin@mimeet.tw', role: 'admin', defaultRoute: '/dashboard' },
 }
 
 export default function LoginPage() {
@@ -108,9 +108,9 @@ export default function LoginPage() {
           <div style={{ marginTop: 16, padding: 12, background: '#FFFBEB', borderRadius: 8, fontSize: 12 }}>
             <Text strong style={{ color: '#92400E' }}>DEV Mock 帳號：</Text>
             <br />
-            <Text style={{ color: '#92400E' }}>super_admin: admin@mimeet.tw / password</Text>
+            <Text style={{ color: '#92400E' }}>super_admin: chuck@lunarwind.org / password</Text>
             <br />
-            <Text style={{ color: '#92400E' }}>admin: mod@mimeet.tw / password</Text>
+            <Text style={{ color: '#92400E' }}>admin: admin@mimeet.tw / password</Text>
             <br />
             <Text style={{ color: '#92400E' }}>cs: cs@mimeet.tw / password</Text>
           </div>

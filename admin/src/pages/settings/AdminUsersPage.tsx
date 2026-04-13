@@ -16,7 +16,7 @@ interface AdminUser {
 }
 
 const MOCK_ADMINS: AdminUser[] = [
-  { id: 1, name: 'Super Admin', email: 'super@mimeet.tw', role: 'super_admin', last_login_at: dayjs().subtract(1, 'hour').toISOString() },
+  { id: 1, name: 'Super Admin', email: 'chuck@lunarwind.org', role: 'super_admin', last_login_at: dayjs().subtract(1, 'hour').toISOString() },
   { id: 2, name: 'Admin 小明', email: 'admin@mimeet.tw', role: 'admin', last_login_at: dayjs().subtract(3, 'hour').toISOString() },
   { id: 3, name: 'CS 小美', email: 'cs@mimeet.tw', role: 'cs', last_login_at: dayjs().subtract(1, 'day').toISOString() },
 ]
@@ -221,7 +221,7 @@ export default function AdminUsersPage() {
               { type: 'email', message: '請輸入有效的 Email' },
             ]}
           >
-            <Input placeholder="admin@mimeet.tw" />
+            <Input placeholder="chuck@lunarwind.org" />
           </Form.Item>
           <Form.Item
             name="password"

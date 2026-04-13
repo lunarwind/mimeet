@@ -12,7 +12,7 @@ class AdminUserController extends Controller
     {
         // Mock admin list for now (until AdminUser model is in S12)
         $admins = Cache::get('admin_users', [
-            ['id' => 1, 'name' => 'Super Admin', 'email' => 'super@mimeet.tw', 'role' => 'super_admin', 'last_login_at' => now()->subHours(1)->toISOString()],
+            ['id' => 1, 'name' => 'Super Admin', 'email' => 'chuck@lunarwind.org', 'role' => 'super_admin', 'last_login_at' => now()->subHours(1)->toISOString()],
             ['id' => 2, 'name' => 'Admin 小明', 'email' => 'admin@mimeet.tw', 'role' => 'admin', 'last_login_at' => now()->subHours(5)->toISOString()],
             ['id' => 3, 'name' => 'CS 小華', 'email' => 'cs@mimeet.tw', 'role' => 'cs', 'last_login_at' => now()->subDays(1)->toISOString()],
         ]);

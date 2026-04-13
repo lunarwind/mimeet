@@ -93,7 +93,7 @@ POST /api/v1/admin/auth/login
 **請求參數：**
 ```json
 {
-  "email": "admin@mimeet.tw",
+  "email": "chuck@lunarwind.org",
   "password": "your-password"
 }
 ```
@@ -109,7 +109,7 @@ POST /api/v1/admin/auth/login
     "admin": {
       "id": 1,
       "name": "Super Admin",
-      "email": "admin@mimeet.tw",
+      "email": "chuck@lunarwind.org",
       "role": "super_admin",
       "permissions": ["*"]
     }
@@ -147,7 +147,7 @@ GET /api/v1/admin/auth/me
   "data": {
     "id": 1,
     "name": "Super Admin",
-    "email": "admin@mimeet.tw",
+    "email": "chuck@lunarwind.org",
     "role": "super_admin",
     "permissions": ["*"],
     "last_login_at": "2025-01-15T10:30:00Z",
@@ -1419,7 +1419,7 @@ GET /api/v1/admin/settings/admins
     {
       "id": 1,
       "name": "Super Admin",
-      "email": "admin@mimeet.tw",
+      "email": "chuck@lunarwind.org",
       "role": "super_admin",
       "last_login_at": "2025-01-15T10:30:00Z",
       "created_at": "2025-01-01T00:00:00Z"

@@ -12,9 +12,9 @@ class AdminUserSeeder extends Seeder
     {
         $now = now();
         $admins = [
-            ['name' => 'Super Admin', 'email' => env('SUPER_ADMIN_EMAIL', 'super@mimeet.tw'), 'password' => Hash::make(env('SUPER_ADMIN_PASSWORD', 'mimeet2024!')), 'role' => 'super_admin'],
-            ['name' => 'Admin', 'email' => env('ADMIN_EMAIL', 'admin@mimeet.tw'), 'password' => Hash::make(env('ADMIN_PASSWORD', 'password')), 'role' => 'admin'],
-            ['name' => 'CS', 'email' => env('CS_EMAIL', 'cs@mimeet.tw'), 'password' => Hash::make(env('CS_PASSWORD', 'password')), 'role' => 'cs'],
+            ['name' => 'Super Admin', 'email' => env('SUPER_ADMIN_EMAIL', 'chuck@lunarwind.org'), 'password' => Hash::make(env('SUPER_ADMIN_PASSWORD', 'ChangeMe@2026')), 'role' => 'super_admin'],
+            ['name' => 'Admin', 'email' => env('ADMIN_EMAIL', 'admin@mimeet.tw'), 'password' => Hash::make(env('ADMIN_PASSWORD', 'ChangeMe@2026')), 'role' => 'admin'],
+            ['name' => 'CS', 'email' => env('CS_EMAIL', 'cs@mimeet.tw'), 'password' => Hash::make(env('CS_PASSWORD', 'ChangeMe@2026')), 'role' => 'cs'],
         ];
         foreach ($admins as $admin) {
             DB::table('admin_users')->updateOrInsert(

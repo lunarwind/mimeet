@@ -83,7 +83,7 @@ class ResetToCleanState extends Command
 
         $this->newLine();
         $this->info('✅ Database reset to clean state');
-        $this->info('   Admin: ' . env('ADMIN_EMAIL', 'admin@mimeet.tw'));
+        $this->info('   Admin: ' . env('ADMIN_EMAIL', 'chuck@lunarwind.org'));
 
         return self::SUCCESS;
     }

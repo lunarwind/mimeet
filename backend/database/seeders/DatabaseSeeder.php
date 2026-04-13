@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
 
         // Admin account in admin_users table (separate from frontend users)
         \App\Models\AdminUser::firstOrCreate(
-            ['email' => env('ADMIN_EMAIL', 'admin@mimeet.tw')],
+            ['email' => env('ADMIN_EMAIL', 'chuck@lunarwind.org')],
             [
                 'password' => bcrypt(env('ADMIN_PASSWORD', 'ChangeMe@2026')),
                 'name' => env('ADMIN_NAME', 'Super Admin'),

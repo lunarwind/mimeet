@@ -342,7 +342,7 @@ certbot renew --dry-run
 curl -s https://api.mimeet.online/api/v1/admin/auth/login \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"email":"admin@mimeet.tw","password":"ChangeMe@2026"}'
+  -d '{"email":"chuck@lunarwind.org","password":"ChangeMe@2026"}'
 ```
 
 | 服務 | URL |
@@ -351,7 +351,7 @@ curl -s https://api.mimeet.online/api/v1/admin/auth/login \
 | API | https://api.mimeet.online/api/v1 |
 | Admin | https://admin.mimeet.online |
 
-Admin 登入：`admin@mimeet.tw` / `ChangeMe@2026`
+Admin 登入：`chuck@lunarwind.org` / `ChangeMe@2026`
 
 ---
 
