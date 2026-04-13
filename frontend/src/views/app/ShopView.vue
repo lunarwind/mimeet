@@ -26,7 +26,6 @@ const {
 const showConfirmModal = ref(false)
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const autoRenewChecked = ref(true)
-const showPaymentSuccess = ref(false)
 
 onMounted(async () => {
   await Promise.all([fetchPlans(), fetchCurrentSubscription()])
@@ -43,11 +42,7 @@ async function confirmPurchase() {
   const result = await createOrder(selectedPlan.value.type)
   showConfirmModal.value = false
   if (result) {
-    if (import.meta.env.VITE_USE_MOCK === 'true') {
-      showPaymentSuccess.value = true
-    } else {
-      window.location.href = result.orderUrl
-    }
+    window.location.href = result.orderUrl
   } else {
     uiStore.showToast('建立訂單失敗', 'error')
   }
@@ -158,16 +153,6 @@ const PAID_FEATURES = [
           </div>
         </div>
       </section>
-
-      <!-- Mock 付款成功 -->
-      <div v-if="showPaymentSuccess" class="mock-success-overlay" @click="showPaymentSuccess = false">
-        <div class="mock-success" @click.stop>
-          <div class="mock-success__icon">🎉</div>
-          <div class="mock-success__title">付款成功（Mock）</div>
-          <p class="mock-success__desc">開發環境模擬付款成功</p>
-          <button class="btn-primary" @click="showPaymentSuccess = false">確定</button>
-        </div>
-      </div>
 
       <!-- 確認 Modal -->
       <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">

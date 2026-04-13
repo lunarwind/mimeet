@@ -124,7 +124,7 @@ function timeAgo(iso: string): string {
           @touchend="onTouchEnd($event, conv.id)"
         >
           <div class="chat-card__avatar-wrap">
-            <img :src="conv.targetUser.avatarUrl ?? 'https://i.pravatar.cc/150?img=0'" :alt="conv.targetUser.nickname" class="chat-card__avatar" />
+            <img :src="conv.targetUser.avatarUrl ?? '/default-avatar.svg'" :alt="conv.targetUser.nickname" class="chat-card__avatar" />
             <span v-if="conv.targetUser.isOnline" class="chat-card__online" />
           </div>
           <div class="chat-card__body">

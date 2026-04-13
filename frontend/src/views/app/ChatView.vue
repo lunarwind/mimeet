@@ -92,7 +92,7 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <div class="chat-topbar__user" @click="goProfile">
-        <img :src="otherUser.avatarUrl ?? 'https://i.pravatar.cc/150?img=0'" class="chat-topbar__avatar" alt="" />
+        <img :src="otherUser.avatarUrl ?? '/default-avatar.svg'" class="chat-topbar__avatar" alt="" />
         <div>
           <span class="chat-topbar__name">{{ otherUser.nickname }}</span>
           <span v-if="otherUser.isOnline" class="chat-topbar__status">在線</span>

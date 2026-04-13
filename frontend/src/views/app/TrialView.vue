@@ -14,11 +14,7 @@ onMounted(() => { fetchTrialInfo() })
 async function handlePurchase() {
   const result = await purchaseTrial()
   if (result) {
-    if (import.meta.env.VITE_USE_MOCK === 'true') {
-      showSuccess.value = true
-    } else {
-      window.location.href = result.orderUrl
-    }
+    window.location.href = result.orderUrl
   } else {
     uiStore.showToast('購買失敗，請稍後再試', 'error')
   }

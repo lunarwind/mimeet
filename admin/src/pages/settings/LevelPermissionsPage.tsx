@@ -83,7 +83,7 @@ export default function LevelPermissionsPage() {
       await apiClient.patch('/admin/level-permissions', { permissions: matrix })
       message.success('權限設定已儲存')
     } catch {
-      message.success('權限設定已儲存（模擬）')
+      message.error('儲存權限設定失敗')
     } finally {
       setSaving(false)
     }

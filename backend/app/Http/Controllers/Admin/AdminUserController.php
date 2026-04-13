@@ -2,20 +2,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 
 class AdminUserController extends Controller
 {
     public function index(): JsonResponse
     {
-        // Mock admin list for now (until AdminUser model is in S12)
-        $admins = Cache::get('admin_users', [
-            ['id' => 1, 'name' => 'Super Admin', 'email' => 'chuck@lunarwind.org', 'role' => 'super_admin', 'last_login_at' => now()->subHours(1)->toISOString()],
-            ['id' => 2, 'name' => 'Admin 小明', 'email' => 'admin@mimeet.tw', 'role' => 'admin', 'last_login_at' => now()->subHours(5)->toISOString()],
-            ['id' => 3, 'name' => 'CS 小華', 'email' => 'cs@mimeet.tw', 'role' => 'cs', 'last_login_at' => now()->subDays(1)->toISOString()],
-        ]);
+        $admins = AdminUser::select('id', 'name', 'email', 'role', 'last_login_at')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get();
+
         return response()->json(['success' => true, 'data' => ['admins' => $admins]]);
     }
 
@@ -23,21 +23,37 @@ class AdminUserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:50',
-            'email' => 'required|email',
+            'email' => 'required|email|unique:admin_users,email',
             'role' => 'required|in:super_admin,admin,cs',
             'password' => 'required|string|min:8',
         ]);
-        return response()->json(['success' => true, 'message' => '管理員已建立'], 201);
+
+        $admin = AdminUser::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+            'password' => Hash::make($request->password),
+            'is_active' => true,
+        ]);
+
+        return response()->json(['success' => true, 'message' => '管理員已建立', 'data' => ['admin' => $admin]], 201);
     }
 
     public function updateRole(Request $request, int $id): JsonResponse
     {
         $request->validate(['role' => 'required|in:super_admin,admin,cs']);
+
+        $admin = AdminUser::findOrFail($id);
+        $admin->update(['role' => $request->role]);
+
         return response()->json(['success' => true, 'message' => '角色已更新']);
     }
 
     public function destroy(int $id): JsonResponse
     {
+        $admin = AdminUser::findOrFail($id);
+        $admin->update(['is_active' => false]);
+
         return response()->json(['success' => true, 'message' => '管理員已刪除']);
     }
 }

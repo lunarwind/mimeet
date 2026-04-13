@@ -3,17 +3,9 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { Card, Form, Input, Button, Alert, Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
-import type { AdminUser } from '../../types/admin'
 import apiClient from '../../api/client'
 
 const { Title, Text } = Typography
-
-// Mock credentials for fallback when backend is unavailable
-const MOCK_ACCOUNTS: Record<string, { id: number; name: string; email: string; role: string; defaultRoute: string }> = {
-  'chuck@lunarwind.org': { id: 1, name: '管理員', email: 'chuck@lunarwind.org', role: 'super_admin', defaultRoute: '/dashboard' },
-  'cs@mimeet.tw': { id: 2, name: '客服人員', email: 'cs@mimeet.tw', role: 'cs', defaultRoute: '/tickets' },
-  'admin@mimeet.tw': { id: 3, name: '管理員B', email: 'admin@mimeet.tw', role: 'admin', defaultRoute: '/dashboard' },
-}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -37,7 +29,6 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    // Try real API first
     try {
       const res = await apiClient.post('/admin/auth/login', {
         email: values.email,
@@ -51,16 +42,7 @@ export default function LoginPage() {
         return
       }
     } catch {
-      // API unavailable — fall back to mock credentials in DEV mode
-      if (import.meta.env.DEV) {
-        const mock = MOCK_ACCOUNTS[values.email]
-        if (mock && values.password === 'password') {
-          const { defaultRoute, ...userData } = mock
-          login(userData as AdminUser)
-          navigate(defaultRoute, { replace: true })
-          return
-        }
-      }
+      // API unavailable — show error
     } finally {
       setLoading(false)
     }
@@ -103,18 +85,6 @@ export default function LoginPage() {
             </Button>
           </Form.Item>
         </Form>
-
-        {import.meta.env.DEV && (
-          <div style={{ marginTop: 16, padding: 12, background: '#FFFBEB', borderRadius: 8, fontSize: 12 }}>
-            <Text strong style={{ color: '#92400E' }}>DEV Mock 帳號：</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>super_admin: chuck@lunarwind.org / password</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>admin: admin@mimeet.tw / password</Text>
-            <br />
-            <Text style={{ color: '#92400E' }}>cs: cs@mimeet.tw / password</Text>
-          </div>
-        )}
       </Card>
     </div>
   )

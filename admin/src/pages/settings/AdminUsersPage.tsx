@@ -15,12 +15,6 @@ interface AdminUser {
   last_login_at: string | null
 }
 
-const MOCK_ADMINS: AdminUser[] = [
-  { id: 1, name: 'Super Admin', email: 'chuck@lunarwind.org', role: 'super_admin', last_login_at: dayjs().subtract(1, 'hour').toISOString() },
-  { id: 2, name: 'Admin 小明', email: 'admin@mimeet.tw', role: 'admin', last_login_at: dayjs().subtract(3, 'hour').toISOString() },
-  { id: 3, name: 'CS 小美', email: 'cs@mimeet.tw', role: 'cs', last_login_at: dayjs().subtract(1, 'day').toISOString() },
-]
-
 const ROLE_COLORS: Record<AdminRole, string> = {
   super_admin: 'red',
   admin: 'blue',
@@ -45,7 +39,7 @@ export default function AdminUsersPage() {
       const res = await apiClient.get('/admin/settings/admins')
       setData(res.data.data ?? res.data)
     } catch {
-      setData(MOCK_ADMINS)
+      message.error('載入管理員列表失敗')
     } finally {
       setLoading(false)
     }
@@ -68,15 +62,7 @@ export default function AdminUsersPage() {
         setData((prev) => [...prev, newAdmin])
         message.success('管理員已建立')
       } catch {
-        const newAdmin: AdminUser = {
-          id: Date.now(),
-          name: values.name,
-          email: values.email,
-          role: values.role,
-          last_login_at: null,
-        }
-        setData((prev) => [...prev, newAdmin])
-        message.success('管理員已建立（模擬）')
+        message.error('建立管理員失敗')
       }
       setModalOpen(false)
       form.resetFields()
@@ -88,21 +74,21 @@ export default function AdminUsersPage() {
   const handleRoleChange = async (id: number, newRole: AdminRole) => {
     try {
       await apiClient.patch(`/admin/settings/admins/${id}/role`, { role: newRole })
+      setData((prev) => prev.map((a) => (a.id === id ? { ...a, role: newRole } : a)))
       message.success('角色已更新')
     } catch {
-      message.success('角色已更新（模擬）')
+      message.error('更新角色失敗')
     }
-    setData((prev) => prev.map((a) => (a.id === id ? { ...a, role: newRole } : a)))
   }
 
   const handleDelete = async (id: number) => {
     try {
       await apiClient.delete(`/admin/settings/admins/${id}`)
       message.success('管理員已刪除')
+      setData((prev) => prev.filter((a) => a.id !== id))
     } catch {
-      message.success('管理員已刪除（模擬）')
+      message.error('刪除管理員失敗')
     }
-    setData((prev) => prev.filter((a) => a.id !== id))
   }
 
   const columns = [

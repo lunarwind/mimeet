@@ -80,15 +80,7 @@ export default function BroadcastsPage() {
         setData((prev) => [newItem, ...prev])
         message.success('廣播已建立')
       } catch {
-        const newItem: Broadcast = {
-          id: Date.now(),
-          ...values,
-          status: 'draft',
-          sent_count: 0,
-          created_at: new Date().toISOString(),
-        }
-        setData((prev) => [newItem, ...prev])
-        message.success('廣播已建立（模擬）')
+        message.error('建立廣播失敗')
       }
       setModalOpen(false)
       form.resetFields()
@@ -102,14 +94,9 @@ export default function BroadcastsPage() {
     try {
       await apiClient.post(`/admin/broadcasts/${id}/send`)
       message.success('廣播已發送')
-      setData((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: 'sent' as const, sent_count: 999 } : b))
-      )
+      fetchData()
     } catch {
-      message.success('廣播已發送（模擬）')
-      setData((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: 'sent' as const, sent_count: 999 } : b))
-      )
+      message.error('發送廣播失敗')
     } finally {
       setSendLoading(false)
     }

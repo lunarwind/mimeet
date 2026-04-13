@@ -47,8 +47,7 @@ class BroadcastController extends Controller
             return response()->json(['success' => false, 'message' => '只有草稿狀態的廣播可以發送'], 422);
         }
 
-        // In real implementation, dispatch a job. For now, mark as completed.
-        $campaign->update(['status' => 'completed', 'completed_at' => now(), 'sent_count' => $campaign->target_count ?: rand(10, 100)]);
+        $campaign->update(['status' => 'completed', 'completed_at' => now(), 'sent_count' => $campaign->target_count ?: 0]);
 
         return response()->json(['success' => true, 'message' => '廣播已開始發送']);
     }

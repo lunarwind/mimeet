@@ -5,11 +5,9 @@ import { verifyDateQR, getCurrentPosition } from '@/api/dates'
 import jsQR from 'jsqr'
 
 const router = useRouter()
-const isDev = import.meta.env.VITE_USE_MOCK === 'true'
-
 // ── 狀態 ──────────────────────────────────────────────────
 type ViewState = 'camera' | 'manual' | 'denied' | 'gps-prompt' | 'verifying' | 'success' | 'error'
-const viewState = ref<ViewState>(isDev ? 'manual' : 'camera')
+const viewState = ref<ViewState>('camera')
 const manualCode = ref('')
 const isVerifying = ref(false)
 const verifyResult = ref<{ success: boolean; credit: number; gpsPassed: boolean; status: string } | null>(null)
@@ -160,7 +158,7 @@ function goBack() { router.back() }
 function goDates() { router.push('/app/dates') }
 
 onMounted(() => {
-  if (!isDev) startCamera()
+  startCamera()
 })
 onUnmounted(stopCamera)
 </script>
@@ -199,11 +197,10 @@ onUnmounted(stopCamera)
         <div class="manual-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F0294E" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
         </div>
-        <p class="manual-title">開發模式：手動輸入</p>
-        <p class="manual-hint">請輸入約會 QR Code 或點選「模擬驗證」</p>
+        <p class="manual-title">手動輸入</p>
+        <p class="manual-hint">請輸入約會 QR Code</p>
         <input v-model="manualCode" type="text" class="manual-input" placeholder="輸入 QR Code…" @keyup.enter="handleManualSubmit" />
         <button class="manual-btn" @click="handleManualSubmit" :disabled="!manualCode.trim()">驗證</button>
-        <button class="manual-btn manual-btn--mock" @click="handleVerify('mock-qr-token-003')">模擬驗證（成功）</button>
         <div class="manual-divider" />
         <button class="manual-btn manual-btn--camera" @click="startCamera">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -289,7 +286,7 @@ onUnmounted(stopCamera)
         <div class="result-icon result-icon--error">❌</div>
         <h2 class="result-title">驗證失敗</h2>
         <p class="result-text">{{ errorMsg }}</p>
-        <button class="result-btn" @click="viewState = isDev ? 'manual' : 'camera'">重試</button>
+        <button class="result-btn" @click="viewState = 'camera'">重試</button>
       </div>
     </template>
   </div>
