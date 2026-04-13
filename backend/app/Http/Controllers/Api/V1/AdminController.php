@@ -88,7 +88,8 @@ class AdminController extends Controller
             'data' => [
                 'members' => $members->map(fn (User $u) => [
                     'id' => $u->id, 'email' => $u->email, 'nickname' => $u->nickname,
-                    'gender' => $u->gender, 'membership_level' => $u->membership_level,
+                    'gender' => $u->gender, 'avatar_url' => $u->avatar_url,
+                    'membership_level' => $u->membership_level,
                     'credit_score' => $u->credit_score, 'status' => $u->status,
                     'created_at' => $u->created_at?->toISOString(),
                 ]),
