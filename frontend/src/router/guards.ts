@@ -9,11 +9,11 @@ export function setupRouterGuards(router: Router) {
 
     // Public pages — always allow
     if (!requiresAuth) {
-      // Redirect logged-in users: / and /login → /app/explore
-      if (isLoggedIn && (to.name === 'landing' || to.name === 'login')) {
+      // Redirect logged-in users from login/register only
+      if (isLoggedIn && (to.name === 'login' || to.name === 'register')) {
         return { path: '/app/explore' }
       }
-      return true // pass through
+      return true // pass through (landing page always accessible)
     }
 
     // Protected page but not logged in → login (with redirect query)

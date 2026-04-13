@@ -146,6 +146,13 @@ function handlePrivacyToggle(setting: 'stealth' | 'hideActive' | 'readReceipt') 
   else readReceipt.value = !readReceipt.value
 }
 
+// ── 登出 ──────────────────────────────────────────────────
+async function handleLogout() {
+  try { await import('@/api/auth').then(m => m.logout()) } catch { /* ignore */ }
+  authStore.logout()
+  router.push('/login')
+}
+
 // ── 設定快捷連結 ──────────────────────────────────────────
 const settingsLinks = [
   { label: '身份驗證', path: '/app/settings/verify' },
@@ -337,6 +344,11 @@ const settingsLinks = [
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
         </div>
       </section>
+
+      <!-- 登出 -->
+      <section class="settings-section" style="margin-top: 24px;">
+        <button class="logout-btn" @click="handleLogout">登出</button>
+      </section>
     </div>
   </AppLayout>
 </template>
@@ -405,4 +417,6 @@ const settingsLinks = [
 .link-row:last-child { border-bottom: none; }
 .link-row--danger { color: #EF4444; }
 .link-row:active { opacity: 0.7; }
+.logout-btn { width: 100%; height: 48px; border-radius: 10px; border: 1.5px solid #EF4444; background: transparent; color: #EF4444; font-size: 15px; font-weight: 600; cursor: pointer; }
+.logout-btn:active { background: #FEF2F2; }
 </style>
