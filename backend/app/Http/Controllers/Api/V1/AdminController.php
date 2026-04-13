@@ -87,10 +87,16 @@ class AdminController extends Controller
             'success' => true, 'code' => 'MEMBERS_LIST', 'message' => 'OK',
             'data' => [
                 'members' => $members->map(fn (User $u) => [
-                    'id' => $u->id, 'email' => $u->email, 'nickname' => $u->nickname,
-                    'gender' => $u->gender, 'avatar_url' => $u->avatar_url,
-                    'membership_level' => $u->membership_level,
-                    'credit_score' => $u->credit_score, 'status' => $u->status,
+                    'id' => $u->id,
+                    'email' => $u->email ?? '',
+                    'nickname' => $u->nickname,
+                    'gender' => $u->gender,
+                    'avatar_url' => $u->avatar_url,
+                    'membership_level' => $u->membership_level ?? 0,
+                    'credit_score' => $u->credit_score ?? 60,
+                    'status' => $u->status ?? 'active',
+                    'email_verified' => (bool) ($u->email_verified ?? false),
+                    'phone_verified' => (bool) ($u->phone_verified ?? false),
                     'created_at' => $u->created_at?->toISOString(),
                 ]),
                 'pagination' => [

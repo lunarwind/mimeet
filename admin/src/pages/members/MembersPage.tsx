@@ -10,14 +10,15 @@ const { Title } = Typography
 
 interface Member {
   id: number
-  nickname: string
+  nickname: string | null
   email: string
-  gender: string
+  gender: string | null
   membership_level: number
   credit_score: number
   status: string
+  email_verified: boolean
   created_at: string
-  avatar_url?: string
+  avatar_url?: string | null
 }
 
 export default function MembersPage() {
@@ -61,33 +62,42 @@ export default function MembersPage() {
   const columns = [
     {
       title: '暱稱', dataIndex: 'nickname', key: 'nickname',
-      render: (_: string, record: Member) => (
+      render: (_: string | null, record: Member) => (
         <Space>
-          <Avatar src={record.avatar_url} size={36}>{record.nickname?.[0]}</Avatar>
-          <a onClick={() => navigate(`/members/${record.id}`)}>{record.nickname}</a>
+          <Avatar src={record.avatar_url || undefined} size={36}>{record.nickname?.[0] ?? '?'}</Avatar>
+          <a onClick={() => navigate(`/members/${record.id}`)}>{record.nickname || <span style={{ color: '#9CA3AF' }}>未設定</span>}</a>
         </Space>
       ),
     },
     { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-    { title: '性別', dataIndex: 'gender', key: 'gender', width: 70, render: (g: string) => g === 'male' ? '男' : '女' },
+    { title: '性別', dataIndex: 'gender', key: 'gender', width: 70, render: (g: string | null) => g === 'male' ? '男' : g === 'female' ? '女' : '—' },
     {
       title: '誠信分數', dataIndex: 'credit_score', key: 'credit_score', width: 120,
       render: (score: number) => {
-        const level = getCreditLevel(score)
-        return <Tag style={{ background: CreditLevelBg[level], color: CreditLevelColor[level], border: 'none', fontWeight: 600 }}>{score} {CreditLevelLabel[level]}</Tag>
+        const s = score ?? 0
+        const level = getCreditLevel(s)
+        return <Tag style={{ background: CreditLevelBg[level], color: CreditLevelColor[level], border: 'none', fontWeight: 600 }}>{s} {CreditLevelLabel[level]}</Tag>
       },
     },
     {
       title: '等級', dataIndex: 'membership_level', key: 'level', width: 80,
-      render: (lv: number) => <Tag color={lv >= 3 ? 'gold' : lv >= 2 ? 'blue' : 'default'}>Lv{lv}</Tag>,
+      render: (lv: number) => { const v = lv ?? 0; return <Tag color={v >= 3 ? 'gold' : v >= 2 ? 'blue' : 'default'}>Lv{v}</Tag> },
     },
     {
       title: '狀態', dataIndex: 'status', key: 'status', width: 80,
-      render: (s: string) => <Tag color={s === 'active' ? 'green' : 'red'}>{s === 'active' ? '正常' : '停權'}</Tag>,
+      render: (s: string) => {
+        if (s === 'active') return <Tag color="green">正常</Tag>
+        if (s === 'suspended' || s === 'auto_suspended') return <Tag color="red">停權</Tag>
+        return <Tag>{s || '未知'}</Tag>
+      },
+    },
+    {
+      title: 'Email', dataIndex: 'email_verified', key: 'email_verified', width: 80,
+      render: (v: boolean) => v ? <Tag color="blue">已驗證</Tag> : <Tag>未驗證</Tag>,
     },
     {
       title: '註冊時間', dataIndex: 'created_at', key: 'created_at', width: 140,
-      render: (d: string) => d ? dayjs(d).format('MM/DD HH:mm') : '-',
+      render: (d: string) => d ? dayjs(d).format('MM/DD HH:mm') : '—',
     },
     {
       title: '操作', key: 'actions', width: 80,
