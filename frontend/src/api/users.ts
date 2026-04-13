@@ -83,6 +83,7 @@ export async function unblockUser(userId: number): Promise<void> {
 interface RawApiUser {
   id: number
   nickname: string
+  gender: 'male' | 'female'
   age: number
   location: string
   avatar: string | null
@@ -101,6 +102,7 @@ function transformUser(raw: RawApiUser): ExploreUser {
   return {
     id:              raw.id,
     nickname:        raw.nickname,
+    gender:          raw.gender,
     age:             raw.age,
     location:        raw.location,
     avatar:          raw.avatar,

@@ -7,6 +7,7 @@
 export interface ExploreUser {
   id: number
   nickname: string
+  gender: 'male' | 'female'
   age: number
   location: string
   avatar: string | null
