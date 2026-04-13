@@ -241,13 +241,6 @@ const PAID_FEATURES = [
 .modal-card__check input { accent-color: #F0294E; width: 18px; height: 18px; }
 .modal-card__actions { display: flex; gap: 10px; }
 
-/* ── Mock Success ── */
-.mock-success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; }
-.mock-success { background: white; border-radius: 20px; padding: 32px; text-align: center; max-width: 320px; }
-.mock-success__icon { font-size: 48px; margin-bottom: 12px; }
-.mock-success__title { font-size: 20px; font-weight: 700; color: #111827; }
-.mock-success__desc { font-size: 14px; color: #6B7280; margin: 8px 0 20px; }
-
 /* ── Buttons ── */
 .btn-primary { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #F0294E; color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
 .btn-primary:hover { background: #D01A3C; }

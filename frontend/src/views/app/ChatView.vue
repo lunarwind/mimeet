@@ -54,7 +54,6 @@ onMounted(async () => {
 
   await scrollToBottom()
 
-  // 建立 Mock WebSocket
   connect(conversationId.value)
   onMessage((msg) => {
     localMessages.value.push(msg)

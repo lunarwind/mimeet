@@ -323,7 +323,6 @@ onUnmounted(stopCamera)
 .manual-input:focus { border-color:#F0294E; }
 .manual-btn { width:100%; max-width:300px; height:44px; border-radius:10px; border:none; background:#F0294E; color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
 .manual-btn:disabled { opacity:0.4; }
-.manual-btn--mock { background:#374151; }
 .manual-btn--camera { background:transparent; border:1.5px solid #F0294E; color:#F0294E; display:flex; align-items:center; justify-content:center; gap:6px; }
 .manual-divider { width:100%; max-width:300px; height:1px; background:#374151; margin:8px 0; }
 

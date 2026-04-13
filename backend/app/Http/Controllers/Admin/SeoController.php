@@ -71,7 +71,6 @@ class SeoController extends Controller
     // Public endpoint for /go/:slug redirect
     public function redirect(string $slug): \Illuminate\Http\RedirectResponse|JsonResponse
     {
-        // In production, look up from DB. For now use cache/mock.
         $links = Cache::get('seo_links', []);
         $link = collect($links)->firstWhere('slug', $slug);
         if (!$link || !($link['is_active'] ?? false)) {

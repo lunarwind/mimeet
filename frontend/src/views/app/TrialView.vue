@@ -7,8 +7,6 @@ import { useUiStore } from '@/stores/ui'
 const uiStore = useUiStore()
 const { trialInfo, isPaid, isLoading, fetchTrialInfo, purchaseTrial } = usePayment()
 
-const showSuccess = ref(false)
-
 onMounted(() => { fetchTrialInfo() })
 
 async function handlePurchase() {
@@ -81,15 +79,6 @@ const FEATURES = [
         </button>
       </template>
 
-      <!-- Mock 成功 -->
-      <div v-if="showSuccess" class="modal-overlay" @click="showSuccess = false">
-        <div class="mock-success" @click.stop>
-          <div class="mock-success__icon">🎉</div>
-          <div class="mock-success__title">購買成功（Mock）</div>
-          <p class="mock-success__desc">體驗方案已啟用，為期 30 天</p>
-          <button class="btn-primary btn-full" @click="$router.push('/app/explore')">開始探索</button>
-        </div>
-      </div>
     </div>
   </AppLayout>
 </template>
