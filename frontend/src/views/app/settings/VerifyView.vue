@@ -24,7 +24,7 @@ const smsError = ref<string | null>(null)
 const smsCooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | undefined
 
-const phoneVerified = computed(() => authStore.user?.verified === '2' || authStore.user?.verified === '3')
+const phoneVerified = computed(() => authStore.user?.phone_verified ?? false)
 const advancedVerified = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
 
 const phoneValid = computed(() => /^09\d{8}$/.test(phone.value))

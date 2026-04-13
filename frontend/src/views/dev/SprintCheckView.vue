@@ -49,7 +49,7 @@ async function switchIdentity(account: TestAccount) {
   try {
     authStore.logout()
     const data = await apiLogin({ email: account.email, password: 'Test1234!' })
-    authStore.setToken(data.token ?? data.tokens?.access_token ?? '')
+    authStore.setToken(data.token ?? '')
     authStore.setUser(data.user)
     activeAccountKey.value = account.key
     localStorage.setItem('dev_identity_key', account.key)

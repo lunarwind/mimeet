@@ -22,12 +22,10 @@ export interface LoginResponse {
       status: string
       credit_score: number
       membership_level: number
-      verified: string
+      email_verified: boolean
+      phone_verified: boolean
     }
     token: string
-    tokens?: {
-      access_token: string
-    }
   }
 }
 

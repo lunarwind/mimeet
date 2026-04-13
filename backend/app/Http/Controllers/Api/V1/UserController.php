@@ -77,20 +77,24 @@ class UserController extends Controller
         return response()->json([
             'success' => true, 'code' => 'SEARCH_RESULTS', 'message' => 'OK',
             'data' => [
-                'users' => $users->map(fn (User $u) => [
-                    'id' => $u->id,
-                    'nickname' => $u->nickname,
-                    'gender' => $u->gender,
-                    'age' => $u->birth_date ? $u->birth_date->age : null,
-                    'avatar' => $u->avatar_url,
-                    'location' => $u->location,
-                    'membership_level' => $u->membership_level,
-                    'credit_score' => $u->credit_score,
-                    'email_verified' => (bool) $u->email_verified,
-                    'phone_verified' => (bool) $u->phone_verified,
-                    'online_status' => $u->last_active_at && $u->last_active_at->gt(now()->subMinutes(5)) ? 'online' : 'offline',
-                    'last_active_at' => $u->last_active_at?->toIso8601String(),
-                ]),
+                'users' => $users->map(function (User $u) use ($request) {
+                    return [
+                        'id' => $u->id,
+                        'nickname' => $u->nickname,
+                        'gender' => $u->gender,
+                        'age' => $u->birth_date ? $u->birth_date->age : null,
+                        'avatar' => $u->avatar_url,
+                        'location' => $u->location,
+                        'membership_level' => $u->membership_level,
+                        'credit_score' => $u->credit_score,
+                        'email_verified' => (bool) $u->email_verified,
+                        'phone_verified' => (bool) $u->phone_verified,
+                        'advanced_verified' => (bool) ($u->advanced_verified ?? false),
+                        'online_status' => $u->last_active_at && $u->last_active_at->gt(now()->subMinutes(5)) ? 'online' : 'offline',
+                        'last_active_at' => $u->last_active_at?->toIso8601String(),
+                        'is_favorited' => $request->user() ? \DB::table('user_follows')->where('follower_id', $request->user()->id)->where('following_id', $u->id)->exists() : false,
+                    ];
+                }),
                 'pagination' => [
                     'current_page' => $users->currentPage(),
                     'per_page' => $users->perPage(),

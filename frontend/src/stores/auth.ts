@@ -11,7 +11,8 @@ export interface AuthUser {
   status: string
   credit_score: number
   membership_level: number
-  verified: string
+  email_verified: boolean
+  phone_verified: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {

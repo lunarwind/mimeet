@@ -62,7 +62,7 @@ async function handleLogin() {
       device_info: { type: 'web', name: navigator.userAgent, os: '' },
     })
 
-    authStore.setToken(res.token ?? res.tokens?.access_token ?? '')
+    authStore.setToken(res.token ?? '')
     authStore.setUser(res.user)
 
     // 停權帳號跳轉

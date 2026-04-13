@@ -100,10 +100,7 @@ interface RawApiUser {
   last_active_at: string | null
   email_verified?: boolean
   phone_verified?: boolean
-  verification_status?: {
-    verified?: boolean
-    credit_card_verified?: boolean
-  }
+  advanced_verified?: boolean
   membership_level?: number
   is_favorited?: boolean
 }
@@ -121,7 +118,7 @@ function transformUser(raw: RawApiUser): ExploreUser {
     lastActiveAt:    raw.last_active_at,
     emailVerified:   raw.email_verified ?? false,
     phoneVerified:   raw.phone_verified ?? false,
-    advancedVerified: !!(raw.verification_status?.verified),
+    advancedVerified: raw.advanced_verified ?? false,
     membershipLevel: raw.membership_level ?? 1,
     isFavorited:     raw.is_favorited ?? false,
   }
