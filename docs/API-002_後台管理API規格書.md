@@ -1,6 +1,6 @@
 # [API-002] MiMeet 後台管理 API 規格書
 
-**文檔版本：** v1.3（2026年4月更新，新增 Resend API Email 驅動設定）  
+**文檔版本：** v1.4（2026年4月更新，新增刪除管理員 + 重設密碼 API）  
 **建立日期：** 2026年3月  
 **適用範圍：** 後台 React Admin SPA 呼叫的所有 `/api/v1/admin/*` 端點  
 **前置文件：** API-001（前台 API）、DEV-001（技術架構）、DEV-004（後端規範）
@@ -1993,6 +1993,48 @@ PATCH /api/v1/admin/settings/admins/{id}/role
 {
   "role": "admin"
 }
+```
+
+---
+
+#### 刪除管理員帳號
+
+```
+DELETE /api/v1/admin/settings/admins/{id}
+```
+
+**限制：**
+- `super_admin` 角色不可被刪除
+- 不可刪除自己的帳號
+
+**成功回應 200：**
+```json
+{ "success": true, "message": "管理員已刪除" }
+```
+
+**錯誤回應：**
+- `403`：目標為超級管理員，或嘗試刪除自己
+- `404`：管理員不存在
+
+---
+
+#### 重設管理員密碼
+
+```
+POST /api/v1/admin/settings/admins/{id}/reset-password
+```
+
+**請求參數：**
+```json
+{
+  "password": "新密碼（至少8字元）",
+  "password_confirmation": "確認新密碼"
+}
+```
+
+**成功回應 200：**
+```json
+{ "success": true, "message": "密碼已重設" }
 ```
 
 ---

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Table, Button, Modal, Input, Tag, message, Card, Typography, Select, Popconfirm, Form } from 'antd'
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Table, Button, Modal, Input, Tag, message, Card, Typography, Select, Popconfirm, Form, Space } from 'antd'
+import { PlusOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import type { AdminRole } from '../../types/admin'
 import dayjs from 'dayjs'
@@ -33,11 +33,17 @@ export default function AdminUsersPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm()
 
+  // Reset password state
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null)
+  const [resetForm] = Form.useForm()
+  const [resetLoading, setResetLoading] = useState(false)
+
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
       const res = await apiClient.get('/admin/settings/admins')
-      setData(res.data.data ?? res.data)
+      setData(res.data?.data?.admins ?? [])
     } catch {
       message.error('載入管理員列表失敗')
     } finally {
@@ -53,14 +59,9 @@ export default function AdminUsersPage() {
     try {
       const values = await form.validateFields()
       try {
-        const res = await apiClient.post('/admin/settings/admins', values)
-        const newAdmin = res.data.data ?? {
-          id: Date.now(),
-          ...values,
-          last_login_at: null,
-        }
-        setData((prev) => [...prev, newAdmin])
+        await apiClient.post('/admin/settings/admins', values)
         message.success('管理員已建立')
+        fetchData()
       } catch {
         message.error('建立管理員失敗')
       }
@@ -86,79 +87,72 @@ export default function AdminUsersPage() {
       await apiClient.delete(`/admin/settings/admins/${id}`)
       message.success('管理員已刪除')
       setData((prev) => prev.filter((a) => a.id !== id))
-    } catch {
-      message.error('刪除管理員失敗')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg || '刪除管理員失敗')
+    }
+  }
+
+  const openResetModal = (admin: AdminUser) => {
+    setResetTarget(admin)
+    resetForm.resetFields()
+    setResetModalOpen(true)
+  }
+
+  const handleResetPassword = async () => {
+    try {
+      const values = await resetForm.validateFields()
+      setResetLoading(true)
+      await apiClient.post(`/admin/settings/admins/${resetTarget?.id}/reset-password`, {
+        password: values.password,
+        password_confirmation: values.password_confirmation,
+      })
+      message.success('密碼已重設')
+      setResetModalOpen(false)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg || '重設密碼失敗')
+    } finally {
+      setResetLoading(false)
     }
   }
 
   const columns = [
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+    { title: '姓名', dataIndex: 'name', key: 'name', width: 160 },
+    { title: 'Email', dataIndex: 'email', key: 'email', width: 220 },
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
-      title: '姓名',
-      dataIndex: 'name',
-      key: 'name',
-      width: 160,
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-      width: 220,
-    },
-    {
-      title: '角色',
-      dataIndex: 'role',
-      key: 'role',
-      width: 180,
+      title: '角色', dataIndex: 'role', key: 'role', width: 180,
       render: (role: AdminRole, r: AdminUser) => (
-        <Select
-          value={role}
-          onChange={(v) => handleRoleChange(r.id, v)}
-          style={{ width: 150 }}
-          size="small"
-        >
-          <Select.Option value="super_admin">
-            <Tag color={ROLE_COLORS.super_admin} style={{ margin: 0 }}>{ROLE_LABELS.super_admin}</Tag>
-          </Select.Option>
-          <Select.Option value="admin">
-            <Tag color={ROLE_COLORS.admin} style={{ margin: 0 }}>{ROLE_LABELS.admin}</Tag>
-          </Select.Option>
-          <Select.Option value="cs">
-            <Tag color={ROLE_COLORS.cs} style={{ margin: 0 }}>{ROLE_LABELS.cs}</Tag>
-          </Select.Option>
+        <Select value={role} onChange={(v) => handleRoleChange(r.id, v)} style={{ width: 150 }} size="small">
+          <Select.Option value="super_admin"><Tag color={ROLE_COLORS.super_admin} style={{ margin: 0 }}>{ROLE_LABELS.super_admin}</Tag></Select.Option>
+          <Select.Option value="admin"><Tag color={ROLE_COLORS.admin} style={{ margin: 0 }}>{ROLE_LABELS.admin}</Tag></Select.Option>
+          <Select.Option value="cs"><Tag color={ROLE_COLORS.cs} style={{ margin: 0 }}>{ROLE_LABELS.cs}</Tag></Select.Option>
         </Select>
       ),
     },
     {
-      title: '最後登入',
-      dataIndex: 'last_login_at',
-      key: 'last_login_at',
-      width: 180,
-      render: (v: string | null) =>
-        v ? dayjs(v).format('YYYY-MM-DD HH:mm') : <Text type="secondary">尚未登入</Text>,
+      title: '最後登入', dataIndex: 'last_login_at', key: 'last_login_at', width: 180,
+      render: (v: string | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : <Text type="secondary">尚未登入</Text>,
     },
     {
-      title: '操作',
-      key: 'actions',
-      width: 100,
+      title: '操作', key: 'actions', width: 200,
       render: (_: unknown, r: AdminUser) => (
-        <Popconfirm
-          title="確認刪除此管理員？"
-          description="此操作無法復原"
-          onConfirm={() => handleDelete(r.id)}
-          okText="確認刪除"
-          cancelText="取消"
-          okButtonProps={{ danger: true }}
-        >
-          <Button danger size="small" icon={<DeleteOutlined />}>
-            刪除
-          </Button>
-        </Popconfirm>
+        <Space>
+          <Button size="small" icon={<KeyOutlined />} onClick={() => openResetModal(r)}>重設密碼</Button>
+          {r.role !== 'super_admin' && (
+            <Popconfirm
+              title="確認刪除此管理員？"
+              description={`將停用 ${r.name}（${r.email}）`}
+              onConfirm={() => handleDelete(r.id)}
+              okText="確認刪除"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger size="small" icon={<DeleteOutlined />}>刪除</Button>
+            </Popconfirm>
+          )}
+        </Space>
       ),
     },
   ]
@@ -167,56 +161,25 @@ export default function AdminUsersPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Title level={4} style={{ margin: 0 }}>管理員帳號</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
-          新增管理員
-        </Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>新增管理員</Button>
       </div>
 
       <Card>
-        <Table
-          dataSource={data}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 筆` }}
-          size="middle"
-        />
+        <Table dataSource={data} columns={columns} rowKey="id" loading={loading}
+          pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 筆` }} size="middle" />
       </Card>
 
-      <Modal
-        title="新增管理員"
-        open={modalOpen}
-        onOk={handleCreate}
-        onCancel={() => {
-          setModalOpen(false)
-          form.resetFields()
-        }}
-        okText="建立"
-        cancelText="取消"
-        width={480}
-      >
+      {/* 新增管理員 Modal */}
+      <Modal title="新增管理員" open={modalOpen} onOk={handleCreate}
+        onCancel={() => { setModalOpen(false); form.resetFields() }} okText="建立" cancelText="取消" width={480}>
         <Form form={form} layout="vertical" initialValues={{ role: 'admin' }}>
           <Form.Item name="name" label="姓名" rules={[{ required: true, message: '請輸入姓名' }]}>
             <Input placeholder="管理員姓名" />
           </Form.Item>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: '請輸入 Email' },
-              { type: 'email', message: '請輸入有效的 Email' },
-            ]}
-          >
-            <Input placeholder="chuck@lunarwind.org" />
+          <Form.Item name="email" label="Email" rules={[{ required: true, message: '請輸入 Email' }, { type: 'email', message: '請輸入有效的 Email' }]}>
+            <Input placeholder="admin@example.com" />
           </Form.Item>
-          <Form.Item
-            name="password"
-            label="密碼"
-            rules={[
-              { required: true, message: '請輸入密碼' },
-              { min: 8, message: '密碼至少 8 個字元' },
-            ]}
-          >
+          <Form.Item name="password" label="密碼" rules={[{ required: true, message: '請輸入密碼' }, { min: 8, message: '密碼至少 8 個字元' }]}>
             <Input.Password placeholder="至少 8 個字元" />
           </Form.Item>
           <Form.Item name="role" label="角色">
@@ -225,6 +188,26 @@ export default function AdminUsersPage() {
               <Select.Option value="admin">一般管理員</Select.Option>
               <Select.Option value="cs">客服人員</Select.Option>
             </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 重設密碼 Modal */}
+      <Modal title={`重設密碼：${resetTarget?.name ?? ''}`} open={resetModalOpen}
+        onOk={handleResetPassword} onCancel={() => setResetModalOpen(false)}
+        confirmLoading={resetLoading} okText="確認重設" cancelText="取消" width={420}>
+        <Form form={resetForm} layout="vertical">
+          <Form.Item name="password" label="新密碼" rules={[{ required: true, message: '請輸入新密碼' }, { min: 8, message: '密碼至少 8 個字元' }]}>
+            <Input.Password placeholder="至少 8 個字元" />
+          </Form.Item>
+          <Form.Item name="password_confirmation" label="確認新密碼" dependencies={['password']}
+            rules={[{ required: true, message: '請再次輸入新密碼' },
+              ({ getFieldValue }) => ({ validator(_, value) {
+                if (!value || getFieldValue('password') === value) return Promise.resolve()
+                return Promise.reject(new Error('兩次密碼不一致'))
+              }})
+            ]}>
+            <Input.Password placeholder="再次輸入新密碼" />
           </Form.Item>
         </Form>
       </Modal>

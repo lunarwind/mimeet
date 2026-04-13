@@ -95,6 +95,47 @@ class AdminCrudController extends Controller
     }
 
     /**
+     * DELETE /api/v1/admin/settings/admins/{id}
+     */
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $admin = AdminUser::find($id);
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => '管理員不存在'], 404);
+        }
+        if ($admin->role === 'super_admin') {
+            return response()->json(['success' => false, 'message' => '超級管理員不可刪除'], 403);
+        }
+        if ($admin->id === $request->user()?->id) {
+            return response()->json(['success' => false, 'message' => '不可刪除自己的帳號'], 403);
+        }
+
+        $admin->update(['is_active' => false]);
+
+        return response()->json(['success' => true, 'message' => '管理員已刪除']);
+    }
+
+    /**
+     * POST /api/v1/admin/settings/admins/{id}/reset-password
+     */
+    public function resetPassword(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $admin = AdminUser::find($id);
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => '管理員不存在'], 404);
+        }
+
+        $admin->update(['password' => Hash::make($request->password)]);
+
+        return response()->json(['success' => true, 'message' => '密碼已重設']);
+    }
+
+    /**
      * GET /api/v1/admin/settings/roles
      */
     public function roles(): JsonResponse

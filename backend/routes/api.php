@@ -233,6 +233,8 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('admins', [AdminCrudController::class, 'index']);
                 Route::post('admins', [AdminCrudController::class, 'store']);
                 Route::patch('admins/{id}/role', [AdminCrudController::class, 'updateRole']);
+                Route::delete('admins/{id}', [AdminCrudController::class, 'destroy']);
+                Route::post('admins/{id}/reset-password', [AdminCrudController::class, 'resetPassword']);
                 Route::get('roles', [AdminCrudController::class, 'roles']);
 
                 // ECPay settings (Sprint 13)
