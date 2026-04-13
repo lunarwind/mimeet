@@ -275,7 +275,8 @@ server {
     location / { try_files $uri $uri/ /index.php?$query_string; }
     location ~ \.php$ {
         fastcgi_pass 127.0.0.1:9000;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        # Use container path (not host path) because PHP-FPM runs inside Docker
+        fastcgi_param SCRIPT_FILENAME /var/www/html/public$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
     }
