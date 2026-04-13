@@ -27,7 +27,7 @@ class TestUsersSeeder extends Seeder
         foreach ($testAccounts as $acct) {
             User::firstOrCreate(['email' => $acct['email']], array_merge($acct, [
                 'password' => $password,
-                'birth_date' => fake()->dateTimeBetween('-35 years', '-20 years')->format('Y-m-d'),
+                'birth_date' => now()->subYears(rand(20, 35))->subDays(rand(0, 365))->format('Y-m-d'),
                 'email_verified' => true,
                 'status' => $acct['status'] ?? 'active',
                 'suspended_at' => $acct['suspended_at'] ?? null,
@@ -59,7 +59,7 @@ class TestUsersSeeder extends Seeder
                 'password' => $password,
                 'nickname' => $name,
                 'gender' => 'female',
-                'birth_date' => fake()->dateTimeBetween('-32 years', '-20 years')->format('Y-m-d'),
+                'birth_date' => now()->subYears(rand(20, 32))->subDays(rand(0, 365))->format('Y-m-d'),
                 'membership_level' => $level,
                 'credit_score' => rand(60, 95),
                 'status' => 'active',
@@ -69,8 +69,8 @@ class TestUsersSeeder extends Seeder
                 'height' => rand(155, 170),
                 'location' => $locations[array_rand($locations)],
                 'occupation' => $femaleJobs[array_rand($femaleJobs)],
-                'education' => fake()->randomElement(['bachelor', 'master', 'high_school']),
-                'interests' => fake()->randomElements($interestPool, rand(2, 4)),
+                'education' => (['bachelor', 'master', 'high_school'])[array_rand(['bachelor', 'master', 'high_school'])],
+                'interests' => array_values(array_intersect_key($interestPool, array_flip((array) array_rand($interestPool, rand(2, 4))))),
                 'last_active_at' => now()->subMinutes(rand(5, 2880)),
                 'created_at' => now()->subDays(rand(15, 55)),
             ]);
@@ -84,7 +84,7 @@ class TestUsersSeeder extends Seeder
                 'password' => $password,
                 'nickname' => $name,
                 'gender' => 'male',
-                'birth_date' => fake()->dateTimeBetween('-38 years', '-22 years')->format('Y-m-d'),
+                'birth_date' => now()->subYears(rand(22, 38))->subDays(rand(0, 365))->format('Y-m-d'),
                 'membership_level' => $level,
                 'credit_score' => rand(50, 88),
                 'status' => 'active',
@@ -94,8 +94,8 @@ class TestUsersSeeder extends Seeder
                 'height' => rand(170, 185),
                 'location' => $locations[array_rand($locations)],
                 'occupation' => $maleJobs[array_rand($maleJobs)],
-                'education' => fake()->randomElement(['bachelor', 'master', 'phd']),
-                'interests' => fake()->randomElements($interestPool, rand(2, 4)),
+                'education' => (['bachelor', 'master', 'phd'])[array_rand(['bachelor', 'master', 'phd'])],
+                'interests' => array_values(array_intersect_key($interestPool, array_flip((array) array_rand($interestPool, rand(2, 4))))),
                 'last_active_at' => now()->subMinutes(rand(10, 4320)),
                 'created_at' => now()->subDays(rand(10, 50)),
             ]);
