@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Switch, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox } from 'antd'
+import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Switch, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm } from 'antd'
 import { SaveOutlined, DeleteOutlined, DatabaseOutlined, ReloadOutlined, PlusOutlined, DollarOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -304,12 +304,16 @@ function AdminsTab() {
   const [loading, setLoading] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [form] = Form.useForm()
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [resetTarget, setResetTarget] = useState<Admin | null>(null)
+  const [resetForm] = Form.useForm()
+  const [resetLoading, setResetLoading] = useState(false)
 
   const loadAdmins = useCallback(async () => {
     setLoading(true)
     try {
       const res = await apiClient.get('/admin/settings/admins')
-      setAdmins(res.data.data.admins)
+      setAdmins(res.data?.data?.admins ?? [])
     } catch { /* ignore */ }
     setLoading(false)
   }, [])
@@ -337,6 +341,36 @@ function AdminsTab() {
     }
   }
 
+  async function handleDelete(id: number) {
+    try {
+      await apiClient.delete(`/admin/settings/admins/${id}`)
+      message.success('管理員已刪除')
+      loadAdmins()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '刪除失敗'
+      message.error(msg)
+    }
+  }
+
+  async function handleResetPassword() {
+    try {
+      const values = await resetForm.validateFields()
+      setResetLoading(true)
+      await apiClient.post(`/admin/settings/admins/${resetTarget?.id}/reset-password`, {
+        password: values.password,
+        password_confirmation: values.password_confirmation,
+      })
+      message.success('密碼已重設')
+      setResetModalOpen(false)
+      resetForm.resetFields()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '重設失敗'
+      message.error(msg)
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   const roleColors: Record<string, string> = { super_admin: 'red', admin: 'blue', cs: 'green' }
 
   const columns = [
@@ -345,12 +379,21 @@ function AdminsTab() {
     { title: '角色', dataIndex: 'role', key: 'role', render: (role: string) => <Tag color={roleColors[role] || 'default'}>{role}</Tag> },
     { title: '狀態', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color={s === 'active' ? 'green' : 'red'}>{s}</Tag> },
     {
-      title: '操作', key: 'actions', render: (_: unknown, record: Admin) => (
-        <Select size="small" value={record.role} onChange={(v) => handleRoleChange(record.id, v)} style={{ width: 120 }}>
-          <Select.Option value="super_admin">Super Admin</Select.Option>
-          <Select.Option value="admin">Admin</Select.Option>
-          <Select.Option value="cs">CS</Select.Option>
-        </Select>
+      title: '操作', key: 'actions', width: 280, render: (_: unknown, record: Admin) => (
+        <Space>
+          <Select size="small" value={record.role} onChange={(v) => handleRoleChange(record.id, v)} style={{ width: 120 }}>
+            <Select.Option value="super_admin">Super Admin</Select.Option>
+            <Select.Option value="admin">Admin</Select.Option>
+            <Select.Option value="cs">CS</Select.Option>
+          </Select>
+          <Button size="small" onClick={() => { setResetTarget(record); resetForm.resetFields(); setResetModalOpen(true) }}>重設密碼</Button>
+          {record.role !== 'super_admin' && (
+            <Popconfirm title="確定刪除此管理員？" description={`${record.nickname}（${record.email}）`}
+              onConfirm={() => handleDelete(record.id)} okText="確定刪除" okButtonProps={{ danger: true }} cancelText="取消">
+              <Button size="small" danger>刪除</Button>
+            </Popconfirm>
+          )}
+        </Space>
       ),
     },
   ]
@@ -377,6 +420,23 @@ function AdminsTab() {
           <Button type="primary" htmlType="submit" block>建立</Button>
         </Form>
       </Drawer>
+      <Modal title={`重設密碼：${resetTarget?.nickname ?? ''}`} open={resetModalOpen}
+        onOk={handleResetPassword} onCancel={() => { setResetModalOpen(false); resetForm.resetFields() }}
+        confirmLoading={resetLoading} okText="確認重設" cancelText="取消" destroyOnClose>
+        <Form form={resetForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="password" label="新密碼" rules={[{ required: true, message: '請輸入新密碼' }, { min: 8, message: '密碼至少 8 個字元' }]}>
+            <Input.Password placeholder="至少 8 個字元" />
+          </Form.Item>
+          <Form.Item name="password_confirmation" label="確認新密碼" dependencies={['password']}
+            rules={[{ required: true, message: '請再次輸入' },
+              ({ getFieldValue }) => ({ validator(_, value) {
+                return !value || getFieldValue('password') === value ? Promise.resolve() : Promise.reject(new Error('兩次密碼不一致'))
+              }})
+            ]}>
+            <Input.Password placeholder="再次輸入新密碼" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }
