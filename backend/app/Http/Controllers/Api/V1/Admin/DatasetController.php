@@ -56,7 +56,15 @@ class DatasetController extends Controller
 
         Log::info("[Dataset] Reset executed by admin #{$request->user()->id}");
 
-        Artisan::call('mimeet:reset-clean', ['--force' => true]);
+        try {
+            Artisan::call('mimeet:reset-clean', ['--force' => true]);
+        } catch (\Throwable $e) {
+            Log::error('[Dataset] Reset failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'RESET_FAILED', 'message' => '清空失敗：' . $e->getMessage()],
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
@@ -84,7 +92,15 @@ class DatasetController extends Controller
         $options = ['--force' => true];
         if ($fresh) $options['--fresh'] = true;
 
-        Artisan::call('mimeet:seed-test', $options);
+        try {
+            Artisan::call('mimeet:seed-test', $options);
+        } catch (\Throwable $e) {
+            Log::error('[Dataset] Seed failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'SEED_FAILED', 'message' => '匯入失敗：' . $e->getMessage()],
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
