@@ -61,7 +61,21 @@ class AuthController extends Controller
             'success' => true,
             'code' => 'REGISTER_SUCCESS',
             'message' => '註冊成功，請驗證信箱。',
-            'data' => ['user' => $user, 'token' => $token],
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'nickname' => $user->nickname,
+                    'avatar' => $user->avatar_url,
+                    'gender' => $user->gender,
+                    'status' => $user->status,
+                    'credit_score' => $user->credit_score,
+                    'membership_level' => $user->membership_level,
+                    'email_verified' => (bool) $user->email_verified,
+                    'phone_verified' => (bool) $user->phone_verified,
+                ],
+                'token' => $token,
+            ],
         ], 201);
     }
 
@@ -93,7 +107,21 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true, 'code' => 'LOGIN_SUCCESS', 'message' => '登入成功。',
-            'data' => ['user' => $user, 'token' => $token],
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'nickname' => $user->nickname,
+                    'avatar' => $user->avatar_url,
+                    'gender' => $user->gender,
+                    'status' => $user->status,
+                    'credit_score' => $user->credit_score,
+                    'membership_level' => $user->membership_level,
+                    'email_verified' => (bool) $user->email_verified,
+                    'phone_verified' => (bool) $user->phone_verified,
+                ],
+                'token' => $token,
+            ],
         ]);
     }
 
@@ -117,7 +145,18 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true, 'code' => 'USER_PROFILE', 'message' => 'OK',
-            'data' => ['user' => $user],
+            'data' => ['user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'nickname' => $user->nickname,
+                'avatar' => $user->avatar_url,
+                'gender' => $user->gender,
+                'status' => $user->status,
+                'credit_score' => $user->credit_score,
+                'membership_level' => $user->membership_level,
+                'email_verified' => (bool) $user->email_verified,
+                'phone_verified' => (bool) $user->phone_verified,
+            ]],
         ]);
     }
 
