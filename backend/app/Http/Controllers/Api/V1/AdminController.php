@@ -67,7 +67,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'page' => 'sometimes|integer|min:1',
-            'per_page' => 'sometimes|integer|min:1|max:100',
+            'per_page' => 'sometimes|integer|min:1|max:1000',
             'status' => 'sometimes|string|in:active,suspended,all',
             'search' => 'sometimes|string',
         ]);
@@ -337,7 +337,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'page' => 'sometimes|integer|min:1',
-            'per_page' => 'sometimes|integer|min:1|max:100',
+            'per_page' => 'sometimes|integer|min:1|max:1000',
             'status' => 'sometimes|string|in:open,in_progress,resolved,closed',
         ]);
 
@@ -404,7 +404,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'page' => 'sometimes|integer|min:1',
-            'per_page' => 'sometimes|integer|min:1|max:100',
+            'per_page' => 'sometimes|integer|min:1|max:1000',
             'status' => 'sometimes|string|in:completed,pending,failed,refunded',
         ]);
 

@@ -66,9 +66,9 @@ export default function DashboardPage() {
         apiClient.get('/admin/payments', { params: { per_page: 100 } }),
       ])
 
-      const members = membersRes.status === 'fulfilled' ? membersRes.value.data.data.members : []
-      const tickets = ticketsRes.status === 'fulfilled' ? ticketsRes.value.data.data.tickets : []
-      const payments = paymentsRes.status === 'fulfilled' ? paymentsRes.value.data.data.payments : []
+      const members = membersRes.status === 'fulfilled' ? (membersRes.value.data?.data?.members ?? []) : []
+      const tickets = ticketsRes.status === 'fulfilled' ? (ticketsRes.value.data?.data?.tickets ?? []) : []
+      const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value.data?.data?.payments ?? []) : []
 
       // Calculate stats from real data
       const paidCount = Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0

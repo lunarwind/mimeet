@@ -38,8 +38,8 @@ export default function MembersPage() {
       if (search) params.search = search
       if (statusFilter !== 'all') params.status = statusFilter
       const res = await apiClient.get('/admin/members', { params })
-      setMembers(res.data.data.members ?? [])
-      setTotal(res.data.data.pagination?.total ?? 0)
+      setMembers(res.data?.data?.members ?? [])
+      setTotal(res.data?.data?.pagination?.total ?? 0)
     } catch {
       setMembers([])
     }
