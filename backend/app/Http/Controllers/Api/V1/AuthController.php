@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Mail\VerificationMail;
+use App\Mail\EmailVerificationMail;
 use App\Models\User;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
@@ -41,20 +41,13 @@ class AuthController extends Controller
         $token = $user->createToken('register')->plainTextToken;
 
         // Generate 6-digit verification code and send email
-        $verifyCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        Cache::put("email_verify:{$user->email}", $verifyCode, 600); // 10 min TTL
+        $verifyCode = (string) random_int(100000, 999999);
+        Cache::put("email_verification:{$user->email}", $verifyCode, 600); // 10 min TTL
 
         try {
-            $mailService = new \App\Services\MailService();
-            $mailService->send(
-                $user->email,
-                '【MiMeet】Email 驗證碼',
-                (new VerificationMail($verifyCode, $user->nickname))->render(),
-            );
+            Mail::to($user->email)->send(new EmailVerificationMail($user->nickname, $verifyCode));
         } catch (\Throwable $e) {
-            // Fallback: try Laravel Mail directly
-            try { Mail::to($user->email)->send(new VerificationMail($verifyCode, $user->nickname)); } catch (\Throwable) {}
-            try { Log::warning('[Register] Email send: ' . $e->getMessage()); } catch (\Throwable) {}
+            Log::warning('[Register] Email send failed: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -167,11 +160,13 @@ class AuthController extends Controller
             'email' => 'required|email',
         ]);
 
-        $storedCode = Cache::get("email_verify:{$request->email}");
+        $storedCode = Cache::get("email_verification:{$request->email}");
 
         if (!$storedCode || $storedCode !== $request->verification_code) {
             return response()->json([
-                'success' => false, 'code' => 422, 'message' => '驗證碼不正確或已過期。',
+                'success' => false,
+                'code' => 'INVALID_CODE',
+                'message' => '驗證碼錯誤或已過期，請重新申請。',
             ], 422);
         }
 
@@ -181,28 +176,52 @@ class AuthController extends Controller
             $user->forceFill(['email_verified' => true])->save();
         }
 
-        Cache::forget("email_verify:{$request->email}");
+        Cache::forget("email_verification:{$request->email}");
 
         return response()->json(['success' => true, 'code' => 'EMAIL_VERIFIED', 'message' => '信箱驗證成功。']);
     }
 
     public function resendVerification(Request $request): JsonResponse
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate([
+            'email' => 'required|email',
+        ]);
 
-        $user = User::where('email', $request->email)->first();
-        if (!$user) {
-            return response()->json(['success' => true, 'message' => '若信箱已註冊，驗證碼已重新發送。']);
+        $email = $request->input('data.email') ?? $request->input('email');
+        $nickname = '用戶'; // mock，實際上應從 DB 查詢
+
+        // 檢查冷卻（60秒）
+        $cooldownKey = "email_verification_cooldown:{$email}";
+        if (Cache::has($cooldownKey)) {
+            return response()->json([
+                'success' => false,
+                'code' => 'TOO_MANY_REQUESTS',
+                'message' => '請稍後再試，60 秒內只能重新發送一次。',
+            ], 429);
         }
 
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        Cache::put("email_verify:{$request->email}", $code, 600);
+        // 嘗試從 DB 取得 nickname
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            $nickname = $user->nickname;
+        }
+
+        // 產生新驗證碼
+        $code = (string) random_int(100000, 999999);
+        Cache::put("email_verification:{$email}", $code, 600);
+        Cache::put($cooldownKey, true, 60);
 
         try {
-            Mail::to($request->email)->send(new VerificationMail($code, $user->nickname));
-        } catch (\Throwable) {}
+            Mail::to($email)->send(new EmailVerificationMail($nickname, $code));
+        } catch (\Throwable $e) {
+            Log::warning('[ResendVerification] Email send failed: ' . $e->getMessage());
+        }
 
-        return response()->json(['success' => true, 'message' => '驗證碼已重新發送。']);
+        return response()->json([
+            'success' => true,
+            'code' => 'VERIFICATION_SENT',
+            'message' => '驗證碼已重新寄出。',
+        ]);
     }
 
     public function verifyPhoneSend(Request $request): JsonResponse
