@@ -174,6 +174,8 @@ Route::prefix('api/v1')->group(function () {
             Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions']);
             Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile']);
             Route::delete('/members/{id}', [AdminController::class, 'deleteMember']);
+            Route::post('/members/{id}/change-password', [AdminController::class, 'changeMemberPassword']);
+            Route::post('/members/{id}/verify-email', [AdminController::class, 'forceVerifyEmail']);
             Route::get('/tickets', [AdminController::class, 'tickets']);
             Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket']);
             Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);

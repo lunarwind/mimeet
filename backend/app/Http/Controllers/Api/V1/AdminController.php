@@ -276,6 +276,45 @@ class AdminController extends Controller
     }
 
     /**
+     * POST /api/v1/admin/members/{id}/change-password
+     */
+    public function changeMemberPassword(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => '會員不存在'], 404);
+        }
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        try { Log::info('[Admin] Member password changed', ['member_id' => $id, 'by' => $request->user()?->id]); } catch (\Throwable) {}
+
+        return response()->json(['success' => true, 'message' => '密碼已變更']);
+    }
+
+    /**
+     * POST /api/v1/admin/members/{id}/verify-email
+     */
+    public function forceVerifyEmail(Request $request, int $id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => '會員不存在'], 404);
+        }
+
+        $user->forceFill(['email_verified' => true])->save();
+
+        try { Log::info('[Admin] Member email force-verified', ['member_id' => $id, 'by' => $request->user()?->id]); } catch (\Throwable) {}
+
+        return response()->json(['success' => true, 'message' => 'Email 已標記為驗證完成']);
+    }
+
+    /**
      * PATCH /api/v1/admin/members/{id}/profile
      * Update a user's profile fields. Super-admin only.
      * Manually logs before/after snapshot to admin_operation_logs.

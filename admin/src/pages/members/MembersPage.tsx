@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message } from 'antd'
-import { SearchOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message, Modal, Form } from 'antd'
+import { SearchOutlined, ReloadOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -70,6 +70,42 @@ export default function MembersPage() {
     }
   }
 
+  // ── Change password ────────────────────────────────
+  const [pwModalOpen, setPwModalOpen] = useState(false)
+  const [pwTarget, setPwTarget] = useState<Member | null>(null)
+  const [pwForm] = Form.useForm()
+  const [pwLoading, setPwLoading] = useState(false)
+
+  async function handleChangePassword() {
+    try {
+      const values = await pwForm.validateFields()
+      setPwLoading(true)
+      await apiClient.post(`/admin/members/${pwTarget?.id}/change-password`, {
+        password: values.password,
+        password_confirmation: values.password_confirmation,
+      })
+      message.success(`${pwTarget?.nickname ?? pwTarget?.email} 密碼已變更`)
+      setPwModalOpen(false)
+      pwForm.resetFields()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg || '變更失敗')
+    } finally {
+      setPwLoading(false)
+    }
+  }
+
+  async function handleForceVerifyEmail(id: number) {
+    try {
+      await apiClient.post(`/admin/members/${id}/verify-email`)
+      message.success('Email 已驗證')
+      fetchMembers()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg || '操作失敗')
+    }
+  }
+
   const columns = [
     {
       title: '暱稱', dataIndex: 'nickname', key: 'nickname',
@@ -111,18 +147,17 @@ export default function MembersPage() {
       render: (d: string) => d ? dayjs(d).format('MM/DD HH:mm') : '—',
     },
     {
-      title: '操作', key: 'actions', width: 160,
+      title: '操作', key: 'actions', width: 280,
       render: (_: unknown, record: Member) => (
-        <Space>
+        <Space size={4} wrap>
           <Button type="link" size="small" onClick={() => navigate(`/members/${record.id}`)}>查看</Button>
-          <Popconfirm
-            title="確定刪除此會員？"
-            description={`${record.nickname ?? record.email} 將被刪除`}
-            onConfirm={() => handleDeleteMember(record.id)}
-            okText="確定刪除"
-            okButtonProps={{ danger: true }}
-            cancelText="取消"
-          >
+          <Button size="small" icon={<LockOutlined />} onClick={() => { setPwTarget(record); pwForm.resetFields(); setPwModalOpen(true) }}>改密碼</Button>
+          {!record.email_verified && (
+            <Popconfirm title="強制標記 Email 為已驗證？" okText="確定" cancelText="取消" onConfirm={() => handleForceVerifyEmail(record.id)}>
+              <Button size="small" style={{ borderColor: '#F59E0B', color: '#F59E0B' }}>驗證Email</Button>
+            </Popconfirm>
+          )}
+          <Popconfirm title="確定刪除此會員？" description={`${record.nickname ?? record.email}`} onConfirm={() => handleDeleteMember(record.id)} okText="刪除" okButtonProps={{ danger: true }} cancelText="取消">
             <Button danger size="small" icon={<DeleteOutlined />}>刪除</Button>
           </Popconfirm>
         </Space>
@@ -160,6 +195,24 @@ export default function MembersPage() {
         size="middle"
         locale={{ emptyText: '目前無會員資料' }}
       />
+
+      <Modal title={`變更密碼：${pwTarget?.nickname ?? pwTarget?.email ?? ''}`} open={pwModalOpen}
+        onOk={handleChangePassword} onCancel={() => { setPwModalOpen(false); pwForm.resetFields() }}
+        confirmLoading={pwLoading} okText="確認變更" cancelText="取消" destroyOnClose>
+        <Form form={pwForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="password" label="新密碼" rules={[{ required: true, message: '請輸入新密碼' }, { min: 8, message: '至少 8 個字元' }]}>
+            <Input.Password placeholder="至少 8 個字元" />
+          </Form.Item>
+          <Form.Item name="password_confirmation" label="確認新密碼" dependencies={['password']}
+            rules={[{ required: true, message: '請再次輸入' },
+              ({ getFieldValue }) => ({ validator(_, value) {
+                return !value || getFieldValue('password') === value ? Promise.resolve() : Promise.reject(new Error('兩次密碼不一致'))
+              }})
+            ]}>
+            <Input.Password placeholder="再次輸入新密碼" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }
