@@ -387,8 +387,8 @@ function AdminsTab() {
             <Select.Option value="cs">CS</Select.Option>
           </Select>
           <Button size="small" onClick={() => { setResetTarget(record); resetForm.resetFields(); setResetModalOpen(true) }}>重設密碼</Button>
-          {record.role !== 'super_admin' && (
-            <Popconfirm title="確定刪除此管理員？" description={`${record.nickname}（${record.email}）`}
+          {record.id !== 1 && (
+            <Popconfirm title={`確定要刪除管理員「${record.nickname}」嗎？`} description="此操作無法復原。"
               onConfirm={() => handleDelete(record.id)} okText="確定刪除" okButtonProps={{ danger: true }} cancelText="取消">
               <Button size="small" danger>刪除</Button>
             </Popconfirm>
