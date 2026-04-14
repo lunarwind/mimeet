@@ -100,9 +100,11 @@ async function submitStep2() {
       gender: step1.gender as 'male' | 'female',
       birth_date: birthDate,
     })
-    // Store token from registration response
+    // Store token and user from registration response
     const token = res.data?.data?.token ?? res.data?.token ?? ''
     if (token) authStore.setToken(token)
+    const userData = res.data?.data?.user ?? res.data?.user
+    if (userData) authStore.setUser(userData)
     registeredEmail.value = step2.email
     goStep(3)
   } catch (err: any) {

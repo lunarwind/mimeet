@@ -18,10 +18,12 @@ export interface AuthUser {
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('auth_token'))
   const user = ref<AuthUser | null>(null)
+  const initialized = ref(false)
 
-  const isLoggedIn = computed(() => !!token.value)
+  const isLoggedIn = computed(() => !!token.value && !!user.value)
   const membershipLevel = computed(() => user.value?.membership_level ?? 0)
-  const isSuspended = computed(() => user.value?.status === 'suspended')
+  const isSuspended = computed(() => user.value?.status === 'suspended' || user.value?.status === 'auto_suspended')
+  const isVerified = computed(() => user.value?.status === 'active')
 
   function setToken(t: string) {
     token.value = t
@@ -33,13 +35,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function initialize() {
-    if (!token.value) return
-    // 已有 token，嘗試取得用戶資料（頁面重整後恢復狀態）
+    // Idempotent: skip if already initialized or no token
+    if (initialized.value || !token.value) return
+    initialized.value = true
+
     try {
       const data = await getMe()
       user.value = data.user
     } catch {
-      // Token 失效，清除
+      // Token invalid — clear everything
       logout()
     }
   }
@@ -47,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null
     user.value = null
+    initialized.value = false
     localStorage.removeItem('auth_token')
   }
 
@@ -56,6 +61,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     membershipLevel,
     isSuspended,
+    isVerified,
     setToken,
     setUser,
     initialize,

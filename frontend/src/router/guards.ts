@@ -1,28 +1,48 @@
 import type { Router } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const PUBLIC_ROUTE_NAMES = new Set([
+  'landing', 'login', 'register', 'forgot-password', 'reset-password',
+  'verify-email', 'privacy', 'terms', 'anti-fraud', 'go-redirect',
+  'dev-sprint-check', 'not-found',
+])
 
 export function setupRouterGuards(router: Router) {
-  router.beforeEach((to) => {
+  router.beforeEach(async (to) => {
+    const auth = useAuthStore()
+
+    // 1. Ensure user data is loaded (idempotent — skips if already done)
+    await auth.initialize()
+
     const requiresAuth = (to.meta.requiresAuth as boolean) ?? false
+    const routeName = to.name as string
 
-    const token = localStorage.getItem('auth_token')
-    const isLoggedIn = !!token
-
-    // Public pages — always allow
-    if (!requiresAuth) {
-      // Redirect logged-in users from login page only
-      // (register stays accessible so users can re-register with different email)
-      if (isLoggedIn && to.name === 'login') {
-        return { path: '/app/explore' }
-      }
-      return true // pass through (landing page always accessible)
+    // 2. Logged-in user going to login → redirect to explore
+    if (auth.isLoggedIn && routeName === 'login') {
+      return { path: '/app/explore' }
     }
 
-    // Protected page but not logged in → login (with redirect query)
-    if (!isLoggedIn) {
+    // 3. Public pages — allow through
+    if (!requiresAuth) {
+      return true
+    }
+
+    // 4. Protected page but not logged in → login
+    if (!auth.isLoggedIn) {
       return { path: '/login', query: { redirect: to.fullPath } }
     }
 
-    // Logged in + protected page → allow
+    // 5. Logged in but suspended → suspended page
+    if (auth.isSuspended && !to.path.startsWith('/suspended')) {
+      return { path: '/suspended' }
+    }
+
+    // 6. Logged in but not verified → only allow public routes
+    if (!auth.isVerified && !PUBLIC_ROUTE_NAMES.has(routeName)) {
+      return { path: '/login' }
+    }
+
+    // 7. All checks passed → allow
     return true
   })
 }
