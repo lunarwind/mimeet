@@ -14,25 +14,48 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => ['required', 'string', 'min:8', 'regex:/[a-zA-Z]/', 'regex:/[0-9]/'],
-            'nickname' => 'required|string|max:20',
-            'gender' => 'required|in:male,female',
-            'birth_date' => 'required|date|before:-18 years',
-        ]);
+        // 支援 { data: {...} } 包裝格式
+        $input = $request->input('data') ?? $request->all();
+
+        try {
+            $validated = validator($input, [
+                'email'      => ['required', 'email', Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
+                'password'   => ['required', 'string', 'min:8'],
+                'nickname'   => ['required', 'string', 'max:20', Rule::unique('users', 'nickname')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
+                'gender'     => ['required', 'in:male,female'],
+                'birth_date' => ['required', 'date', 'before:-18 years'],
+                'phone'      => ['nullable', 'string', 'regex:/^09\d{8}$/', Rule::unique('users', 'phone')->where(fn ($q) => $q->whereNotNull('phone')->where('status', '!=', 'deleted'))],
+            ], [
+                'email.unique'    => '此 Email 已被使用',
+                'nickname.unique' => '此暱稱已被使用，請換一個',
+                'phone.unique'    => '此手機號碼已被使用',
+            ])->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $details = [];
+            foreach ($e->errors() as $field => $messages) {
+                $details[] = ['field' => $field, 'message' => $messages[0]];
+            }
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '註冊失敗',
+                'error'   => ['type' => 'validation_error', 'details' => $details],
+            ], 422);
+        }
 
         $user = User::create([
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'nickname' => $request->nickname,
-            'gender' => $request->gender,
-            'birth_date' => $request->birth_date,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'nickname' => $validated['nickname'],
+            'gender' => $validated['gender'],
+            'birth_date' => $validated['birth_date'],
+            'phone' => $validated['phone'] ?? null,
             'membership_level' => 0,
             'credit_score' => 60,
             'status' => 'active',
