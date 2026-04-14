@@ -269,7 +269,7 @@ export default function MemberDetailPage() {
                         </Tag>
                       </Space>
                     </Card>
-                    {member.photos.length > 0 && (
+                    {(member.photos?.length ?? 0) > 0 && (
                       <Card title="照片" style={{ marginTop: 16 }}>
                         <Image.PreviewGroup>
                           <Space>
