@@ -13,47 +13,83 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        // 支援 { data: {...} } 包裝格式，也支援 flat body
-        $input = $request->input('data');
-        if (!is_array($input) || empty($input)) {
-            $input = $request->all();
-        }
+        // ── 1. 解包前端送來的 { data: {...} } wrapper ─────────��────
+        $raw = $request->input('data');
+        $input = is_array($raw) && !empty($raw) ? $raw : $request->all();
 
-        // 格式 + 唯一性驗證（Rule::unique 排除已刪除帳號）
-        try {
-            validator($input, [
-                'email'      => ['required', 'email', Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
-                'password'   => ['required', 'string', 'min:8'],
-                'nickname'   => ['required', 'string', 'max:20', Rule::unique('users', 'nickname')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
-                'gender'     => ['required', 'in:male,female'],
-                'birth_date' => ['required', 'date', 'before:-18 years'],
-                'phone'      => ['nullable', 'string', 'regex:/^09\d{8}$/', Rule::unique('users', 'phone')->whereNotNull('phone')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
-            ], [
-                'email.unique'    => '此 Email 已被使用',
-                'nickname.unique' => '此暱稱已被使用，請換一個',
-                'phone.unique'    => '此手機號碼已被使用',
-            ])->validate();
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        // ── 2. 格式驗證（不查 DB，快速失敗）─────────────────────────
+        $formatValidator = Validator::make($input, [
+            'email'      => ['required', 'email'],
+            'password'   => ['required', 'string', 'min:8'],
+            'nickname'   => ['required', 'string', 'max:20'],
+            'gender'     => ['required', 'in:male,female'],
+            'birth_date' => ['required', 'date', 'before:-18 years'],
+            'phone'      => ['nullable', 'string', 'regex:/^09\d{8}$/'],
+        ]);
+
+        if ($formatValidator->fails()) {
             $details = [];
-            foreach ($e->errors() as $field => $messages) {
+            foreach ($formatValidator->errors()->toArray() as $field => $messages) {
                 $details[] = ['field' => $field, 'message' => $messages[0]];
             }
             return response()->json([
                 'success' => false,
                 'code'    => 400,
                 'message' => '註冊失敗',
-                'errors'  => $e->errors(),
+                'errors'  => $formatValidator->errors()->toArray(),
                 'error'   => ['type' => 'validation_error', 'details' => $details],
             ], 422);
         }
 
+        // ── 3. 唯一性驗證（查 DB，排除已刪除帳號）─────────────────
+        $email    = $input['email'];
+        $nickname = $input['nickname'];
+        $phone    = $input['phone'] ?? null;
+
+        if (User::where('email', $email)->where('status', '!=', 'deleted')->exists()) {
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '註冊失敗',
+                'errors'  => ['email' => ['此 Email 已被使用']],
+                'error'   => ['type' => 'validation_error', 'details' => [
+                    ['field' => 'email', 'message' => '此 Email 已被使用'],
+                ]],
+            ], 422);
+        }
+
+        if (User::where('nickname', $nickname)->where('status', '!=', 'deleted')->exists()) {
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '註冊失敗',
+                'errors'  => ['nickname' => ['此暱稱已被使用，請換一個']],
+                'error'   => ['type' => 'validation_error', 'details' => [
+                    ['field' => 'nickname', 'message' => '此暱稱已被使用，請換一個'],
+                ]],
+            ], 422);
+        }
+
+        if (!empty($phone) && User::where('phone', $phone)->whereNotNull('phone')->where('status', '!=', 'deleted')->exists()) {
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '註冊失敗',
+                'errors'  => ['phone' => ['此手機號碼已被使用']],
+                'error'   => ['type' => 'validation_error', 'details' => [
+                    ['field' => 'phone', 'message' => '此手機號碼已被使用'],
+                ]],
+            ], 422);
+        }
+
+        // ── 4. 建立用戶 ──────────────────────────────────────────
         $user = User::create([
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
