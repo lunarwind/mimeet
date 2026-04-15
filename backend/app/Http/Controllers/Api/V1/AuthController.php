@@ -174,11 +174,49 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $email = $request->input('email');
+        $ip = $request->ip();
+        $emailKey = "login_fail_email:{$email}";
+        $ipKey = "login_fail_ip:{$ip}";
+
+        // Check email lockout (5 failures → 5 min cooldown)
+        $emailFails = Cache::get($emailKey, 0);
+        if ($emailFails >= 5) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'ACCOUNT_LOGIN_LOCKED',
+                    'message' => '登入失敗次數過多，請 5 分鐘後再試',
+                ],
+            ], 429);
+        }
+
+        // Check IP lockout (20 failures → 5 min cooldown)
+        $ipFails = Cache::get($ipKey, 0);
+        if ($ipFails >= 20) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'IP_LOGIN_LOCKED',
+                    'message' => '此網路登入失敗次數過多，請稍後再試',
+                ],
+            ], 429);
+        }
+
+        $user = User::where('email', $email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            // Increment failure counters (5 min TTL)
+            Cache::put($emailKey, $emailFails + 1, 300);
+            Cache::put($ipKey, $ipFails + 1, 300);
+
+            $remaining = max(0, 4 - $emailFails);
             return response()->json([
                 'success' => false, 'code' => 'LOGIN_FAILED', 'message' => 'Email 或密碼不正確。',
+                'error' => [
+                    'code' => 'INVALID_CREDENTIALS',
+                    'remaining' => $remaining,
+                ],
             ], 401);
         }
 
@@ -187,6 +225,9 @@ class AuthController extends Controller
                 'success' => false, 'code' => 'ACCOUNT_SUSPENDED', 'message' => '您的帳號已被暫停使用。',
             ], 403);
         }
+
+        // Login success — clear email failure count (keep IP count)
+        Cache::forget($emailKey);
 
         $token = $user->createToken('login')->plainTextToken;
         $user->update(['last_active_at' => now()]);

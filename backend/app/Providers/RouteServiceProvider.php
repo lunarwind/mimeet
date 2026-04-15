@@ -19,13 +19,7 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(200)->by($request->user()?->id ?: $request->ip());
         });
 
-        // Login: 50 req/min per IP + 10 req/min per email (brute-force protection)
-        RateLimiter::for('login', function (Request $request) {
-            return [
-                Limit::perMinute(50)->by($request->ip()),
-                Limit::perMinute(10)->by($request->input('email') ?: ''),
-            ];
-        });
+        // Login: handled in AuthController (email 5 fails + IP 20 fails → 5 min cooldown)
 
         // Register: 30 req/min per IP
         RateLimiter::for('register', function (Request $request) {
