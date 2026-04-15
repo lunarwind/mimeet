@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -25,78 +26,32 @@ class AuthController extends Controller
             $input = $request->all();
         }
 
-        // 基本格式驗證（不查 DB）
+        // 格式 + 唯一性驗證（Rule::unique 排除已刪除帳號）
         try {
             validator($input, [
-                'email'      => ['required', 'email'],
+                'email'      => ['required', 'email', Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
                 'password'   => ['required', 'string', 'min:8'],
-                'nickname'   => ['required', 'string', 'max:20'],
+                'nickname'   => ['required', 'string', 'max:20', Rule::unique('users', 'nickname')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
                 'gender'     => ['required', 'in:male,female'],
                 'birth_date' => ['required', 'date', 'before:-18 years'],
-                'phone'      => ['nullable', 'string', 'regex:/^09\d{8}$/'],
+                'phone'      => ['nullable', 'string', 'regex:/^09\d{8}$/', Rule::unique('users', 'phone')->whereNotNull('phone')->where(fn ($q) => $q->where('status', '!=', 'deleted'))],
+            ], [
+                'email.unique'    => '此 Email 已被使用',
+                'nickname.unique' => '此暱稱已被使用，請換一個',
+                'phone.unique'    => '此手機號碼已被使用',
             ])->validate();
         } catch (\Illuminate\Validation\ValidationException $e) {
+            $details = [];
+            foreach ($e->errors() as $field => $messages) {
+                $details[] = ['field' => $field, 'message' => $messages[0]];
+            }
             return response()->json([
                 'success' => false,
                 'code'    => 400,
                 'message' => '註冊失敗',
                 'errors'  => $e->errors(),
-                'error'   => ['type' => 'validation_error', 'details' => collect($e->errors())->map(fn ($msgs, $field) => ['field' => $field, 'message' => $msgs[0]])->values()->all()],
+                'error'   => ['type' => 'validation_error', 'details' => $details],
             ], 422);
-        }
-
-        // 唯一性驗證（查 DB，若 DB 不可用則略過，不阻斷流程）
-        try {
-            $emailExists = User::where('email', $input['email'])
-                ->where('status', '!=', 'deleted')
-                ->exists();
-            if ($emailExists) {
-                return response()->json([
-                    'success' => false,
-                    'code'    => 400,
-                    'message' => '註冊失敗',
-                    'errors'  => ['email' => ['此 Email 已被使用']],
-                    'error'   => ['type' => 'validation_error', 'details' => [
-                        ['field' => 'email', 'message' => '此 Email 已被使用'],
-                    ]],
-                ], 422);
-            }
-
-            $nicknameExists = User::where('nickname', $input['nickname'])
-                ->where('status', '!=', 'deleted')
-                ->exists();
-            if ($nicknameExists) {
-                return response()->json([
-                    'success' => false,
-                    'code'    => 400,
-                    'message' => '註冊失敗',
-                    'errors'  => ['nickname' => ['此暱稱已被使用，請換一個']],
-                    'error'   => ['type' => 'validation_error', 'details' => [
-                        ['field' => 'nickname', 'message' => '此暱稱已被使用，請換一個'],
-                    ]],
-                ], 422);
-            }
-
-            if (!empty($input['phone'])) {
-                $phoneExists = User::where('phone', $input['phone'])
-                    ->whereNotNull('phone')
-                    ->where('status', '!=', 'deleted')
-                    ->exists();
-                if ($phoneExists) {
-                    return response()->json([
-                        'success' => false,
-                        'code'    => 400,
-                        'message' => '註冊失敗',
-                        'errors'  => ['phone' => ['此手機號碼已被使用']],
-                        'error'   => ['type' => 'validation_error', 'details' => [
-                            ['field' => 'phone', 'message' => '此手機號碼已被使用'],
-                        ]],
-                    ], 422);
-                }
-            }
-        } catch (\Exception $dbException) {
-            // DB 查詢失敗時略過唯一性檢查，繼續執行
-            Log::warning('[Register] DB uniqueness check failed, skipping: ' . $dbException->getMessage());
         }
 
         $user = User::create([
