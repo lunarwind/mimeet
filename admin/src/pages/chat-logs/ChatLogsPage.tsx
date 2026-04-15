@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Tabs, Card, Input, Button, Table, Tag, Typography, Space, Result, Avatar, List,
 } from 'antd'
-import { SearchOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
+import { SearchOutlined, DownloadOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -40,6 +40,14 @@ interface ConversationData {
   messages: ConversationMessage[]
 }
 
+interface MemberChatEntry {
+  conversation_id: number
+  counterpart: { id: number; nickname: string; avatar_url?: string } | null
+  total_messages: number
+  last_message: { content: string; sent_at: string } | null
+  messages?: ConversationMessage[]
+}
+
 export default function ChatLogsPage() {
   const user = useAuthStore((s) => s.user)
 
@@ -53,7 +61,16 @@ export default function ChatLogsPage() {
 
 function ChatLogsContent() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('search')
+  const [searchParams] = useSearchParams()
+
+  // Determine initial tab and params from URL
+  const urlTab = searchParams.get('tab')
+  const urlUserA = searchParams.get('user_a') || ''
+  const urlUserB = searchParams.get('user_b') || ''
+  const urlUserId = searchParams.get('user_id') || ''
+
+  const initialTab = urlTab === 'member' ? 'member' : (urlUserA && urlUserB) ? 'conversation' : 'search'
+  const [activeTab, setActiveTab] = useState(initialTab)
 
   // Search tab state
   const [keyword, setKeyword] = useState('')
@@ -64,13 +81,23 @@ function ChatLogsContent() {
   const [searchPage, setSearchPage] = useState(1)
 
   // Conversation tab state
-  const [convUserA, setConvUserA] = useState('')
-  const [convUserB, setConvUserB] = useState('')
+  const [convUserA, setConvUserA] = useState(urlUserA)
+  const [convUserB, setConvUserB] = useState(urlUserB)
   const [convData, setConvData] = useState<ConversationData | null>(null)
   const [convMessages, setConvMessages] = useState<ConversationMessage[]>([])
   const [convTotal, setConvTotal] = useState(0)
   const [convLoading, setConvLoading] = useState(false)
   const [convPage, setConvPage] = useState(1)
+
+  // Member tab state
+  const [memberUserId, setMemberUserId] = useState(urlUserId)
+  const [memberCounterpartId, setMemberCounterpartId] = useState('')
+  const [memberKeyword, setMemberKeyword] = useState('')
+  const [memberResults, setMemberResults] = useState<MemberChatEntry[]>([])
+  const [memberTotal, setMemberTotal] = useState(0)
+  const [memberLoading, setMemberLoading] = useState(false)
+  const [memberPage, setMemberPage] = useState(1)
+  const [memberExporting, setMemberExporting] = useState(false)
 
   const handleSearch = async (page = 1) => {
     if (keyword.length < 2) return
@@ -89,7 +116,7 @@ function ChatLogsContent() {
     setSearchLoading(false)
   }
 
-  const handleConversation = async (page = 1) => {
+  const handleConversation = useCallback(async (page = 1) => {
     if (!convUserA || !convUserB) return
     setConvLoading(true)
     try {
@@ -106,7 +133,7 @@ function ChatLogsContent() {
       setConvTotal(0)
     }
     setConvLoading(false)
-  }
+  }, [convUserA, convUserB])
 
   const handleExport = async () => {
     if (!convUserA || !convUserB) return
@@ -126,12 +153,64 @@ function ChatLogsContent() {
     }
   }
 
+  const handleMemberSearch = useCallback(async (page = 1) => {
+    if (!memberUserId) return
+    setMemberLoading(true)
+    try {
+      const params: Record<string, string | number> = { page, per_page: 20 }
+      if (memberCounterpartId) params.counterpart_id = memberCounterpartId
+      if (memberKeyword) params.keyword = memberKeyword
+      const res = await apiClient.get(`/admin/members/${memberUserId}/chat-logs`, { params })
+      setMemberResults(res.data.data ?? [])
+      setMemberTotal(res.data.data?.pagination?.total ?? res.data.data?.length ?? 0)
+      setMemberPage(page)
+    } catch {
+      setMemberResults([])
+      setMemberTotal(0)
+    }
+    setMemberLoading(false)
+  }, [memberUserId, memberCounterpartId, memberKeyword])
+
+  const handleMemberExport = async () => {
+    if (!memberUserId || !memberCounterpartId) return
+    setMemberExporting(true)
+    try {
+      const res = await apiClient.get(`/admin/members/${memberUserId}/chat-logs/export`, {
+        params: { counterpart_id: memberCounterpartId, format: 'csv' },
+        responseType: 'blob',
+      })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `member_${memberUserId}_chat_${Date.now()}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      // ignore export errors
+    }
+    setMemberExporting(false)
+  }
+
   const viewConversation = (senderId: number, receiverId: number) => {
     setConvUserA(String(senderId))
     setConvUserB(String(receiverId))
     setActiveTab('conversation')
     setTimeout(() => handleConversation(1), 100)
   }
+
+  // Auto-load conversation if URL params provided
+  useEffect(() => {
+    if (urlUserA && urlUserB && activeTab === 'conversation') {
+      handleConversation(1)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-load member chats if URL params provided
+  useEffect(() => {
+    if (urlUserId && activeTab === 'member') {
+      handleMemberSearch(1)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const highlightKeyword = (text: string) => {
     if (!keyword) return text
@@ -174,6 +253,43 @@ function ChatLogsContent() {
     },
   ]
 
+  const memberColumns = [
+    {
+      title: '對方暱稱', key: 'counterpart', width: 160,
+      render: (_: unknown, r: MemberChatEntry) => r.counterpart ? (
+        <Space>
+          <Avatar size="small">{r.counterpart.nickname?.[0]}</Avatar>
+          <a onClick={() => navigate(`/members/${r.counterpart!.id}`)}>{r.counterpart.nickname}</a>
+        </Space>
+      ) : '-',
+    },
+    {
+      title: '最後訊息', key: 'last_message',
+      render: (_: unknown, r: MemberChatEntry) => r.last_message?.content ?? '-',
+    },
+    {
+      title: '最後時間', key: 'last_time', width: 160,
+      render: (_: unknown, r: MemberChatEntry) => r.last_message ? dayjs(r.last_message.sent_at).format('YYYY/MM/DD HH:mm') : '-',
+    },
+    { title: '訊息數', dataIndex: 'total_messages', key: 'total_messages', width: 80 },
+    {
+      title: '操作', key: 'action', width: 180,
+      render: (_: unknown, r: MemberChatEntry) => r.counterpart ? (
+        <Space>
+          <Button size="small" type="link" onClick={() => viewConversation(Number(memberUserId), r.counterpart!.id)}>
+            查看對話
+          </Button>
+          <Button size="small" type="link" onClick={() => {
+            setMemberCounterpartId(String(r.counterpart!.id))
+            handleMemberExport()
+          }}>
+            匯出
+          </Button>
+        </Space>
+      ) : null,
+    },
+  ]
+
   return (
     <div>
       <Title level={4} style={{ marginBottom: 16 }}>聊天記錄查詢</Title>
@@ -181,7 +297,7 @@ function ChatLogsContent() {
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
         {
           key: 'search',
-          label: '關鍵字搜尋',
+          label: '🔍 關鍵字搜尋',
           children: (
             <div>
               <Card style={{ marginBottom: 16 }}>
@@ -236,7 +352,7 @@ function ChatLogsContent() {
         },
         {
           key: 'conversation',
-          label: '查詢兩人對話',
+          label: '💬 兩人對話',
           children: (
             <div>
               <Card style={{ marginBottom: 16 }}>
@@ -328,6 +444,69 @@ function ChatLogsContent() {
                   <Text type="secondary">請輸入兩位用戶 ID 查詢對話</Text>
                 </Card>
               )}
+            </div>
+          ),
+        },
+        {
+          key: 'member',
+          label: '👤 會員對話查詢',
+          children: (
+            <div>
+              <Card style={{ marginBottom: 16 }}>
+                <Space wrap>
+                  <Input
+                    prefix={<UserOutlined />}
+                    placeholder="會員 ID（必填）"
+                    value={memberUserId}
+                    onChange={(e) => setMemberUserId(e.target.value)}
+                    style={{ width: 160 }}
+                  />
+                  <Input
+                    placeholder="對方 ID（選填）"
+                    value={memberCounterpartId}
+                    onChange={(e) => setMemberCounterpartId(e.target.value)}
+                    style={{ width: 160 }}
+                    allowClear
+                  />
+                  <Input
+                    prefix={<SearchOutlined />}
+                    placeholder="關鍵字（選填）"
+                    value={memberKeyword}
+                    onChange={(e) => setMemberKeyword(e.target.value)}
+                    style={{ width: 180 }}
+                    allowClear
+                  />
+                  <Button type="primary" onClick={() => handleMemberSearch()} disabled={!memberUserId}>查詢</Button>
+                  {memberResults.length > 0 && memberCounterpartId && (
+                    <Button icon={<DownloadOutlined />} onClick={handleMemberExport} loading={memberExporting}>
+                      匯出 CSV
+                    </Button>
+                  )}
+                  <Button icon={<ReloadOutlined />} onClick={() => {
+                    setMemberUserId('')
+                    setMemberCounterpartId('')
+                    setMemberKeyword('')
+                    setMemberResults([])
+                    setMemberTotal(0)
+                  }}>清除</Button>
+                </Space>
+              </Card>
+
+              <Table
+                dataSource={memberResults}
+                columns={memberColumns}
+                rowKey="conversation_id"
+                loading={memberLoading}
+                pagination={{
+                  current: memberPage,
+                  pageSize: 20,
+                  total: memberTotal,
+                  showTotal: (t) => `共 ${t} 筆`,
+                  onChange: (p) => handleMemberSearch(p),
+                }}
+                size="middle"
+                locale={{ emptyText: memberUserId ? '此會員無聊天記錄' : '請輸入會員 ID 查詢' }}
+              />
             </div>
           ),
         },
