@@ -197,21 +197,108 @@ function DatasetManager() {
   )
 }
 
+interface SubPlan {
+  id: number
+  slug: string
+  name: string
+  price: number
+  duration_days: number
+  is_trial: boolean
+  is_active: boolean
+}
+
 function PricingTab() {
-  const [trialPrice, setTrialPrice] = useState(199)
-  const [trialDays, setTrialDays] = useState(30)
-  const [autoRenew, setAutoRenew] = useState(true)
+  const [plans, setPlans] = useState<SubPlan[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editingPlan, setEditingPlan] = useState<SubPlan | null>(null)
+  const [editForm] = Form.useForm()
+  const [saving, setSaving] = useState(false)
+
+  const fetchPlans = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiClient.get('/admin/settings/subscription-plans')
+      setPlans(res.data.data ?? [])
+    } catch { setPlans([]) }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchPlans() }, [fetchPlans])
+
+  const handleEdit = (plan: SubPlan) => {
+    setEditingPlan(plan)
+    editForm.setFieldsValue({ name: plan.name, price: plan.price, duration_days: plan.duration_days, is_active: plan.is_active })
+  }
+
+  const handleSave = async () => {
+    if (!editingPlan) return
+    setSaving(true)
+    try {
+      const vals = editForm.getFieldsValue()
+      await apiClient.patch(`/admin/settings/subscription-plans/${editingPlan.id}`, vals)
+      message.success('方案已更新')
+      setEditingPlan(null)
+      fetchPlans()
+    } catch { message.error('更新失敗') }
+    setSaving(false)
+  }
+
+  const columns = [
+    { title: '方案名稱', dataIndex: 'name', key: 'name' },
+    { title: '代碼', dataIndex: 'slug', key: 'slug', render: (s: string) => <Tag>{s}</Tag> },
+    { title: '價格', dataIndex: 'price', key: 'price', render: (p: number) => `NT$ ${p.toLocaleString()}` },
+    { title: '天數', dataIndex: 'duration_days', key: 'duration_days', render: (d: number) => `${d} 天` },
+    {
+      title: '類型', key: 'type',
+      render: (_: unknown, r: SubPlan) => r.is_trial ? <Tag color="purple">體驗</Tag> : <Tag color="blue">正式</Tag>,
+    },
+    {
+      title: '狀態', dataIndex: 'is_active', key: 'is_active',
+      render: (a: boolean) => <Tag color={a ? 'green' : 'default'}>{a ? '啟用' : '停用'}</Tag>,
+    },
+    {
+      title: '操作', key: 'action', width: 80,
+      render: (_: unknown, r: SubPlan) => <Button type="link" size="small" onClick={() => handleEdit(r)}>編輯</Button>,
+    },
+  ]
 
   return (
-    <Card title="訂閱設定">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, maxWidth: 600 }}>
-        <div><Text>體驗價</Text><InputNumber value={trialPrice} onChange={(v) => setTrialPrice(v || 0)} style={{ width: '100%', marginTop: 4 }} addonBefore="NT$" /></div>
-        <div><Text>體驗天數</Text><InputNumber value={trialDays} onChange={(v) => setTrialDays(v || 0)} style={{ width: '100%', marginTop: 4 }} addonAfter="天" /></div>
-        <div><Text>自動續訂預設</Text><div style={{ marginTop: 4 }}><Switch checked={autoRenew} onChange={setAutoRenew} checkedChildren="開" unCheckedChildren="關" /></div></div>
-      </div>
-      <Divider />
-      <Button type="primary" icon={<SaveOutlined />} onClick={() => message.success('已儲存')}>儲存</Button>
-    </Card>
+    <div>
+      <Card title="訂閱方案管理" style={{ marginBottom: 16 }}>
+        <Table dataSource={plans} columns={columns} rowKey="id" loading={loading}
+          pagination={false} size="middle" />
+      </Card>
+
+      <Modal
+        title={`編輯方案 — ${editingPlan?.name ?? ''}`}
+        open={!!editingPlan}
+        onOk={handleSave}
+        onCancel={() => setEditingPlan(null)}
+        confirmLoading={saving}
+        okText="儲存"
+      >
+        <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item label="方案名稱" name="name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item label="價格 (NT$)" name="price" rules={[{ required: true }]}>
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="有效天數" name="duration_days" rules={[{ required: true }]}>
+            <Select>
+              <Select.Option value={3}>3 天</Select.Option>
+              <Select.Option value={7}>7 天</Select.Option>
+              <Select.Option value={30}>30 天</Select.Option>
+              <Select.Option value={90}>90 天</Select.Option>
+              <Select.Option value={365}>365 天</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item label="啟用" name="is_active" valuePropName="checked">
+            <Switch checkedChildren="啟用" unCheckedChildren="停用" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   )
 }
 

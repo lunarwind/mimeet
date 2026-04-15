@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, InputNumber, Button, Alert, Space, Typography, Modal, message, Tag } from 'antd'
+import { Card, Form, Input, InputNumber, Button, Alert, Space, Typography, Modal, message, Tag, Divider } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import apiClient from '../../../api/client'
 
 const { Text } = Typography
@@ -10,6 +11,7 @@ export default function DatabaseTab() {
   const [testResult, setTestResult] = useState<string>('')
   const [testLoading, setTestLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     apiClient.get('/admin/settings/system-control').then(res => {
@@ -83,6 +85,46 @@ export default function DatabaseTab() {
       </Space>
 
       <Alert type="warning" message="⚠️ 變更資料庫設定後需重啟應用容器才完全生效" style={{ marginTop: 16 }} showIcon />
+
+      <Divider />
+
+      <Card size="small" title="資料庫匯出" style={{ marginTop: 8 }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text type="secondary">匯出完整 SQL 備份（含所有資料表與資料），僅 super_admin 可操作</Text>
+          <Button
+            icon={<DownloadOutlined />}
+            loading={exporting}
+            onClick={async () => {
+              Modal.confirm({
+                title: '確定匯出資料庫？',
+                content: '將下載完整 SQL 備份檔案，請妥善保存。',
+                onOk: async () => {
+                  setExporting(true)
+                  try {
+                    const res = await apiClient.get('/admin/settings/database/export', {
+                      responseType: 'blob',
+                      timeout: 120000,
+                    })
+                    const url = window.URL.createObjectURL(new Blob([res.data]))
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `mimeet_backup_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.sql`
+                    a.click()
+                    window.URL.revokeObjectURL(url)
+                    message.success('匯出完成')
+                  } catch {
+                    message.error('匯出失敗')
+                  }
+                  setExporting(false)
+                },
+              })
+            }}
+          >
+            匯出 SQL 備份
+          </Button>
+          <Alert type="warning" message="備份檔案包含敏感資料，請妥善保存" showIcon />
+        </Space>
+      </Card>
     </Card>
   )
 }

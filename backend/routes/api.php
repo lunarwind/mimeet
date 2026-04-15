@@ -218,6 +218,11 @@ Route::prefix('api/v1')->group(function () {
                 Route::post('sms/test', [SystemControlController::class, 'testSms']);
                 Route::patch('database', [SystemControlController::class, 'updateDatabase']);
                 Route::post('database/test', [SystemControlController::class, 'testDatabase']);
+                Route::get('database/export', [SystemControlController::class, 'exportDatabase']);
+
+                // Subscription plans management
+                Route::get('subscription-plans', [SystemControlController::class, 'getSubscriptionPlans']);
+                Route::patch('subscription-plans/{id}', [SystemControlController::class, 'updateSubscriptionPlan']);
 
                 // Dataset management
                 Route::get('dataset/stats', [DatasetController::class, 'stats']);

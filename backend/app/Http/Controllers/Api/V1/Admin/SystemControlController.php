@@ -11,6 +11,7 @@ use App\Services\Sms\MitakeDriver;
 use App\Services\Sms\TwilioDriver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -436,5 +437,68 @@ class SystemControlController extends Controller
             $content .= "\n{$key}={$value}";
         }
         file_put_contents($envPath, $content);
+    }
+
+    /**
+     * GET /api/v1/admin/settings/database/export
+     * Stream a mysqldump SQL backup (super_admin only — enforced by route middleware).
+     */
+    public function exportDatabase(Request $request): StreamedResponse
+    {
+        $host = config('database.connections.mysql.host');
+        $port = config('database.connections.mysql.port', 3306);
+        $user = config('database.connections.mysql.username');
+        $pass = config('database.connections.mysql.password');
+        $db   = config('database.connections.mysql.database');
+
+        $filename = "mimeet_backup_" . now()->format('Ymd_His') . ".sql";
+
+        Log::info('[Admin] DB export initiated', ['admin_id' => $request->user()->id, 'ip' => $request->ip()]);
+
+        return response()->streamDownload(function () use ($host, $port, $user, $pass, $db) {
+            $cmd = sprintf(
+                'mysqldump --host=%s --port=%s --user=%s --password=%s --single-transaction --routines --triggers --no-tablespaces %s',
+                escapeshellarg($host),
+                escapeshellarg((string) $port),
+                escapeshellarg($user),
+                escapeshellarg($pass),
+                escapeshellarg($db)
+            );
+            passthru($cmd);
+        }, $filename, ['Content-Type' => 'application/octet-stream']);
+    }
+
+    /**
+     * GET /api/v1/admin/settings/subscription-plans
+     */
+    public function getSubscriptionPlans(): JsonResponse
+    {
+        $plans = DB::table('subscription_plans')->orderBy('id')->get();
+        return response()->json(['success' => true, 'data' => $plans]);
+    }
+
+    /**
+     * PATCH /api/v1/admin/settings/subscription-plans/{id}
+     */
+    public function updateSubscriptionPlan(Request $request, int $id): JsonResponse
+    {
+        $plan = DB::table('subscription_plans')->where('id', $id)->first();
+        if (!$plan) {
+            return response()->json(['success' => false, 'message' => '方案不存在'], 404);
+        }
+
+        $data = $request->validate([
+            'name'          => 'sometimes|string|max:100',
+            'price'         => 'sometimes|integer|min:1',
+            'duration_days' => 'sometimes|integer|min:1',
+            'is_active'     => 'sometimes|boolean',
+        ]);
+
+        $data['updated_at'] = now();
+        DB::table('subscription_plans')->where('id', $id)->update($data);
+
+        Log::info('[Admin] Subscription plan updated', ['admin_id' => $request->user()->id, 'plan_id' => $id, 'changes' => $data]);
+
+        return response()->json(['success' => true, 'data' => DB::table('subscription_plans')->where('id', $id)->first()]);
     }
 }
