@@ -104,14 +104,44 @@ class AuthController extends Controller
 
         $token = $user->createToken('register')->plainTextToken;
 
-        // Generate 6-digit verification code and send email
-        $verifyCode = (string) random_int(100000, 999999);
-        Cache::put("email_verification:{$user->email}", $verifyCode, 600); // 10 min TTL
+        // ── Debug：收集 mail 診斷資訊 ⚠️ DEBUG ONLY — 問題解決後整段刪除 ──
+        $debugInfo = [
+            'mailer'       => config('mail.default'),
+            'host'         => config('mail.mailers.' . config('mail.default') . '.host', 'N/A'),
+            'port'         => config('mail.mailers.' . config('mail.default') . '.port', 'N/A'),
+            'from_address' => config('mail.from.address'),
+            'from_name'    => config('mail.from.name'),
+            'otp_code'     => null,
+            'otp_cached'   => false,
+            'mail_sent'    => false,
+            'mail_error'   => null,
+            'timestamp'    => now()->toISOString(),
+        ];
+
+        // Generate 6-digit verification code and cache it
+        $verifyCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $cacheKey = "email_verification:{$user->email}";
 
         try {
-            Mail::to($user->email)->send(new EmailVerificationMail($user->nickname, $verifyCode));
-        } catch (\Throwable $e) {
-            Log::warning('[Register] Email send failed: ' . $e->getMessage());
+            Cache::put($cacheKey, $verifyCode, 600);
+            $debugInfo['otp_code']   = $verifyCode; // ⚠️ DEBUG ONLY
+            $debugInfo['otp_cached'] = true;
+        } catch (\Throwable $cacheEx) {
+            $debugInfo['mail_error'] = 'Cache failed: ' . $cacheEx->getMessage();
+        }
+
+        // Attempt to send verification email
+        if ($debugInfo['otp_cached']) {
+            try {
+                Mail::to($user->email)->send(new EmailVerificationMail($user->nickname, $verifyCode));
+                $debugInfo['mail_sent'] = true;
+            } catch (\Throwable $e) {
+                $debugInfo['mail_error'] = $e->getMessage();
+                Log::error('[Register] Email send failed', [
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return response()->json([
@@ -132,6 +162,7 @@ class AuthController extends Controller
                     'phone_verified' => (bool) $user->phone_verified,
                 ],
                 'token' => $token,
+                '_debug' => $debugInfo, // ⚠️ DEBUG ONLY — 問題解決後整段刪除
             ],
         ], 201);
     }

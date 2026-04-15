@@ -73,6 +73,10 @@ const showPassConfirm = ref(false)
 const isSubmitting = ref(false)
 const registeredEmail = ref('')
 
+// ── DEBUG PANEL（問題解決後整段刪除）─────────────────────────
+const debugInfo = ref<any>(null)
+// ── END DEBUG ────────────────────────────────────────────────
+
 function validateStep2(): boolean {
   let ok = true
   Object.keys(step2Errors).forEach(k => (step2Errors as any)[k] = '')
@@ -105,6 +109,9 @@ async function submitStep2() {
     if (token) authStore.setToken(token)
     const userData = res.data?.data?.user ?? res.data?.user
     if (userData) authStore.setUser(userData)
+    // ── DEBUG（問題解決後整段刪除）───────────────
+    debugInfo.value = res.data?.data?._debug ?? null
+    // ── END DEBUG ────────────────────────────────
     registeredEmail.value = step2.email
     goStep(3)
   } catch (err: any) {
@@ -576,6 +583,49 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
           <p class="step3-hint">收不到信？請檢查垃圾郵件資料夾</p>
         </div>
 
+        <!-- ════ DEBUG EMAIL PANEL（問題解決後整段刪除）════ -->
+        <div v-if="currentStep === 3 && debugInfo" class="debug-panel">
+          <div class="debug-header">
+            <span class="debug-badge">DEBUG</span>
+            <span class="debug-title">Email 寄送診斷資訊</span>
+          </div>
+          <div class="debug-body">
+            <div class="debug-section">
+              <div class="debug-label">Mail 設定</div>
+              <div class="debug-row"><span class="debug-key">Mailer</span><span class="debug-val">{{ debugInfo.mailer }}</span></div>
+              <div class="debug-row"><span class="debug-key">Host</span><span class="debug-val">{{ debugInfo.host }}</span></div>
+              <div class="debug-row"><span class="debug-key">Port</span><span class="debug-val">{{ debugInfo.port }}</span></div>
+              <div class="debug-row"><span class="debug-key">From</span><span class="debug-val">{{ debugInfo.from_name }} &lt;{{ debugInfo.from_address }}&gt;</span></div>
+            </div>
+            <div class="debug-section">
+              <div class="debug-label">OTP 狀態</div>
+              <div class="debug-row">
+                <span class="debug-key">OTP 已存入 Cache</span>
+                <span class="debug-val" :class="debugInfo.otp_cached ? 'debug-ok' : 'debug-err'">{{ debugInfo.otp_cached ? 'YES' : 'NO' }}</span>
+              </div>
+              <div class="debug-row" v-if="debugInfo.otp_code">
+                <span class="debug-key">驗證碼（僅 debug）</span>
+                <span class="debug-val debug-otp">{{ debugInfo.otp_code }}</span>
+              </div>
+            </div>
+            <div class="debug-section">
+              <div class="debug-label">Email 寄送結果</div>
+              <div class="debug-row">
+                <span class="debug-key">Mail 寄送成功</span>
+                <span class="debug-val" :class="debugInfo.mail_sent ? 'debug-ok' : 'debug-err'">{{ debugInfo.mail_sent ? 'YES' : 'NO' }}</span>
+              </div>
+              <div class="debug-row" v-if="debugInfo.mail_error">
+                <span class="debug-key">錯誤訊息</span>
+                <span class="debug-val debug-err-text">{{ debugInfo.mail_error }}</span>
+              </div>
+            </div>
+            <div class="debug-section">
+              <div class="debug-row"><span class="debug-key">時間戳</span><span class="debug-val">{{ debugInfo.timestamp }}</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- ════ END DEBUG EMAIL PANEL ════ -->
+
         <!-- ═══ Step 4：SMS 手機驗證 ═══ -->
         <div v-if="currentStep === 4" class="step-card step3-card">
           <div class="envelope-icon">📱</div>
@@ -885,4 +935,21 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
   .step-card { padding: 24px 18px 20px; border-radius: 16px; }
   .otp-input { width: 38px; height: 48px; font-size: 20px; }
 }
+
+/* ════ DEBUG PANEL（問題解決後整段刪除）════ */
+.debug-panel { width:100%; max-width:480px; margin:16px auto 0; border:2px solid #F59E0B; border-radius:12px; background:#FFFBEB; overflow:hidden; font-family:monospace; font-size:12px; }
+.debug-header { background:#F59E0B; padding:8px 16px; display:flex; align-items:center; gap:8px; }
+.debug-badge { font-size:11px; font-weight:700; background:#fff; color:#92400E; padding:2px 6px; border-radius:4px; }
+.debug-title { font-size:12px; font-weight:700; color:#fff; }
+.debug-body { padding:12px 16px; display:flex; flex-direction:column; gap:12px; }
+.debug-section { display:flex; flex-direction:column; gap:4px; }
+.debug-label { font-size:11px; font-weight:700; color:#92400E; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #FDE68A; padding-bottom:4px; margin-bottom:2px; }
+.debug-row { display:flex; gap:8px; align-items:flex-start; }
+.debug-key { color:#78350F; min-width:140px; flex-shrink:0; }
+.debug-val { color:#1C1917; word-break:break-all; }
+.debug-ok { color:#065F46; font-weight:600; }
+.debug-err { color:#991B1B; font-weight:600; }
+.debug-err-text { color:#B91C1C; word-break:break-all; }
+.debug-otp { font-size:18px; font-weight:700; color:#F0294E; letter-spacing:4px; background:#FFF1F3; padding:2px 8px; border-radius:4px; }
+/* ════ END DEBUG PANEL ════ */
 </style>
