@@ -12,6 +12,15 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            if ($user->id === 1) {
+                throw new \RuntimeException('Cannot delete system user (id=1). This account is protected.');
+            }
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *

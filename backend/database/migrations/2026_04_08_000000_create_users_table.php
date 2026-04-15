@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -38,6 +39,22 @@ return new class extends Migration
             $table->timestamp('deleted_at')->nullable();
             $table->timestamp('delete_requested_at')->nullable();
         });
+
+        // Seed system user id=1 — guaranteed to exist after any migrate:fresh
+        DB::table('users')->insert([
+            'id'               => 1,
+            'email'            => 'system@mimeet.tw',
+            'password'         => bcrypt('SYSTEM_ACCOUNT_DO_NOT_LOGIN'),
+            'nickname'         => 'MiMeet 官方',
+            'gender'           => 'male',
+            'email_verified'   => true,
+            'membership_level' => 3,
+            'credit_score'     => 100,
+            'status'           => 'active',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+        DB::statement('ALTER TABLE users AUTO_INCREMENT = 2');
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();

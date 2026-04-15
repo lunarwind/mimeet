@@ -27,7 +27,7 @@ class SeedTestDataset extends Command
 
         if ($this->option('fresh')) {
             $this->info('Clearing database first...');
-            Artisan::call('mimeet:reset-clean', ['--force' => true]);
+            Artisan::call('mimeet:reset', ['--force' => true]);
             $this->line(Artisan::output());
         }
 
