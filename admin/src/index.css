@@ -10,6 +10,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
-  min-height: 100vh;
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
 }

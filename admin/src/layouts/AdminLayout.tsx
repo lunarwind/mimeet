@@ -84,14 +84,25 @@ export default function AdminLayout() {
     )
   }
 
+  const siderWidth = collapsed ? 80 : 220
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* Sidebar: fixed, full height, independently scrollable */}
       <Sider
         trigger={null}
         collapsible
         collapsed={collapsed}
         width={220}
-        style={{ background: '#001529' }}
+        style={{
+          background: '#001529',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          height: '100vh',
+          overflowY: 'auto',
+          zIndex: 30,
+        }}
       >
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           {!collapsed ? (
@@ -117,7 +128,18 @@ export default function AdminLayout() {
           }))}
         />
       </Sider>
-      <Layout>
+
+      {/* Right side: offset by sidebar width */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        marginLeft: siderWidth,
+        height: '100vh',
+        overflow: 'hidden',
+        transition: 'margin-left 0.2s',
+      }}>
+        {/* Header: sticky at top of content area */}
         <Header
           style={{
             background: '#fff',
@@ -127,6 +149,7 @@ export default function AdminLayout() {
             justifyContent: 'space-between',
             borderBottom: '1px solid #f0f0f0',
             height: 64,
+            flexShrink: 0,
           }}
         >
           <Button
@@ -143,12 +166,19 @@ export default function AdminLayout() {
             </Button>
           </div>
         </Header>
-        <Content style={{ margin: 24, background: '#f5f5f5', borderRadius: 8 }}>
-          <div style={{ padding: 24, background: '#fff', borderRadius: 8, minHeight: 'calc(100vh - 112px)' }}>
+
+        {/* Main content: only scrollable area */}
+        <Content style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: 24,
+          background: '#f5f5f5',
+        }}>
+          <div style={{ padding: 24, background: '#fff', borderRadius: 8, minHeight: '100%' }}>
             <Outlet />
           </div>
         </Content>
-      </Layout>
-    </Layout>
+      </div>
+    </div>
   )
 }
