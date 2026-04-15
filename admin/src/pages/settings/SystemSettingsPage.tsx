@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Switch, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm } from 'antd'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Switch, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm, Radio, DatePicker } from 'antd'
 import { SaveOutlined, DeleteOutlined, DatabaseOutlined, ReloadOutlined, PlusOutlined, DollarOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
+import dayjs from 'dayjs'
 import { useAuthStore } from '../../stores/authStore'
 import AppModeTab from './tabs/AppModeTab'
 import DatabaseTab from './tabs/DatabaseTab'
@@ -202,9 +203,18 @@ interface SubPlan {
   slug: string
   name: string
   price: number
+  original_price: number
   duration_days: number
   is_trial: boolean
   is_active: boolean
+  promo: {
+    type: 'none' | 'percentage' | 'fixed'
+    value: number | null
+    start_at: string | null
+    end_at: string | null
+    note: string | null
+    is_active: boolean
+  }
 }
 
 function PricingTab() {
@@ -213,6 +223,7 @@ function PricingTab() {
   const [editingPlan, setEditingPlan] = useState<SubPlan | null>(null)
   const [editForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [promoType, setPromoType] = useState<'none' | 'percentage' | 'fixed'>('none')
 
   const fetchPlans = useCallback(async () => {
     setLoading(true)
@@ -227,15 +238,36 @@ function PricingTab() {
 
   const handleEdit = (plan: SubPlan) => {
     setEditingPlan(plan)
-    editForm.setFieldsValue({ name: plan.name, price: plan.price, duration_days: plan.duration_days, is_active: plan.is_active })
+    setPromoType(plan.promo?.type ?? 'none')
+    editForm.setFieldsValue({
+      name: plan.name,
+      original_price: plan.original_price,
+      duration_days: plan.duration_days,
+      is_active: plan.is_active,
+      promo_type: plan.promo?.type ?? 'none',
+      promo_value: plan.promo?.value ?? undefined,
+      promo_start_at: plan.promo?.start_at ? dayjs(plan.promo.start_at) : null,
+      promo_end_at: plan.promo?.end_at ? dayjs(plan.promo.end_at) : null,
+      promo_note: plan.promo?.note ?? '',
+    })
   }
 
   const handleSave = async () => {
     if (!editingPlan) return
     setSaving(true)
     try {
-      const vals = editForm.getFieldsValue()
-      await apiClient.patch(`/admin/settings/subscription-plans/${editingPlan.id}`, vals)
+      const vals = await editForm.validateFields()
+      await apiClient.patch(`/admin/settings/subscription-plans/${editingPlan.id}`, {
+        name: vals.name,
+        original_price: vals.original_price,
+        duration_days: vals.duration_days,
+        is_active: vals.is_active,
+        promo_type: vals.promo_type,
+        promo_value: vals.promo_value ?? null,
+        promo_start_at: vals.promo_start_at?.toISOString() ?? null,
+        promo_end_at: vals.promo_end_at?.toISOString() ?? null,
+        promo_note: vals.promo_note ?? null,
+      })
       message.success('方案已更新')
       setEditingPlan(null)
       fetchPlans()
@@ -243,14 +275,44 @@ function PricingTab() {
     setSaving(false)
   }
 
+  // Real-time preview price
+  const promoValue = Form.useWatch('promo_value', editForm) ?? 0
+  const originalPrice = Form.useWatch('original_price', editForm) ?? editingPlan?.original_price ?? 0
+  const previewPrice = useMemo(() => {
+    if (promoType === 'percentage') return Math.round(originalPrice * (1 - promoValue / 100))
+    if (promoType === 'fixed') return Math.max(1, originalPrice - promoValue)
+    return originalPrice
+  }, [promoType, promoValue, originalPrice])
+
   const columns = [
     { title: '方案名稱', dataIndex: 'name', key: 'name' },
     { title: '代碼', dataIndex: 'slug', key: 'slug', render: (s: string) => <Tag>{s}</Tag> },
-    { title: '價格', dataIndex: 'price', key: 'price', render: (p: number) => `NT$ ${p.toLocaleString()}` },
+    {
+      title: '售價', key: 'price',
+      render: (_: unknown, r: SubPlan) => (
+        <Space>
+          <Text strong>NT$ {r.price.toLocaleString()}</Text>
+          {r.price !== r.original_price && (
+            <Text type="secondary" delete style={{ fontSize: 12 }}>NT$ {r.original_price.toLocaleString()}</Text>
+          )}
+        </Space>
+      ),
+    },
     { title: '天數', dataIndex: 'duration_days', key: 'duration_days', render: (d: number) => `${d} 天` },
     {
-      title: '類型', key: 'type',
-      render: (_: unknown, r: SubPlan) => r.is_trial ? <Tag color="purple">體驗</Tag> : <Tag color="blue">正式</Tag>,
+      title: '折扣', key: 'promo',
+      render: (_: unknown, r: SubPlan) => {
+        if (r.promo?.is_active) {
+          return (
+            <Tag color="red">
+              {r.promo.type === 'percentage' ? `${r.promo.value}% off` : `折抵 NT$${r.promo.value}`}
+              {r.promo.end_at && ` 至 ${dayjs(r.promo.end_at).format('MM/DD')}`}
+            </Tag>
+          )
+        }
+        if (r.promo?.type !== 'none') return <Tag>折扣未生效</Tag>
+        return <Tag>原價</Tag>
+      },
     },
     {
       title: '狀態', dataIndex: 'is_active', key: 'is_active',
@@ -276,12 +338,13 @@ function PricingTab() {
         onCancel={() => setEditingPlan(null)}
         confirmLoading={saving}
         okText="儲存"
+        width={560}
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item label="方案名稱" name="name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item label="價格 (NT$)" name="price" rules={[{ required: true }]}>
+          <Form.Item label="定價（原價 NT$）" name="original_price" rules={[{ required: true }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="有效天數" name="duration_days" rules={[{ required: true }]}>
@@ -296,6 +359,57 @@ function PricingTab() {
           <Form.Item label="啟用" name="is_active" valuePropName="checked">
             <Switch checkedChildren="啟用" unCheckedChildren="停用" />
           </Form.Item>
+
+          <Divider style={{ fontSize: 13, color: '#888' }}>優惠折扣設定</Divider>
+
+          <Form.Item label="折扣類型" name="promo_type">
+            <Radio.Group onChange={e => setPromoType(e.target.value)}>
+              <Radio.Button value="none">無折扣</Radio.Button>
+              <Radio.Button value="percentage">百分比折扣</Radio.Button>
+              <Radio.Button value="fixed">固定金額折抵</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+
+          {promoType === 'percentage' && (
+            <Form.Item label="折扣百分比" name="promo_value"
+              help="例如輸入 15，代表打 85 折"
+              rules={[{ required: true, message: '請輸入折扣百分比' }]}>
+              <InputNumber min={1} max={99} addonAfter="%" style={{ width: 160 }} />
+            </Form.Item>
+          )}
+
+          {promoType === 'fixed' && (
+            <Form.Item label="折抵金額" name="promo_value"
+              rules={[{ required: true, message: '請輸入折抵金額' }]}>
+              <InputNumber min={1} addonBefore="NT$" style={{ width: 180 }} />
+            </Form.Item>
+          )}
+
+          {promoType !== 'none' && (
+            <>
+              <Form.Item label="預覽售價">
+                <Space>
+                  <Text strong style={{ fontSize: 20 }}>NT$ {previewPrice.toLocaleString()}</Text>
+                  {previewPrice !== originalPrice && (
+                    <>
+                      <Text type="secondary" delete>NT$ {originalPrice.toLocaleString()}</Text>
+                      <Tag color="red">省 NT$ {(originalPrice - previewPrice).toLocaleString()}</Tag>
+                    </>
+                  )}
+                </Space>
+              </Form.Item>
+
+              <Form.Item label="優惠開始時間" name="promo_start_at">
+                <DatePicker showTime format="YYYY-MM-DD HH:mm" placeholder="不設定 = 立即生效" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="優惠結束時間" name="promo_end_at">
+                <DatePicker showTime format="YYYY-MM-DD HH:mm" placeholder="不設定 = 永久有效" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="活動備註" name="promo_note">
+                <Input placeholder="例：聖誕跨年優惠" maxLength={100} showCount />
+              </Form.Item>
+            </>
+          )}
         </Form>
       </Modal>
     </div>

@@ -473,7 +473,31 @@ class SystemControlController extends Controller
      */
     public function getSubscriptionPlans(): JsonResponse
     {
-        $plans = DB::table('subscription_plans')->orderBy('id')->get();
+        $plans = DB::table('subscription_plans')->orderBy('id')->get()->map(function ($p) {
+            $promoActive = $p->promo_type !== 'none'
+                && ($p->promo_start_at === null || now()->gte($p->promo_start_at))
+                && ($p->promo_end_at === null || now()->lte($p->promo_end_at));
+
+            return [
+                'id'             => $p->id,
+                'slug'           => $p->slug,
+                'name'           => $p->name,
+                'price'          => (int) $p->price,
+                'original_price' => (int) ($p->original_price ?? $p->price),
+                'duration_days'  => (int) $p->duration_days,
+                'is_trial'       => (bool) $p->is_trial,
+                'is_active'      => (bool) $p->is_active,
+                'promo' => [
+                    'type'      => $p->promo_type ?? 'none',
+                    'value'     => $p->promo_value ? (float) $p->promo_value : null,
+                    'start_at'  => $p->promo_start_at,
+                    'end_at'    => $p->promo_end_at,
+                    'note'      => $p->promo_note,
+                    'is_active' => $promoActive,
+                ],
+            ];
+        });
+
         return response()->json(['success' => true, 'data' => $plans]);
     }
 
@@ -488,11 +512,28 @@ class SystemControlController extends Controller
         }
 
         $data = $request->validate([
-            'name'          => 'sometimes|string|max:100',
-            'price'         => 'sometimes|integer|min:1',
-            'duration_days' => 'sometimes|integer|min:1',
-            'is_active'     => 'sometimes|boolean',
+            'name'           => 'sometimes|string|max:100',
+            'original_price' => 'sometimes|integer|min:1',
+            'duration_days'  => 'sometimes|integer|min:1',
+            'is_active'      => 'sometimes|boolean',
+            'promo_type'     => 'sometimes|in:none,percentage,fixed',
+            'promo_value'    => 'nullable|numeric|min:0',
+            'promo_start_at' => 'nullable|date',
+            'promo_end_at'   => 'nullable|date',
+            'promo_note'     => 'nullable|string|max:100',
         ]);
+
+        // Sync price based on promo
+        if (isset($data['promo_type'])) {
+            $origPrice = $data['original_price'] ?? $plan->original_price ?? $plan->price;
+            if ($data['promo_type'] === 'percentage' && isset($data['promo_value'])) {
+                $data['price'] = (int) round($origPrice * (1 - $data['promo_value'] / 100));
+            } elseif ($data['promo_type'] === 'fixed' && isset($data['promo_value'])) {
+                $data['price'] = max(1, $origPrice - (int) $data['promo_value']);
+            } else {
+                $data['price'] = $data['original_price'] ?? $plan->original_price ?? $plan->price;
+            }
+        }
 
         $data['updated_at'] = now();
         DB::table('subscription_plans')->where('id', $id)->update($data);
