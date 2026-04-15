@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mimeet-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "9000:9000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=staging
+      - APP_DEBUG=true
+      - DB_HOST=db
+      - DB_DATABASE=mimeet
+      - DB_USERNAME=mimeet_user
+      - DB_PASSWORD=${DB_PASSWORD:-mimeet_staging_2026}
+      - REDIS_HOST=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    networks:
+      - mimeet
+
+  db:
+    image: mysql:8.0
+    container_name: mimeet-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_staging_2026}
+      MYSQL_DATABASE: mimeet
+      MYSQL_USER: mimeet_user
+      MYSQL_PASSWORD: ${DB_PASSWORD:-mimeet_staging_2026}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_staging_2026}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - mimeet
+
+  redis:
+    image: redis:7-alpine
+    container_name: mimeet-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - mimeet
+
+volumes:
+  db_data:
+
+networks:
+  mimeet:
+    driver: bridge
