@@ -34,7 +34,7 @@ mimeet/
 cd frontend
 npm install
 npm run dev
-# http://localhost:3000
+# http://localhost:5173
 ```
 
 ### 後台啟動
@@ -42,7 +42,7 @@ npm run dev
 cd admin
 npm install
 npm run dev
-# http://localhost:3001
+# http://localhost:5174
 ```
 
 ### 後端啟動（Docker）

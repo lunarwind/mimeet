@@ -76,3 +76,26 @@ php artisan config:cache
 php artisan route:cache
 php artisan storage:link
 ```
+
+---
+
+## PHP-FPM 設定（Docker 容器內）
+
+PHP-FPM pool 設定位於 `backend/docker/php-fpm/www.conf`，在 Dockerfile 中複製為 `/usr/local/etc/php-fpm.d/zz-www.conf`。
+
+| 參數 | 值 | 說明 |
+|------|-----|------|
+| `pm` | dynamic | 動態 worker 管理 |
+| `pm.max_children` | 50 | 支援約 200 人同時在線 |
+| `pm.start_servers` | 10 | 啟動時預建 10 個 worker |
+| `pm.min_spare_servers` | 5 | 最少保持 5 個閒置 worker |
+| `pm.max_spare_servers` | 20 | 最多保持 20 個閒置 worker |
+| `pm.max_requests` | 500 | 每個 worker 處理 500 次請求後重啟（防 memory leak） |
+| `request_terminate_timeout` | 60s | 單一請求最長 60 秒 |
+
+### PHP INI 自訂（寫入 Dockerfile）
+
+| 設定 | 值 | 原因 |
+|------|-----|------|
+| `opcache.jit` | disable | PHP 8.2 JIT 在 FPM 下可能導致 SIGSEGV |
+| `output_buffering` | 4096 | 修復 POST body 被回顯到 response 的問題 |

@@ -36,12 +36,12 @@ use App\Http\Controllers\Api\V1\Admin\UserActivityLogController;
 Route::prefix('api/v1')->group(function () {
 
     // ─── Auth (public, rate-limited) ────────────────────────────────────
-    Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
-        Route::post('/register', [AuthController::class, 'register']);
-        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::prefix('auth')->group(function () {
+        Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+        Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
         Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
-        Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:3,1');
-        Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+        Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:otp');
+        Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:otp');
         Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     });
 
@@ -49,12 +49,12 @@ Route::prefix('api/v1')->group(function () {
     Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
-        Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend'])->middleware('throttle:5,1');
-        Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm'])->middleware('throttle:5,1');
+        Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend'])->middleware('throttle:otp');
+        Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm'])->middleware('throttle:otp');
     });
 
     // ─── Users (authenticated, rate-limited) ───────────────────────────
-    Route::prefix('users')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::prefix('users')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/me', [UserController::class, 'me']);
         Route::patch('/me', [UserController::class, 'update']);
         Route::get('/me/settings', [UserController::class, 'settings']);
@@ -165,7 +165,7 @@ Route::prefix('api/v1')->group(function () {
 
     // ─── Admin ───────────────────────────────────────────────────────
     Route::prefix('admin')->group(function () {
-        Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:5,1');
+        Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:admin-login');
 
         Route::middleware(['admin.auth', 'admin.log'])->group(function () {
             Route::get('/members', [AdminController::class, 'members']);

@@ -14,12 +14,27 @@ class RouteServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // General API: 200 req/min per user (supports 200 concurrent users)
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(200)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Login: 50 req/min per IP + 10 req/min per email (brute-force protection)
+        RateLimiter::for('login', function (Request $request) {
+            return [
+                Limit::perMinute(50)->by($request->ip()),
+                Limit::perMinute(10)->by($request->input('email') ?: ''),
+            ];
+        });
+
+        // Register: 30 req/min per IP
+        RateLimiter::for('register', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
+        // OTP / email verification: 10 req/min per IP
         RateLimiter::for('otp', function (Request $request) {
-            return Limit::perMinute(3)->by($request->ip());
+            return Limit::perMinute(10)->by($request->ip());
         });
 
         RateLimiter::for('upload', function (Request $request) {
@@ -31,7 +46,7 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('admin-login', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            return Limit::perMinute(10)->by($request->ip());
         });
 
         $this->routes(function () {

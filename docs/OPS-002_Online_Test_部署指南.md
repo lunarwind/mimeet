@@ -401,6 +401,10 @@ chmod +x /usr/local/bin/mimeet-update
 | SMS 失敗 | 確認 Twilio SID/Token/From 在 admin 後台已設定 |
 | SSL 憑證過期 | `certbot renew` |
 | Docker 容器掛掉 | `docker compose -f ... up -d` 重啟 |
+| Rate limit 測試失敗 | 登入 throttle 已調整為 50 次/分/IP；API 整體 200 次/分 |
+| 200 人同時在線 | PHP-FPM `pm.max_children=50`；Nginx 不設硬性 rate limit，由 Laravel 控制 |
+| API 回應含 request body | PHP-FPM 需設定 `output_buffering=4096`（已寫入 Dockerfile） |
+| 502 + SIGSEGV | `sanctum.guard` 不可包含使用 sanctum driver 的 guard（會無限遞迴） |
 
 ---
 
