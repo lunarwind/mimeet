@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Table, Select, Tag, Card, Row, Col, Statistic, Typography, Space, Modal, Descriptions } from 'antd'
-import { EyeOutlined } from '@ant-design/icons'
+import { Table, Select, Tag, Card, Row, Col, Statistic, Typography, Space, Modal, Descriptions, Button } from 'antd'
+import { EyeOutlined, DownloadOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -33,6 +33,7 @@ export default function PaymentsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [detailRecord, setDetailRecord] = useState<Payment | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => { fetchPayments() }, [page, statusFilter])
 
@@ -91,6 +92,23 @@ export default function PaymentsPage() {
           <Select.Option value="pending">待付款</Select.Option>
           <Select.Option value="failed">失敗</Select.Option>
         </Select>
+        <Button icon={<DownloadOutlined />} loading={exporting} onClick={async () => {
+          setExporting(true)
+          try {
+            const params: Record<string, string> = {}
+            if (statusFilter !== 'all') params.status = statusFilter
+            const res = await apiClient.get('/admin/payments/export', { params, responseType: 'blob' })
+            const url = window.URL.createObjectURL(new Blob([res.data]))
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `payments_${dayjs().format('YYYYMMDD')}.csv`
+            a.click()
+            window.URL.revokeObjectURL(url)
+          } catch { /* ignore */ }
+          setExporting(false)
+        }}>
+          匯出 CSV
+        </Button>
       </Space>
 
       <Table dataSource={payments} columns={columns} rowKey="id" loading={loading}

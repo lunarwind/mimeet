@@ -13,6 +13,8 @@ import UserActivityLogsPage from './pages/logs/UserActivityLogsPage'
 import ChatLogsPage from './pages/chat-logs/ChatLogsPage'
 import VerificationsPage from './pages/verifications/VerificationsPage'
 import BroadcastsPage from './pages/broadcasts/BroadcastsPage'
+import SeoPage from './pages/seo/SeoPage'
+import AnnouncementsPage from './pages/announcements/AnnouncementsPage'
 import { useAuthStore } from './stores/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -43,6 +45,8 @@ export default function App() {
         <Route path="chat-logs" element={<ChatLogsPage />} />
         <Route path="verifications" element={<VerificationsPage />} />
         <Route path="broadcasts" element={<BroadcastsPage />} />
+        <Route path="seo" element={<SeoPage />} />
+        <Route path="announcements" element={<AnnouncementsPage />} />
         <Route path="logs" element={<ActivityLogsPage />} />
         <Route path="user-activity-logs" element={<UserActivityLogsPage />} />
       </Route>

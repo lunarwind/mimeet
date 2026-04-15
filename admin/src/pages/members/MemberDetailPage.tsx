@@ -26,7 +26,8 @@ export default function MemberDetailPage() {
   const uid = Number(id)
 
   const [member, setMember] = useState<MemberDetail | null>(null)
-  const [scoreRecords] = useState<Record<string, unknown>[]>([])
+  const [scoreRecords, setScoreRecords] = useState<Record<string, unknown>[]>([])
+  const [subscriptions, setSubscriptions] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false)
   const [adjustValue, setAdjustValue] = useState<number>(0)
@@ -57,15 +58,22 @@ export default function MemberDetailPage() {
     apiClient.get(`/admin/members/${uid}`).then(res => {
       setMember(res.data.data.member)
     }).catch(() => setMember(null)).finally(() => setLoading(false))
+
+    // Fetch score history
+    apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => {
+      setScoreRecords(res.data.data ?? [])
+    }).catch(() => {})
+
+    // Fetch subscription history
+    apiClient.get(`/admin/members/${uid}/subscriptions`).then(res => {
+      setSubscriptions(res.data.data ?? [])
+    }).catch(() => {})
   }, [uid])
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>載入中...</div>
   if (!member) {
     return <Result status="404" title="找不到此會員" extra={<Button onClick={() => navigate('/members')}>返回列表</Button>} />
   }
-
-  // Subscriptions placeholder (no separate API yet)
-  const subscriptions: Record<string, unknown>[] = []
 
   const creditLevel = getCreditLevel(member.credit_score)
 
@@ -81,6 +89,8 @@ export default function MemberDetailPage() {
       setAdjustValue(0)
       setAdjustReason('')
       reloadMember()
+      // Refresh score history
+      apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data ?? [])).catch(() => {})
     } catch {
       message.error('調整失敗')
     }

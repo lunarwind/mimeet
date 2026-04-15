@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select, Divider, List, message } from 'antd'
+import { SearchOutlined, SendOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
-const { Title } = Typography
+const { Title, Text } = Typography
+const { TextArea } = Input
 
 const STATUS_COLORS: Record<string, string> = { pending: 'orange', investigating: 'blue', resolved: 'green', dismissed: 'default' }
 const STATUS_LABELS: Record<string, string> = { pending: '待處理', investigating: '處理中', resolved: '已結案', dismissed: '已駁回' }
+
+interface Followup {
+  id: number
+  admin_name: string
+  content: string
+  created_at: string
+}
 
 interface Ticket {
   id: number
@@ -15,8 +23,10 @@ interface Ticket {
   type: string
   status: string
   description: string
+  admin_reply: string | null
   reporter: { id: number; nickname: string } | null
   reported_user: { id: number; nickname: string } | null
+  followups?: Followup[]
   created_at: string
 }
 
@@ -31,6 +41,13 @@ export default function TicketsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
 
+  // Drawer action state
+  const [newStatus, setNewStatus] = useState<string>('')
+  const [adminReply, setAdminReply] = useState('')
+  const [processing, setProcessing] = useState(false)
+  const [followupText, setFollowupText] = useState('')
+  const [followupSubmitting, setFollowupSubmitting] = useState(false)
+
   useEffect(() => { fetchTickets() }, [page, statusFilter, typeFilter])
 
   async function fetchTickets() {
@@ -44,6 +61,59 @@ export default function TicketsPage() {
       setTotal(res.data.data.pagination?.total ?? 0)
     } catch { setTickets([]) }
     setLoading(false)
+  }
+
+  async function fetchTicketDetail(id: number) {
+    try {
+      const res = await apiClient.get(`/admin/tickets/${id}`)
+      const ticket = res.data.data
+      setSelectedTicket(ticket)
+      setNewStatus(ticket.status)
+      setAdminReply(ticket.admin_reply || '')
+    } catch {
+      // fallback: use list data
+    }
+  }
+
+  function openDrawer(ticket: Ticket) {
+    setSelectedTicket(ticket)
+    setNewStatus(ticket.status)
+    setAdminReply(ticket.admin_reply || '')
+    setFollowupText('')
+    setDrawerOpen(true)
+    fetchTicketDetail(ticket.id)
+  }
+
+  async function handleProcess() {
+    if (!selectedTicket) return
+    setProcessing(true)
+    try {
+      await apiClient.patch(`/admin/tickets/${selectedTicket.id}`, {
+        data: { status: newStatus, admin_reply: adminReply || undefined },
+      })
+      message.success('Ticket 已更新')
+      await fetchTicketDetail(selectedTicket.id)
+      fetchTickets()
+    } catch {
+      message.error('更新失敗')
+    }
+    setProcessing(false)
+  }
+
+  async function handleAddFollowup() {
+    if (!selectedTicket || !followupText.trim()) return
+    setFollowupSubmitting(true)
+    try {
+      await apiClient.post(`/admin/tickets/${selectedTicket.id}/reply`, {
+        data: { content: followupText },
+      })
+      message.success('留言已新增')
+      setFollowupText('')
+      await fetchTicketDetail(selectedTicket.id)
+    } catch {
+      message.error('留言失敗')
+    }
+    setFollowupSubmitting(false)
   }
 
   const columns = [
@@ -72,7 +142,7 @@ export default function TicketsPage() {
     {
       title: '操作', key: 'actions', width: 80,
       render: (_: unknown, record: Ticket) => (
-        <Button type="link" size="small" onClick={() => { setSelectedTicket(record); setDrawerOpen(true) }}>查看</Button>
+        <Button type="link" size="small" onClick={() => openDrawer(record)}>處理</Button>
       ),
     },
   ]
@@ -105,17 +175,89 @@ export default function TicketsPage() {
         pagination={{ current: page, pageSize: 20, total, onChange: setPage, showTotal: (t) => `共 ${t} 筆` }}
         size="middle" locale={{ emptyText: '目前無回報案件' }} />
 
-      <Drawer title={`Ticket #${selectedTicket?.id}`} placement="right" width={520}
+      <Drawer title={`Ticket #${selectedTicket?.id}`} placement="right" width={560}
         open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         {selectedTicket && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="類型"><Tag>{selectedTicket.type}</Tag></Descriptions.Item>
-            <Descriptions.Item label="狀態"><Tag color={STATUS_COLORS[selectedTicket.status]}>{STATUS_LABELS[selectedTicket.status]}</Tag></Descriptions.Item>
-            <Descriptions.Item label="回報者">{selectedTicket.reporter?.nickname || '-'}</Descriptions.Item>
-            <Descriptions.Item label="被回報者">{selectedTicket.reported_user?.nickname || '-'}</Descriptions.Item>
-            <Descriptions.Item label="描述">{selectedTicket.description}</Descriptions.Item>
-            <Descriptions.Item label="建立時間">{selectedTicket.created_at ? dayjs(selectedTicket.created_at).format('YYYY/MM/DD HH:mm') : '-'}</Descriptions.Item>
-          </Descriptions>
+          <div>
+            {/* Ticket info */}
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="類型"><Tag>{selectedTicket.type}</Tag></Descriptions.Item>
+              <Descriptions.Item label="目前狀態"><Tag color={STATUS_COLORS[selectedTicket.status]}>{STATUS_LABELS[selectedTicket.status]}</Tag></Descriptions.Item>
+              <Descriptions.Item label="回報者">{selectedTicket.reporter?.nickname || '-'}</Descriptions.Item>
+              <Descriptions.Item label="被回報者">{selectedTicket.reported_user?.nickname || '-'}</Descriptions.Item>
+              <Descriptions.Item label="描述">{selectedTicket.description}</Descriptions.Item>
+              <Descriptions.Item label="建立時間">{selectedTicket.created_at ? dayjs(selectedTicket.created_at).format('YYYY/MM/DD HH:mm') : '-'}</Descriptions.Item>
+              {selectedTicket.admin_reply && (
+                <Descriptions.Item label="管理員回覆">{selectedTicket.admin_reply}</Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {/* Status update & reply */}
+            <Divider>處理操作</Divider>
+
+            <div style={{ marginBottom: 16 }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>變更狀態</Text>
+              <Select value={newStatus} onChange={setNewStatus} style={{ width: '100%' }}>
+                <Select.Option value="pending">待處理</Select.Option>
+                <Select.Option value="investigating">處理中</Select.Option>
+                <Select.Option value="resolved">已結案</Select.Option>
+                <Select.Option value="dismissed">已駁回</Select.Option>
+              </Select>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>管理員回覆</Text>
+              <TextArea
+                value={adminReply}
+                onChange={(e) => setAdminReply(e.target.value)}
+                placeholder="輸入給用戶的回覆..."
+                rows={3}
+              />
+            </div>
+
+            <Button type="primary" onClick={handleProcess} loading={processing}
+              style={{ width: '100%', marginBottom: 24 }}>
+              送出處理結果
+            </Button>
+
+            {/* Followups */}
+            <Divider>追蹤留言</Divider>
+
+            {selectedTicket.followups && selectedTicket.followups.length > 0 && (
+              <List
+                size="small"
+                dataSource={selectedTicket.followups}
+                renderItem={(f: Followup) => (
+                  <List.Item>
+                    <div style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text strong style={{ fontSize: 12 }}>{f.admin_name}</Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>{dayjs(f.created_at).format('MM/DD HH:mm')}</Text>
+                      </div>
+                      <Text style={{ fontSize: 13 }}>{f.content}</Text>
+                    </div>
+                  </List.Item>
+                )}
+                style={{ marginBottom: 16 }}
+              />
+            )}
+
+            <Space.Compact style={{ width: '100%' }}>
+              <TextArea
+                value={followupText}
+                onChange={(e) => setFollowupText(e.target.value)}
+                placeholder="新增追蹤留言..."
+                rows={2}
+                style={{ flex: 1 }}
+              />
+              <Button type="primary" icon={<SendOutlined />}
+                onClick={handleAddFollowup} loading={followupSubmitting}
+                disabled={!followupText.trim()}
+                style={{ height: 'auto' }}>
+                送出
+              </Button>
+            </Space.Compact>
+          </div>
         )}
       </Drawer>
     </div>
