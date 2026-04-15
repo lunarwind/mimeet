@@ -1,26 +1,18 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 只對非 deleted 用戶強制 nickname 唯一
-        // SQLite（測試環境）：支援 partial index
-        // MySQL：Application layer validation（Rule::unique with where）已足夠
-        if (config('database.default') === 'sqlite') {
-            DB::statement('CREATE UNIQUE INDEX users_nickname_active_unique ON users (nickname) WHERE status != \'deleted\'');
-            DB::statement('CREATE UNIQUE INDEX users_phone_active_unique ON users (phone) WHERE phone IS NOT NULL AND status != \'deleted\'');
-        }
+        // MySQL 不支援 partial unique index（WHERE 條件的唯一索引）
+        // 唯一性驗證由 Application Layer（AuthController）的 DB query 負責
+        // 此 migration 保留為文件紀錄，不執行任何 DDL
     }
 
     public function down(): void
     {
-        if (config('database.default') === 'sqlite') {
-            DB::statement('DROP INDEX IF EXISTS users_nickname_active_unique');
-            DB::statement('DROP INDEX IF EXISTS users_phone_active_unique');
-        }
+        // Nothing to rollback
     }
 };

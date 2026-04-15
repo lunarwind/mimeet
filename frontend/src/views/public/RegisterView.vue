@@ -109,11 +109,20 @@ async function submitStep2() {
     goStep(3)
   } catch (err: any) {
     const errors = err?.response?.data?.errors
+    const details = err?.response?.data?.error?.details
     if (errors) {
       if (errors.email) step2Errors.email = errors.email[0]
       if (errors.password) step2Errors.password = errors.password[0]
-      if (errors.nickname) step2Errors.email = errors.nickname[0]
+      if (errors.phone) step2Errors.phone = errors.phone[0]
+      if (errors.nickname) step2Errors.email = `暱稱衝突：${errors.nickname[0]}，請返回第 1 步修改`
       if (errors.birth_date) step2Errors.email = errors.birth_date[0]
+    } else if (details) {
+      details.forEach((d: any) => {
+        if (d.field === 'email') step2Errors.email = d.message
+        else if (d.field === 'phone') step2Errors.phone = d.message
+        else if (d.field === 'password') step2Errors.password = d.message
+        else if (d.field === 'nickname') step2Errors.email = `暱稱衝突：${d.message}，請返回第 1 步修改`
+      })
     } else {
       step2Errors.email = err?.response?.data?.message ?? '註冊失敗，請稍後再試'
     }
