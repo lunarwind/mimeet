@@ -189,6 +189,7 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations']);
             Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
             Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
+            Route::get('/members/{userId}/chat-logs/export', [ChatLogController::class, 'memberChatLogsExport']);
 
             // Verification review (Sprint 11)
             Route::get('/verifications', [VerificationController::class, 'index']);

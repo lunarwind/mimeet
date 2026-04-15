@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Tabs, Card, Input, Button, Table, Tag, Typography, Space, Result, Avatar, List,
+  Tabs, Card, Input, Button, Table, Typography, Space, Result, Avatar, List, message,
 } from 'antd'
 import { SearchOutlined, DownloadOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
@@ -45,13 +45,11 @@ interface MemberChatEntry {
   counterpart: { id: number; nickname: string; avatar_url?: string } | null
   total_messages: number
   last_message: { content: string; sent_at: string } | null
-  messages?: ConversationMessage[]
 }
 
 export default function ChatLogsPage() {
   const user = useAuthStore((s) => s.user)
 
-  // cs role cannot access chat logs
   if (user?.role === 'cs') {
     return <Result status="403" title="權限不足" subTitle="此頁面僅限 super_admin 和 admin 查看" />
   }
@@ -63,7 +61,6 @@ function ChatLogsContent() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // Determine initial tab and params from URL
   const urlTab = searchParams.get('tab')
   const urlUserA = searchParams.get('user_a') || ''
   const urlUserB = searchParams.get('user_b') || ''
@@ -72,7 +69,7 @@ function ChatLogsContent() {
   const initialTab = urlTab === 'member' ? 'member' : (urlUserA && urlUserB) ? 'conversation' : 'search'
   const [activeTab, setActiveTab] = useState(initialTab)
 
-  // Search tab state
+  // ─── Tab 1: Search state ───
   const [keyword, setKeyword] = useState('')
   const [searchUserId, setSearchUserId] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -80,7 +77,7 @@ function ChatLogsContent() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchPage, setSearchPage] = useState(1)
 
-  // Conversation tab state
+  // ─── Tab 2: Conversation state ───
   const [convUserA, setConvUserA] = useState(urlUserA)
   const [convUserB, setConvUserB] = useState(urlUserB)
   const [convData, setConvData] = useState<ConversationData | null>(null)
@@ -89,7 +86,7 @@ function ChatLogsContent() {
   const [convLoading, setConvLoading] = useState(false)
   const [convPage, setConvPage] = useState(1)
 
-  // Member tab state
+  // ─── Tab 3: Member state ───
   const [memberUserId, setMemberUserId] = useState(urlUserId)
   const [memberCounterpartId, setMemberCounterpartId] = useState('')
   const [memberKeyword, setMemberKeyword] = useState('')
@@ -99,15 +96,19 @@ function ChatLogsContent() {
   const [memberPage, setMemberPage] = useState(1)
   const [memberExporting, setMemberExporting] = useState(false)
 
+  // ─── Tab 1: Search ───
   const handleSearch = async (page = 1) => {
-    if (keyword.length < 2) return
+    if (keyword.length < 2) {
+      message.warning('關鍵字至少需要 2 個字')
+      return
+    }
     setSearchLoading(true)
     try {
       const params: Record<string, string | number> = { keyword, page, per_page: 20 }
       if (searchUserId) params.user_id = searchUserId
       const res = await apiClient.get('/admin/chat-logs/search', { params })
-      setSearchResults(res.data.data?.results ?? res.data.data ?? [])
-      setSearchTotal(res.data.data?.pagination?.total ?? 0)
+      setSearchResults(res.data.data ?? [])
+      setSearchTotal(res.data.meta?.total ?? 0)
       setSearchPage(page)
     } catch {
       setSearchResults([])
@@ -116,6 +117,7 @@ function ChatLogsContent() {
     setSearchLoading(false)
   }
 
+  // ─── Tab 2: Conversation ───
   const handleConversation = useCallback(async (page = 1) => {
     if (!convUserA || !convUserB) return
     setConvLoading(true)
@@ -125,7 +127,7 @@ function ChatLogsContent() {
       })
       setConvData(res.data.data)
       setConvMessages(res.data.data?.messages ?? [])
-      setConvTotal(res.data.data?.pagination?.total ?? 0)
+      setConvTotal(res.data.meta?.total ?? 0)
       setConvPage(page)
     } catch {
       setConvData(null)
@@ -145,14 +147,16 @@ function ChatLogsContent() {
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a = document.createElement('a')
       a.href = url
-      a.download = `chat_${convUserA}_${convUserB}.csv`
+      a.download = `chat_${convUserA}_${convUserB}_${dayjs().format('YYYYMMDD')}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
+      message.success('匯出完成')
     } catch {
-      // ignore export errors
+      message.error('匯出失敗')
     }
   }
 
+  // ─── Tab 3: Member chat ───
   const handleMemberSearch = useCallback(async (page = 1) => {
     if (!memberUserId) return
     setMemberLoading(true)
@@ -162,7 +166,7 @@ function ChatLogsContent() {
       if (memberKeyword) params.keyword = memberKeyword
       const res = await apiClient.get(`/admin/members/${memberUserId}/chat-logs`, { params })
       setMemberResults(res.data.data ?? [])
-      setMemberTotal(res.data.data?.pagination?.total ?? res.data.data?.length ?? 0)
+      setMemberTotal(res.data.meta?.total ?? res.data.data?.length ?? 0)
       setMemberPage(page)
     } catch {
       setMemberResults([])
@@ -171,22 +175,23 @@ function ChatLogsContent() {
     setMemberLoading(false)
   }, [memberUserId, memberCounterpartId, memberKeyword])
 
-  const handleMemberExport = async () => {
-    if (!memberUserId || !memberCounterpartId) return
+  const handleMemberExport = async (counterpartId: string) => {
+    if (!memberUserId || !counterpartId) return
     setMemberExporting(true)
     try {
       const res = await apiClient.get(`/admin/members/${memberUserId}/chat-logs/export`, {
-        params: { counterpart_id: memberCounterpartId, format: 'csv' },
+        params: { counterpart_id: counterpartId, format: 'csv' },
         responseType: 'blob',
       })
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a = document.createElement('a')
       a.href = url
-      a.download = `member_${memberUserId}_chat_${Date.now()}.csv`
+      a.download = `member_${memberUserId}_chat_${dayjs().format('YYYYMMDD')}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
+      message.success('匯出完成')
     } catch {
-      // ignore export errors
+      message.error('匯出失敗')
     }
     setMemberExporting(false)
   }
@@ -198,14 +203,13 @@ function ChatLogsContent() {
     setTimeout(() => handleConversation(1), 100)
   }
 
-  // Auto-load conversation if URL params provided
+  // Auto-load from URL params
   useEffect(() => {
     if (urlUserA && urlUserB && activeTab === 'conversation') {
       handleConversation(1)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-load member chats if URL params provided
   useEffect(() => {
     if (urlUserId && activeTab === 'member') {
       handleMemberSearch(1)
@@ -220,6 +224,7 @@ function ChatLogsContent() {
     )
   }
 
+  // ─── Tab 1 columns ───
   const searchColumns = [
     {
       title: '時間', dataIndex: 'sent_at', key: 'sent_at', width: 160,
@@ -242,17 +247,18 @@ function ChatLogsContent() {
       render: (c: string) => <span>{highlightKeyword(c)}</span>,
     },
     {
-      title: '操作', key: 'action', width: 100,
+      title: '操作', key: 'action', width: 120,
       render: (_: unknown, r: SearchResult) => (
         <Button size="small" type="link" onClick={() => {
           if (r.sender && r.receiver) viewConversation(r.sender.id, r.receiver.id)
         }}>
-          查看對話
+          查看完整對話
         </Button>
       ),
     },
   ]
 
+  // ─── Tab 3 columns ───
   const memberColumns = [
     {
       title: '對方暱稱', key: 'counterpart', width: 160,
@@ -265,7 +271,12 @@ function ChatLogsContent() {
     },
     {
       title: '最後訊息', key: 'last_message',
-      render: (_: unknown, r: MemberChatEntry) => r.last_message?.content ?? '-',
+      render: (_: unknown, r: MemberChatEntry) => (
+        <Text type={r.last_message?.content === '[已收回]' ? 'secondary' : undefined}
+          italic={r.last_message?.content === '[已收回]'}>
+          {r.last_message?.content ?? '-'}
+        </Text>
+      ),
     },
     {
       title: '最後時間', key: 'last_time', width: 160,
@@ -273,16 +284,14 @@ function ChatLogsContent() {
     },
     { title: '訊息數', dataIndex: 'total_messages', key: 'total_messages', width: 80 },
     {
-      title: '操作', key: 'action', width: 180,
+      title: '操作', key: 'action', width: 200,
       render: (_: unknown, r: MemberChatEntry) => r.counterpart ? (
         <Space>
           <Button size="small" type="link" onClick={() => viewConversation(Number(memberUserId), r.counterpart!.id)}>
             查看對話
           </Button>
-          <Button size="small" type="link" onClick={() => {
-            setMemberCounterpartId(String(r.counterpart!.id))
-            handleMemberExport()
-          }}>
+          <Button size="small" type="link" loading={memberExporting}
+            onClick={() => handleMemberExport(String(r.counterpart!.id))}>
             匯出
           </Button>
         </Space>
@@ -403,40 +412,46 @@ function ChatLogsContent() {
                   <List
                     loading={convLoading}
                     dataSource={convMessages}
-                    pagination={{
+                    pagination={convTotal > 50 ? {
                       current: convPage,
                       pageSize: 50,
                       total: convTotal,
                       onChange: (p) => handleConversation(p),
-                    }}
+                    } : false}
                     renderItem={(msg) => {
                       const isUserA = msg.sender_id === convData.user_a?.id
                       return (
-                        <List.Item style={{ justifyContent: isUserA ? 'flex-start' : 'flex-end' }}>
+                        <List.Item style={{ justifyContent: isUserA ? 'flex-start' : 'flex-end', border: 'none', padding: '4px 0' }}>
                           <div style={{
                             maxWidth: '70%',
-                            padding: '8px 12px',
-                            borderRadius: 8,
-                            background: msg.is_recalled ? '#f5f5f5' : (isUserA ? '#e6f7ff' : '#fff7e6'),
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: isUserA ? 'flex-start' : 'flex-end',
                           }}>
-                            <Text type="secondary" style={{ fontSize: 11 }}>
+                            <Text type="secondary" style={{ fontSize: 11, marginBottom: 2 }}>
                               {isUserA ? convData.user_a?.nickname : convData.user_b?.nickname}
                               {' · '}
                               {dayjs(msg.sent_at).format('MM/DD HH:mm')}
-                              {msg.is_read && <Tag color="green" style={{ marginLeft: 4, fontSize: 10 }}>已讀</Tag>}
                             </Text>
-                            <div style={{ marginTop: 4 }}>
+                            <div style={{
+                              padding: '8px 12px',
+                              borderRadius: isUserA ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
+                              background: msg.is_recalled ? '#f5f5f5' : (isUserA ? '#e6f7ff' : '#fff7e6'),
+                            }}>
                               {msg.is_recalled ? (
                                 <Text type="secondary" italic>此訊息已被收回</Text>
                               ) : (
                                 <Text>{msg.content}</Text>
                               )}
                             </div>
+                            {!isUserA && msg.is_read && !msg.is_recalled && (
+                              <Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>已讀</Text>
+                            )}
                           </div>
                         </List.Item>
                       )
                     }}
-                    footer={<Text type="secondary">共 {convTotal} 則訊息</Text>}
+                    footer={<Text type="secondary">共 {convTotal} 則訊息（由舊到新排列）</Text>}
                   />
                 </div>
               ) : (
@@ -477,11 +492,6 @@ function ChatLogsContent() {
                     allowClear
                   />
                   <Button type="primary" onClick={() => handleMemberSearch()} disabled={!memberUserId}>查詢</Button>
-                  {memberResults.length > 0 && memberCounterpartId && (
-                    <Button icon={<DownloadOutlined />} onClick={handleMemberExport} loading={memberExporting}>
-                      匯出 CSV
-                    </Button>
-                  )}
                   <Button icon={<ReloadOutlined />} onClick={() => {
                     setMemberUserId('')
                     setMemberCounterpartId('')

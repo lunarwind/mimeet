@@ -209,6 +209,63 @@ class ChatLogController extends Controller
     }
 
     /**
+     * GET /api/v1/admin/members/{userId}/chat-logs/export — export member's conversation CSV
+     */
+    public function memberChatLogsExport(Request $request, int $userId): StreamedResponse
+    {
+        $counterpartId = (int) $request->input('counterpart_id');
+        if (!$counterpartId) {
+            abort(400, 'counterpart_id is required for export');
+        }
+
+        $minId = min($userId, $counterpartId);
+        $maxId = max($userId, $counterpartId);
+
+        $conversation = Conversation::where('user_a_id', $minId)
+            ->where('user_b_id', $maxId)
+            ->firstOrFail();
+
+        $userAData = User::select('id', 'nickname')->find($minId);
+        $userBData = User::select('id', 'nickname')->find($maxId);
+
+        $messages = Message::where('conversation_id', $conversation->id)
+            ->orderBy('sent_at', 'asc')
+            ->get();
+
+        Log::info('[AdminLog] members/chat-logs/export', [
+            'admin_id' => $request->user()->id,
+            'user_id' => $userId,
+            'counterpart_id' => $counterpartId,
+            'message_count' => $messages->count(),
+        ]);
+
+        $date = now()->format('Ymd');
+        $filename = "member_{$userId}_chat_{$counterpartId}_{$date}.csv";
+
+        return response()->streamDownload(function () use ($messages, $minId, $maxId, $userAData, $userBData) {
+            $out = fopen('php://output', 'w');
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, ['message_id', 'sender_id', 'sender_nickname', 'receiver_id', 'receiver_nickname', 'content', 'type', 'is_read', 'sent_at']);
+
+            foreach ($messages as $msg) {
+                $isSenderA = $msg->sender_id === $minId;
+                fputcsv($out, [
+                    $msg->id,
+                    $msg->sender_id,
+                    $isSenderA ? $userAData->nickname : $userBData->nickname,
+                    $isSenderA ? $maxId : $minId,
+                    $isSenderA ? $userBData->nickname : $userAData->nickname,
+                    $msg->is_recalled ? '[已收回]' : $msg->content,
+                    $msg->type,
+                    $msg->is_read ? 'Y' : 'N',
+                    $msg->sent_at->toISOString(),
+                ]);
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=utf-8']);
+    }
+
+    /**
      * GET /api/v1/admin/members/{userId}/chat-logs — user's conversation list
      */
     public function memberChatLogs(Request $request, int $userId): JsonResponse
