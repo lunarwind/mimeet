@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Mail\EmailVerificationMail;
+use App\Mail\ResetPasswordMail;
 use App\Models\User;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
@@ -386,14 +387,88 @@ class AuthController extends Controller
     public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
-        // TODO: send password reset email
-        return response()->json(['success' => true, 'code' => 'RESET_LINK_SENT', 'message' => '若此信箱已註冊，密碼重設連結已寄出。']);
+
+        // Always return the same message to prevent email enumeration
+        $successResponse = ['success' => true, 'code' => 'RESET_LINK_SENT', 'message' => '若此信箱已註冊，密碼重設連結已寄出。'];
+
+        $user = User::where('email', $request->email)->where('status', '!=', 'deleted')->first();
+        if (!$user) {
+            return response()->json($successResponse);
+        }
+
+        // Rate limit: 1 reset email per 60 seconds per email
+        $cooldownKey = "password_reset_cooldown:{$user->email}";
+        if (Cache::has($cooldownKey)) {
+            return response()->json($successResponse);
+        }
+
+        // Generate secure token and store in password_reset_tokens table
+        $token = Str::random(64);
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            ['token' => Hash::make($token), 'created_at' => now()],
+        );
+
+        // Build reset URL (frontend hash router)
+        $frontendUrl = rtrim(config('app.frontend_url', 'https://mimeet.online'), '/');
+        $resetUrl = $frontendUrl . '/#/reset-password?token=' . $token . '&email=' . urlencode($user->email);
+
+        try {
+            Mail::to($user->email)->send(new ResetPasswordMail($user->nickname ?? '用戶', $resetUrl));
+            Cache::put($cooldownKey, true, 60);
+        } catch (\Throwable $e) {
+            Log::error('[ForgotPassword] Mail send failed', ['email' => $user->email, 'error' => $e->getMessage()]);
+        }
+
+        return response()->json($successResponse);
     }
 
     public function resetPassword(Request $request): JsonResponse
     {
-        $request->validate(['token' => 'required|string', 'email' => 'required|email', 'password' => 'required|string|min:8|confirmed']);
-        // TODO: verify reset token and update password
+        $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $record = DB::table('password_reset_tokens')->where('email', $request->email)->first();
+
+        if (!$record || !Hash::check($request->token, $record->token)) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1010', 'message' => '重設連結已失效，請重新申請'],
+            ], 422);
+        }
+
+        // Check expiry (60 minutes)
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1010', 'message' => '重設連結已失效，請重新申請'],
+            ], 422);
+        }
+
+        // Update password
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1006', 'message' => '找不到此帳號'],
+            ], 404);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Delete used token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        // Revoke all existing tokens (force re-login on all devices)
+        $user->tokens()->delete();
+
+        Log::info('[ResetPassword] Password reset successful', ['user_id' => $user->id, 'email' => $user->email]);
+
         return response()->json(['success' => true, 'code' => 'PASSWORD_RESET', 'message' => '密碼已重設，請重新登入。']);
     }
 }
