@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Models\UserFollow;
+use App\Models\UserProfileVisit;
 use App\Services\GdprService;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
@@ -138,6 +139,19 @@ class UserController extends Controller
             }
         }
 
+        // Record profile visit
+        if ($request->user() && $request->user()->id !== $id) {
+            $privacy = $request->user()->privacy_settings;
+            $stealthMode = is_array($privacy) && ($privacy['stealth_mode'] ?? false);
+
+            if (!$stealthMode) {
+                UserProfileVisit::updateOrCreate(
+                    ['visitor_id' => $request->user()->id, 'visited_user_id' => $id],
+                    ['created_at' => now()],
+                );
+            }
+        }
+
         return response()->json([
             'success' => true, 'code' => 'USER_DETAIL', 'message' => 'OK',
             'data' => ['user' => [
@@ -241,10 +255,65 @@ class UserController extends Controller
 
     public function visitors(Request $request): JsonResponse
     {
-        // TODO: implement with user_visitors table
+        $userId = $request->user()->id;
+        $since = now()->subDays(90);
+
+        $query = UserProfileVisit::where('visited_user_id', $userId)
+            ->where('created_at', '>=', $since)
+            ->join('users', 'users.id', '=', 'user_profile_visits.visitor_id')
+            ->select(
+                'users.id', 'users.nickname', 'users.avatar_url',
+                'users.birth_date', 'users.credit_score',
+                'user_profile_visits.created_at as visited_at'
+            )
+            ->orderByDesc('user_profile_visits.created_at');
+
+        $perPage = (int) $request->input('per_page', 20);
+        $paginated = $query->paginate($perPage);
+
+        $totalDistinct = UserProfileVisit::where('visited_user_id', $userId)
+            ->where('created_at', '>=', $since)
+            ->distinct('visitor_id')
+            ->count('visitor_id');
+
+        $visitors = collect($paginated->items())->map(function ($v) {
+            $visitedAt = \Carbon\Carbon::parse($v->visited_at);
+            $diffMinutes = (int) now()->diffInMinutes($visitedAt);
+            $diffHours = (int) now()->diffInHours($visitedAt);
+
+            if ($diffMinutes < 60) {
+                $human = "{$diffMinutes} 分鐘前";
+            } elseif ($diffHours < 24) {
+                $human = "{$diffHours} 小時前";
+            } elseif ($visitedAt->isYesterday()) {
+                $human = '昨天';
+            } else {
+                $human = $visitedAt->format('n月j日');
+            }
+
+            return [
+                'id' => $v->id,
+                'nickname' => $v->nickname,
+                'avatar_url' => $v->avatar_url,
+                'age' => $v->birth_date ? \Carbon\Carbon::parse($v->birth_date)->age : null,
+                'credit_score' => $v->credit_score,
+                'visited_at' => $visitedAt->toIso8601String(),
+                'visited_at_human' => $human,
+            ];
+        });
+
         return response()->json([
             'success' => true, 'code' => 'VISITORS_LIST', 'message' => 'OK',
-            'data' => ['visitors' => [], 'pagination' => ['current_page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 1]],
+            'data' => [
+                'visitors' => $visitors,
+                'total_visitors_90days' => $totalDistinct,
+            ],
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+            ],
         ]);
     }
 
