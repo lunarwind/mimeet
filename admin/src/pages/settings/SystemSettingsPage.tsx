@@ -795,14 +795,14 @@ export default function SystemSettingsPage() {
   const superAdminTabs = ['mode', 'database', 'mail', 'sms', 'ecpay']
 
   const allTabs = [
-    { key: 'admins', label: '管理員帳號', children: <AdminsTab /> },
-    { key: 'mode', label: '系統模式', children: <AppModeTab /> },
-    { key: 'database', label: '資料庫設定', children: <DatabaseTab /> },
-    { key: 'mail', label: 'Email 設定', children: <MailTab /> },
-    { key: 'sms', label: 'SMS 設定', children: <SmsTab /> },
-    { key: 'ecpay', label: '金流與發票', children: <ECPayTab /> },
-    { key: 'pricing', label: '訂閱方案', children: <PricingTab /> },
-    { key: 'params', label: '系統參數', children: <SystemParamsTab /> },
+    { key: 'admins', label: '管理員帳號', children: <AdminsTab />, forceRender: true },
+    { key: 'mode', label: '系統模式', children: <AppModeTab />, forceRender: true },
+    { key: 'database', label: '資料庫設定', children: <DatabaseTab />, forceRender: true },
+    { key: 'mail', label: 'Email 設定', children: <MailTab />, forceRender: true },
+    { key: 'sms', label: 'SMS 設定', children: <SmsTab />, forceRender: true },
+    { key: 'ecpay', label: '金流與發票', children: <ECPayTab />, forceRender: true },
+    { key: 'pricing', label: '訂閱方案', children: <PricingTab />, forceRender: true },
+    { key: 'params', label: '系統參數', children: <SystemParamsTab />, forceRender: true },
   ].filter(tab => {
     if (superAdminTabs.includes(tab.key)) return isSuperAdmin
     return true
@@ -811,7 +811,7 @@ export default function SystemSettingsPage() {
   return (
     <div>
       <Title level={4} style={{ marginBottom: 16 }}>系統設定</Title>
-      <Tabs items={allTabs} />
+      <Tabs items={allTabs} destroyInactiveTabPane={false} />
     </div>
   )
 }
