@@ -212,13 +212,37 @@ class UserController extends Controller
     public function settings(Request $request): JsonResponse
     {
         $user = $request->user();
+
         return response()->json([
             'success' => true, 'code' => 'USER_SETTINGS', 'message' => 'OK',
             'data' => [
-                'privacy' => $user->privacy_settings,
+                'profile' => [
+                    'id' => $user->id,
+                    'nickname' => $user->nickname ?? '',
+                    'gender' => $user->gender ?? '',
+                    'birth_date' => $user->birth_date?->toDateString(),
+                    'avatar_url' => $user->avatar_url,
+                    'city' => $user->location ?? '',
+                    'height' => $user->height,
+                    'weight' => null,
+                    'job' => $user->occupation ?? '',
+                    'education' => $user->education ?? '',
+                    'introduction' => $user->bio ?? '',
+                ],
                 'account' => [
-                    'email_verified' => $user->email_verified,
-                    'phone_verified' => $user->phone_verified,
+                    'email' => $user->email,
+                    'email_verified' => (bool) $user->email_verified,
+                    'phone_verified' => (bool) $user->phone_verified,
+                ],
+                'verification' => [
+                    'membership_level' => (float) $user->membership_level,
+                ],
+                'privacy_settings' => $user->privacy_settings ?? [
+                    'show_online_status' => true,
+                    'allow_profile_visits' => true,
+                    'show_in_search' => true,
+                    'show_last_active' => true,
+                    'allow_stranger_message' => true,
                 ],
             ],
         ]);
