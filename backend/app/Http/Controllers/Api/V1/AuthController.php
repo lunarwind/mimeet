@@ -366,12 +366,11 @@ class AuthController extends Controller
     {
         $request->validate(['phone' => ['required', 'string', 'regex:/^09\d{8}$/']]);
 
-        $user = $request->user();
         $phone = $request->input('phone');
         $e164 = $this->toE164($phone);
 
-        // Cooldown: 1 send per 60 seconds
-        $cooldownKey = "phone_otp_cooldown:{$user->id}";
+        // Cooldown: 1 send per 60 seconds (keyed by phone)
+        $cooldownKey = "otp:cooldown:{$e164}";
         if (Cache::has($cooldownKey)) {
             return response()->json([
                 'success' => false,
@@ -381,16 +380,19 @@ class AuthController extends Controller
 
         // Generate OTP and store in Redis (5 min TTL)
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $otpKey = "phone_otp:{$user->id}";
-        $attemptsKey = "phone_otp_attempts:{$user->id}";
+        $otpKey = "otp:phone:{$e164}";
+        $attemptsKey = "otp:fail:{$e164}";
 
-        Cache::put($otpKey, ['code' => $code, 'phone' => $e164], 300);
+        Cache::put($otpKey, $code, 300);
         Cache::forget($attemptsKey);
         Cache::put($cooldownKey, true, 60);
 
         app(SmsService::class)->sendOtp($e164, $code);
 
-        Log::info('[PhoneVerify] OTP sent', ['user_id' => $user->id, 'phone' => substr($phone, 0, 4) . '****']);
+        Log::info('[PhoneVerify] OTP sent', [
+            'user_id' => $request->user()?->id,
+            'phone' => substr($phone, 0, 4) . '****',
+        ]);
 
         return response()->json([
             'success' => true, 'code' => 'PHONE_CODE_SENT', 'message' => '驗證碼已發送。',
@@ -405,12 +407,11 @@ class AuthController extends Controller
             'code' => 'required|string|size:6',
         ]);
 
-        $user = $request->user();
         $e164 = $this->toE164($request->input('phone'));
         $inputCode = $request->input('code');
 
-        $otpKey = "phone_otp:{$user->id}";
-        $attemptsKey = "phone_otp_attempts:{$user->id}";
+        $otpKey = "otp:phone:{$e164}";
+        $attemptsKey = "otp:fail:{$e164}";
 
         $stored = Cache::get($otpKey);
         if (!$stored) {
@@ -430,7 +431,7 @@ class AuthController extends Controller
             ], 429);
         }
 
-        if ($stored['code'] !== $inputCode || $stored['phone'] !== $e164) {
+        if ($stored !== $inputCode) {
             Cache::put($attemptsKey, $attempts + 1, 300);
             return response()->json([
                 'success' => false,
@@ -438,22 +439,36 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Success
-        $user->phone = $e164;
-        $user->phone_verified = true;
-        if ($user->membership_level < 1) {
-            $user->membership_level = 1;
+        // Success — update user if authenticated
+        $user = $request->user();
+        if ($user) {
+            $user->phone = $e164;
+            $user->phone_verified = true;
+            if ($user->membership_level < 1) {
+                $user->membership_level = 1;
+            }
+            $user->save();
+            UserActivityLogService::logPhoneChange($user->id, $request);
+        } else {
+            // Registration flow: mark phone as verified by email lookup
+            $email = $request->input('email');
+            if ($email) {
+                User::where('email', $email)->update([
+                    'phone' => $e164,
+                    'phone_verified' => true,
+                ]);
+            }
         }
-        $user->save();
 
         Cache::forget($otpKey);
         Cache::forget($attemptsKey);
 
-        UserActivityLogService::logPhoneChange($user->id, $request);
-
         return response()->json([
             'success' => true, 'code' => 'PHONE_VERIFIED', 'message' => '手機驗證成功。',
-            'data' => ['phone_verified' => true, 'membership_level' => $user->membership_level],
+            'data' => [
+                'phone_verified' => true,
+                'membership_level' => $user?->membership_level,
+            ],
         ]);
     }
 

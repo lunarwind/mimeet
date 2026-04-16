@@ -49,8 +49,12 @@ Route::prefix('api/v1')->group(function () {
     Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
-        Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend'])->middleware('throttle:otp');
-        Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm'])->middleware('throttle:otp');
+    });
+
+    // ─── Phone verify (works both authenticated and unauthenticated) ──
+    Route::prefix('auth')->middleware('throttle:otp')->group(function () {
+        Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend']);
+        Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm']);
     });
 
     // ─── Users (authenticated, rate-limited) ───────────────────────────
