@@ -16,7 +16,9 @@ export interface AuthUser {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(localStorage.getItem('auth_token'))
+  const token = ref<string | null>(
+    localStorage.getItem('auth_token') ?? sessionStorage.getItem('auth_token')
+  )
   const user = ref<AuthUser | null>(null)
   const initialized = ref(false)
 
@@ -25,9 +27,15 @@ export const useAuthStore = defineStore('auth', () => {
   const isSuspended = computed(() => user.value?.status === 'suspended' || user.value?.status === 'auto_suspended')
   const isVerified = computed(() => user.value?.status === 'active')
 
-  function setToken(t: string) {
+  function setToken(t: string, rememberMe = false) {
     token.value = t
-    localStorage.setItem('auth_token', t)
+    if (rememberMe) {
+      localStorage.setItem('auth_token', t)
+      sessionStorage.removeItem('auth_token')
+    } else {
+      sessionStorage.setItem('auth_token', t)
+      localStorage.removeItem('auth_token')
+    }
   }
 
   function setUser(u: AuthUser) {
@@ -53,6 +61,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     initialized.value = false
     localStorage.removeItem('auth_token')
+    sessionStorage.removeItem('auth_token')
   }
 
   return {

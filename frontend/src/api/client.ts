@@ -14,7 +14,7 @@ const client: AxiosInstance = axios.create({
 
 // Request Interceptor：自動帶上 token
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token')
+  const token = localStorage.getItem('auth_token') ?? sessionStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -30,6 +30,7 @@ client.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token 過期或未登入 — clear state, let guard handle redirect
       localStorage.removeItem('auth_token')
+      sessionStorage.removeItem('auth_token')
       localStorage.removeItem('member_level')
       // Don't force redirect here — let router guard handle it on next navigation
       return Promise.reject(error)

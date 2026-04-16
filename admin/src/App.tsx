@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback } from 'react'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import AdminLayout from './layouts/AdminLayout'
 import LoginPage from './pages/auth/LoginPage'
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
@@ -16,9 +16,20 @@ import BroadcastsPage from './pages/broadcasts/BroadcastsPage'
 import SeoPage from './pages/seo/SeoPage'
 import AnnouncementsPage from './pages/announcements/AnnouncementsPage'
 import { useAuthStore } from './stores/authStore'
+import { useIdleTimeout } from './hooks/useIdleTimeout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
+
+  const handleTimeout = useCallback(() => {
+    logout()
+    navigate('/login?reason=idle_timeout')
+  }, [logout, navigate])
+
+  useIdleTimeout(handleTimeout, isLoggedIn)
+
   if (!isLoggedIn) return <Navigate to="/login" replace />
   return <>{children}</>
 }

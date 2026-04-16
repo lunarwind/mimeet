@@ -21,7 +21,7 @@ apiClient.interceptors.request.use((config) => {
     config.headers['X-XSRF-TOKEN'] = decodeURIComponent(token)
   }
   // Also attach Bearer token if stored
-  const authToken = localStorage.getItem('admin_token')
+  const authToken = sessionStorage.getItem('admin_token')
   if (authToken) {
     config.headers.Authorization = `Bearer ${authToken}`
   }
@@ -33,6 +33,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      sessionStorage.removeItem('admin_token')
+      sessionStorage.removeItem('admin_user')
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       window.location.hash = '#/login'

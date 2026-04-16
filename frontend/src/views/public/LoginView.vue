@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { login } from '@/api/auth'
 import { validateEmail, validatePassword } from '@/utils/validators'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // ── 表單狀態 ──────────────────────────────────
@@ -21,6 +22,7 @@ const errors = reactive({
 
 const showPassword = ref(false)
 const isLoading = ref(false)
+const rememberMe = ref(false)
 const toast = reactive({
   show: false,
   message: '',
@@ -62,7 +64,7 @@ async function handleLogin() {
       device_info: { type: 'web', name: navigator.userAgent, os: '' },
     })
 
-    authStore.setToken(res.token ?? '')
+    authStore.setToken(res.token ?? '', rememberMe.value)
     authStore.setUser(res.user)
 
     // 停權帳號跳轉
@@ -86,6 +88,13 @@ async function handleLogin() {
     isLoading.value = false
   }
 }
+
+// ── 閒置逾時提示 ─────────────────────────────
+onMounted(() => {
+  if (route.query.reason === 'idle_timeout') {
+    showToast('閒置逾時，請重新登入', 'error')
+  }
+})
 
 // ── 跳轉 ─────────────────────────────────────
 function goRegister() { router.push('/register') }
@@ -191,6 +200,12 @@ function goLanding() { router.push('/') }
             <p v-if="errors.password" class="field-error">{{ errors.password }}</p>
           </Transition>
         </div>
+
+        <!-- 記住我 -->
+        <label class="remember-label">
+          <input v-model="rememberMe" type="checkbox" class="remember-checkbox" />
+          <span>記住我（在此裝置保持登入）</span>
+        </label>
 
         <!-- 登入按鈕 -->
         <button
@@ -483,6 +498,23 @@ function goLanding() { router.push('/') }
 }
 .err-enter-active, .err-leave-active { transition: all 0.2s ease; }
 .err-enter-from, .err-leave-to { opacity: 0; transform: translateY(-4px); }
+
+/* ── Remember Me ────────────────────────────── */
+.remember-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--t2);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.remember-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--p);
+  cursor: pointer;
+}
 
 /* ── Login Button ───────────────────────────── */
 .btn-login {

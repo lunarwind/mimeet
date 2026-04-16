@@ -11,7 +11,7 @@ interface AuthState {
 
 function loadUser(): AdminUser | null {
   try {
-    const raw = localStorage.getItem('admin_user')
+    const raw = sessionStorage.getItem('admin_user')
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
@@ -25,12 +25,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoggedIn: !!savedUser,
 
   login: (user: AdminUser, token?: string) => {
-    localStorage.setItem('admin_user', JSON.stringify(user))
-    localStorage.setItem('admin_token', token || '')
+    sessionStorage.setItem('admin_user', JSON.stringify(user))
+    sessionStorage.setItem('admin_token', token || '')
+    // Migration: clear old localStorage keys
+    localStorage.removeItem('admin_user')
+    localStorage.removeItem('admin_token')
     set({ user, isLoggedIn: true })
   },
 
   logout: () => {
+    sessionStorage.removeItem('admin_user')
+    sessionStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
     localStorage.removeItem('admin_token')
     set({ user: null, isLoggedIn: false })
