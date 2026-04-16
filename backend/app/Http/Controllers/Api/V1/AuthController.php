@@ -439,15 +439,19 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Success — update user if authenticated
+        // Success — update user
         $user = $request->user();
         if ($user) {
+            // Refresh from DB to avoid stale model state
+            $user->refresh();
             $user->phone = $e164;
             $user->phone_verified = true;
             if ($user->membership_level < 1) {
                 $user->membership_level = 1;
             }
-            $user->save();
+            if (!$user->save()) {
+                Log::error('[PhoneVerify] Failed to save user', ['user_id' => $user->id]);
+            }
             UserActivityLogService::logPhoneChange($user->id, $request);
         } else {
             // Registration flow: mark phone as verified by email lookup
