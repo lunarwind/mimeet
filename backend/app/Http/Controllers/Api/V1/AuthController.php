@@ -162,6 +162,7 @@ class AuthController extends Controller
                     'membership_level' => $user->membership_level,
                     'email_verified' => (bool) $user->email_verified,
                     'phone_verified' => (bool) $user->phone_verified,
+                    'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
                 ],
                 'token' => $token,
                 '_debug' => $debugInfo, // ⚠️ DEBUG ONLY — 問題解決後整段刪除
@@ -250,6 +251,7 @@ class AuthController extends Controller
                     'membership_level' => $user->membership_level,
                     'email_verified' => (bool) $user->email_verified,
                     'phone_verified' => (bool) $user->phone_verified,
+                    'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
                 ],
                 'token' => $token,
             ],
