@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Models\UserFollow;
 use App\Services\GdprService;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
@@ -211,10 +212,30 @@ class UserController extends Controller
 
     public function following(Request $request): JsonResponse
     {
-        // TODO: implement with user_follows table
+        $query = UserFollow::where('follower_id', $request->user()->id)
+            ->join('users', 'users.id', '=', 'user_follows.following_id')
+            ->select(
+                'users.id', 'users.nickname', 'users.avatar_url',
+                'users.credit_score', 'users.last_active_at',
+                'user_follows.created_at as followed_at'
+            );
+
+        if ($request->filled('nickname')) {
+            $query->where('users.nickname', 'like', '%' . $request->input('nickname') . '%');
+        }
+
+        $perPage = (int) $request->input('per_page', 20);
+        $paginated = $query->orderByDesc('user_follows.created_at')->paginate($perPage);
+
         return response()->json([
             'success' => true, 'code' => 'FOLLOWING_LIST', 'message' => 'OK',
-            'data' => ['users' => [], 'pagination' => ['current_page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 1]],
+            'data' => ['users' => $paginated->items()],
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+                'last_page' => $paginated->lastPage(),
+            ],
         ]);
     }
 
@@ -229,13 +250,51 @@ class UserController extends Controller
 
     public function follow(Request $request, int $id): JsonResponse
     {
-        // TODO: implement with user_follows table
-        return response()->json(['success' => true, 'code' => 'FOLLOWED', 'message' => '已追蹤。']);
+        $userId = $request->user()->id;
+
+        if ($userId === $id) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '2040', 'message' => '不能收藏自己'],
+            ], 422);
+        }
+
+        if (!User::where('id', $id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '404', 'message' => '找不到此用戶'],
+            ], 404);
+        }
+
+        $count = UserFollow::where('follower_id', $userId)->count();
+        if ($count >= 500) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '2041', 'message' => '收藏已達上限（500人）'],
+            ], 422);
+        }
+
+        UserFollow::firstOrCreate([
+            'follower_id' => $userId,
+            'following_id' => $id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['followed' => true],
+        ], 201);
     }
 
     public function unfollow(Request $request, int $id): JsonResponse
     {
-        return response()->json(['success' => true, 'code' => 'UNFOLLOWED', 'message' => '已取消追蹤。']);
+        UserFollow::where('follower_id', $request->user()->id)
+            ->where('following_id', $id)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'data' => ['followed' => false],
+        ]);
     }
 
     public function block(Request $request, int $id): JsonResponse
