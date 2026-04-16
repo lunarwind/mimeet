@@ -123,8 +123,11 @@ Route::prefix('api/v1')->group(function () {
     Route::prefix('payments/ecpay')->group(function () {
         Route::post('/notify', [PaymentCallbackController::class, 'notify']);
         Route::get('/return', [PaymentCallbackController::class, 'returnUrl']);
-        Route::get('/mock', [PaymentCallbackController::class, 'mock']);
         Route::get('/checkout/{token}', [PaymentCallbackController::class, 'checkout']);
+        // Mock endpoint — only available in non-production environments
+        if (config('app.env') !== 'production') {
+            Route::get('/mock', [PaymentCallbackController::class, 'mock']);
+        }
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────

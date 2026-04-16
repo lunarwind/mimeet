@@ -1,0 +1,14 @@
+User-agent: *
+Disallow: /app/
+Disallow: /suspended/
+Disallow: /verify-email
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /forgot-password
+Allow: /reset-password
+Allow: /privacy
+Allow: /terms
+Allow: /anti-fraud
+
+Sitemap: https://mimeet.online/sitemap.xml
