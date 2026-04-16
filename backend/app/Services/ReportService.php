@@ -16,10 +16,12 @@ class ReportService
     ) {}
     public function createReport(User $reporter, array $data, array $imageFiles = []): Report
     {
+        $isSystemIssue = ($data['type'] ?? '') === 'system_issue';
+
         $report = Report::create([
             'uuid' => Str::uuid()->toString(),
             'reporter_id' => $reporter->id,
-            'reported_user_id' => $data['reported_user_id'],
+            'reported_user_id' => $data['reported_user_id'] ?? null,
             'type' => $data['type'],
             'description' => $data['description'] ?? null,
             'status' => 'pending',
@@ -34,12 +36,14 @@ class ReportService
             ]);
         }
 
-        // Deduct points from both parties
-        CreditScoreService::adjust($reporter, -10, 'report_filed', '送出檢舉');
+        // Deduct points from both parties (skip for system issues)
+        if (!$isSystemIssue) {
+            CreditScoreService::adjust($reporter, -10, 'report_filed', '送出檢舉');
 
-        $reportedUser = User::find($data['reported_user_id']);
-        if ($reportedUser) {
-            CreditScoreService::adjust($reportedUser, -10, 'report_received', '被他人檢舉（待審）');
+            $reportedUser = User::find($data['reported_user_id'] ?? null);
+            if ($reportedUser) {
+                CreditScoreService::adjust($reportedUser, -10, 'report_received', '被他人檢舉（待審）');
+            }
         }
 
         return $report;
