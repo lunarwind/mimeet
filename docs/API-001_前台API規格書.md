@@ -252,9 +252,13 @@ Content-Type: application/json
       "email": "user@example.com",
       "nickname": "甜心寶貝",
       "avatar": "https://cdn.example.com/avatars/123.jpg",
-      "vip": "1",
-      "verified": "2",
-      "credit_score": 85
+      "gender": "female",
+      "status": "active",
+      "credit_score": 85,
+      "membership_level": 2,
+      "email_verified": true,
+      "phone_verified": true,
+      "phone": "09xx-xxx-666"
     },
     "tokens": {
       "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
@@ -1468,6 +1472,36 @@ per_page: 20
 }
 ```
 
+#### 5.1.4 接受約會邀請
+```http
+PATCH /api/v1/dates/{id}/accept
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": { "invitation": { "id": 123, "status": "accepted" } }
+}
+```
+
+#### 5.1.5 拒絕約會邀請
+```http
+PATCH /api/v1/dates/{id}/decline
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": { "invitation": { "id": 123, "status": "declined" } }
+}
+```
+
+---
+
 ### 5.2 約會驗證
 
 #### 5.2.1 QR碼掃描驗證
@@ -1476,6 +1510,8 @@ POST /api/v1/dates/verify
 Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
+
+> **注意：** token 放在 request body，非路由參數。路由為 `/dates/verify`（無 `/{id}`），QR token 中已含邀請識別資訊。
 
 > **實作版本（v1.3 更新）**：前端掃碼後自動取得 GPS 座標（`navigator.geolocation`），
 > 若用戶拒絕授權則 latitude/longitude 傳 null，後端仍接受但 GPS 驗證不通過（得 +2 而非 +5）。
