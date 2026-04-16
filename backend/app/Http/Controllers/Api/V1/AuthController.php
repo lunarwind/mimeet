@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\EmailVerificationMail;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use App\Services\SmsService;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -363,10 +364,33 @@ class AuthController extends Controller
 
     public function verifyPhoneSend(Request $request): JsonResponse
     {
-        $request->validate(['phone' => 'required|string']);
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        // TODO: use SmsService to send real OTP
-        Log::info("[OTP] Phone verification code for {$request->phone}: {$code}");
+        $request->validate(['phone' => ['required', 'string', 'regex:/^09\d{8}$/']]);
+
+        $user = $request->user();
+        $phone = $request->input('phone');
+        $e164 = $this->toE164($phone);
+
+        // Cooldown: 1 send per 60 seconds
+        $cooldownKey = "phone_otp_cooldown:{$user->id}";
+        if (Cache::has($cooldownKey)) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1020', 'message' => '請等待 60 秒後再重新發送'],
+            ], 429);
+        }
+
+        // Generate OTP and store in Redis (5 min TTL)
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpKey = "phone_otp:{$user->id}";
+        $attemptsKey = "phone_otp_attempts:{$user->id}";
+
+        Cache::put($otpKey, ['code' => $code, 'phone' => $e164], 300);
+        Cache::forget($attemptsKey);
+        Cache::put($cooldownKey, true, 60);
+
+        app(SmsService::class)->sendOtp($e164, $code);
+
+        Log::info('[PhoneVerify] OTP sent', ['user_id' => $user->id, 'phone' => substr($phone, 0, 4) . '****']);
 
         return response()->json([
             'success' => true, 'code' => 'PHONE_CODE_SENT', 'message' => '驗證碼已發送。',
@@ -376,12 +400,73 @@ class AuthController extends Controller
 
     public function verifyPhoneConfirm(Request $request): JsonResponse
     {
-        $request->validate(['phone' => 'required|string', 'code' => 'required|string|size:6']);
-        // TODO: verify against stored OTP code
+        $request->validate([
+            'phone' => ['required', 'string', 'regex:/^09\d{8}$/'],
+            'code' => 'required|string|size:6',
+        ]);
 
-        UserActivityLogService::logPhoneChange($request->user()->id, $request);
+        $user = $request->user();
+        $e164 = $this->toE164($request->input('phone'));
+        $inputCode = $request->input('code');
 
-        return response()->json(['success' => true, 'code' => 'PHONE_VERIFIED', 'message' => '手機驗證成功。']);
+        $otpKey = "phone_otp:{$user->id}";
+        $attemptsKey = "phone_otp_attempts:{$user->id}";
+
+        $stored = Cache::get($otpKey);
+        if (!$stored) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1021', 'message' => '驗證碼已過期或不存在，請重新發送'],
+            ], 422);
+        }
+
+        $attempts = (int) Cache::get($attemptsKey, 0);
+        if ($attempts >= 5) {
+            Cache::forget($otpKey);
+            Cache::forget($attemptsKey);
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1022', 'message' => '驗證失敗次數過多，請重新發送驗證碼'],
+            ], 429);
+        }
+
+        if ($stored['code'] !== $inputCode || $stored['phone'] !== $e164) {
+            Cache::put($attemptsKey, $attempts + 1, 300);
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '1023', 'message' => '驗證碼不正確', 'remaining' => max(0, 4 - $attempts)],
+            ], 422);
+        }
+
+        // Success
+        $user->phone = $e164;
+        $user->phone_verified = true;
+        if ($user->membership_level < 1) {
+            $user->membership_level = 1;
+        }
+        $user->save();
+
+        Cache::forget($otpKey);
+        Cache::forget($attemptsKey);
+
+        UserActivityLogService::logPhoneChange($user->id, $request);
+
+        return response()->json([
+            'success' => true, 'code' => 'PHONE_VERIFIED', 'message' => '手機驗證成功。',
+            'data' => ['phone_verified' => true, 'membership_level' => $user->membership_level],
+        ]);
+    }
+
+    private function toE164(string $phone): string
+    {
+        $phone = preg_replace('/[\s\-]/', '', $phone);
+        if (str_starts_with($phone, '09')) {
+            return '+886' . substr($phone, 1);
+        }
+        if (str_starts_with($phone, '+')) {
+            return $phone;
+        }
+        return '+886' . ltrim($phone, '0');
     }
 
     public function forgotPassword(Request $request): JsonResponse
