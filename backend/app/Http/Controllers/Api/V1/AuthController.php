@@ -390,7 +390,7 @@ class AuthController extends Controller
         app(SmsService::class)->sendOtp($e164, $code);
 
         Log::info('[PhoneVerify] OTP sent', [
-            'user_id' => $request->user()?->id,
+            'user_id' => auth()->guard('sanctum')->user()?->id,
             'phone' => substr($phone, 0, 4) . '****',
         ]);
 
@@ -439,11 +439,9 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Success — update user
-        $user = $request->user();
+        // Success — update user (resolve via guard since route has no auth middleware)
+        $user = auth()->guard('sanctum')->user();
         if ($user) {
-            // Refresh from DB to avoid stale model state
-            $user->refresh();
             $user->phone = $e164;
             $user->phone_verified = true;
             if ($user->membership_level < 1) {
