@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserBlock;
 use App\Services\GdprService;
 use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
@@ -68,6 +69,17 @@ class UserController extends Controller
               ->orWhereRaw("JSON_EXTRACT(privacy_settings, '$.show_in_search') != 'false'");
         });
 
+        // Exclude blocked users (both directions)
+        if ($request->user()) {
+            $myId = $request->user()->id;
+            $blockedIds = UserBlock::where('blocker_id', $myId)->pluck('blocked_id');
+            $blockerIds = UserBlock::where('blocked_id', $myId)->pluck('blocker_id');
+            $excludeIds = $blockedIds->merge($blockerIds)->unique();
+            if ($excludeIds->isNotEmpty()) {
+                $query->whereNotIn('id', $excludeIds);
+            }
+        }
+
         if ($request->filled('gender')) $query->where('gender', $request->gender);
         if ($request->filled('location')) $query->where('location', 'like', "%{$request->location}%");
 
@@ -112,6 +124,19 @@ class UserController extends Controller
             return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此用戶'], 404);
         }
 
+        // Check if target user has blocked me
+        if ($request->user()) {
+            $amBlocked = UserBlock::where('blocker_id', $id)
+                ->where('blocked_id', $request->user()->id)
+                ->exists();
+            if ($amBlocked) {
+                return response()->json([
+                    'success' => false,
+                    'error' => ['code' => '2031', 'message' => '無法查看此用戶'],
+                ], 403);
+            }
+        }
+
         return response()->json([
             'success' => true, 'code' => 'USER_DETAIL', 'message' => 'OK',
             'data' => ['user' => [
@@ -133,7 +158,7 @@ class UserController extends Controller
                 'online_status' => $user->last_active_at && $user->last_active_at->gt(now()->subMinutes(5)) ? 'online' : 'offline',
                 'last_active_at' => $user->last_active_at?->toIso8601String(),
                 'is_favorited' => $request->user() ? \DB::table('user_follows')->where('follower_id', $request->user()->id)->where('following_id', $user->id)->exists() : false,
-                'is_blocked' => $request->user() ? \DB::table('user_blocks')->where('blocker_id', $request->user()->id)->where('blocked_id', $user->id)->exists() : false,
+                'is_blocked' => $request->user() ? UserBlock::where('blocker_id', $request->user()->id)->where('blocked_id', $user->id)->exists() : false,
                 'photos' => [],
                 'created_at' => $user->created_at?->toIso8601String(),
             ]],
@@ -144,7 +169,6 @@ class UserController extends Controller
     {
         $request->validate(['photo' => 'required|image|mimes:jpeg,png,gif,webp|max:5120']);
 
-        // S13-10: Magic bytes validation (not just extension)
         $file = $request->file('photo');
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $realMime = finfo_file($finfo, $file->getRealPath());
@@ -216,20 +240,56 @@ class UserController extends Controller
 
     public function block(Request $request, int $id): JsonResponse
     {
-        return response()->json(['success' => true, 'code' => 'BLOCKED', 'message' => '已封鎖該用戶。']);
+        $userId = $request->user()->id;
+
+        if ($userId === $id) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '2030', 'message' => '不能封鎖自己'],
+            ], 422);
+        }
+
+        if (!User::where('id', $id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => '404', 'message' => '找不到此用戶'],
+            ], 404);
+        }
+
+        UserBlock::firstOrCreate([
+            'blocker_id' => $userId,
+            'blocked_id' => $id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['blocked' => true],
+        ], 201);
     }
 
     public function unblock(Request $request, int $id): JsonResponse
     {
-        return response()->json(['success' => true, 'code' => 'UNBLOCKED', 'message' => '已解除封鎖。']);
+        UserBlock::where('blocker_id', $request->user()->id)
+            ->where('blocked_id', $id)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'data' => ['blocked' => false],
+        ]);
     }
 
     public function blockedUsers(Request $request): JsonResponse
     {
-        // TODO: implement with user_blocks table
+        $blocks = UserBlock::where('blocker_id', $request->user()->id)
+            ->join('users', 'users.id', '=', 'user_blocks.blocked_id')
+            ->select('users.id', 'users.nickname', 'users.avatar_url as avatar', 'user_blocks.created_at as blocked_at')
+            ->orderByDesc('user_blocks.created_at')
+            ->get();
+
         return response()->json([
-            'success' => true, 'code' => 'BLOCKED_USERS', 'message' => 'OK',
-            'data' => ['users' => [], 'pagination' => ['current_page' => 1, 'per_page' => 20, 'total' => 0, 'last_page' => 1]],
+            'success' => true,
+            'data' => ['blocked_users' => $blocks],
         ]);
     }
 }

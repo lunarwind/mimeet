@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Exceptions\DailyLimitException;
+use App\Models\Conversation;
+use App\Models\UserBlock;
 use App\Services\ChatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -115,6 +117,27 @@ class ChatController extends Controller
                 'code' => 403,
                 'message' => '您不是此對話的參與者',
             ], 403);
+        }
+
+        // Block check: prevent messaging if either party blocked the other
+        $conversation = Conversation::find($id);
+        if ($conversation) {
+            $otherId = $conversation->user_a_id === $userId
+                ? $conversation->user_b_id
+                : $conversation->user_a_id;
+
+            $isBlocked = UserBlock::where(function ($q) use ($userId, $otherId) {
+                $q->where('blocker_id', $userId)->where('blocked_id', $otherId);
+            })->orWhere(function ($q) use ($userId, $otherId) {
+                $q->where('blocker_id', $otherId)->where('blocked_id', $userId);
+            })->exists();
+
+            if ($isBlocked) {
+                return response()->json([
+                    'success' => false,
+                    'error' => ['code' => '2002', 'message' => '無法傳訊息給此用戶'],
+                ], 400);
+            }
         }
 
         try {
