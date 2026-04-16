@@ -258,8 +258,8 @@ class UserController extends Controller
         $userId = $request->user()->id;
         $since = now()->subDays(90);
 
-        $query = UserProfileVisit::where('visited_user_id', $userId)
-            ->where('created_at', '>=', $since)
+        $query = UserProfileVisit::where('user_profile_visits.visited_user_id', $userId)
+            ->where('user_profile_visits.created_at', '>=', $since)
             ->join('users', 'users.id', '=', 'user_profile_visits.visitor_id')
             ->select(
                 'users.id', 'users.nickname', 'users.avatar_url',
