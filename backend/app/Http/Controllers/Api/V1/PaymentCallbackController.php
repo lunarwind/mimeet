@@ -60,6 +60,10 @@ class PaymentCallbackController extends Controller
 
     /**
      * GET /api/v1/payments/ecpay/mock — Sandbox mock payment (dev only)
+     *
+     * Two-step flow:
+     *   Step 1 (no confirm param): show simulated credit card input page
+     *   Step 2 (?confirm=1):       process payment and redirect to frontend
      */
     public function mock(Request $request): mixed
     {
@@ -68,8 +72,10 @@ class PaymentCallbackController extends Controller
         }
 
         $tradeNo = $request->query('trade_no');
+        $amount  = $request->query('amount', 0);
+        $confirm = $request->query('confirm', '0');
 
-        // Return JSON when the client expects it (e.g. tests)
+        // JSON callers (tests) skip the UI and process immediately
         if ($request->expectsJson()) {
             $order = $this->paymentService->handleMockPayment($tradeNo);
             return response()->json([
@@ -81,29 +87,41 @@ class PaymentCallbackController extends Controller
             ]);
         }
 
-        // Browser flow: process payment then redirect back to frontend
-        try {
-            $this->paymentService->handleMockPayment($tradeNo);
-            $status = 'success';
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[ECPay Mock] Failed', ['error' => $e->getMessage()]);
-            $status = 'failed';
-        }
-
         $frontendUrl = rtrim(
             config('app.frontend_url', env('FRONTEND_URL', 'https://mimeet.online')),
             '/',
         );
-        $redirectUrl = $frontendUrl . '/#/app/shop?payment=' . $status;
 
-        // Use HTML meta refresh + JS to handle hash-mode routing correctly
+        // ── Step 2: user confirmed → process payment → redirect ──
+        if ($confirm === '1') {
+            try {
+                $this->paymentService->handleMockPayment($tradeNo);
+                $status = 'success';
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('[ECPay Mock] Failed', ['error' => $e->getMessage()]);
+                $status = 'failed';
+            }
+
+            $redirectUrl = $frontendUrl . '/#/app/shop?payment=' . $status;
+
+            return response(
+                '<html><head><meta charset="utf-8">'
+                . '<meta http-equiv="refresh" content="0;url=' . e($redirectUrl) . '">'
+                . '</head><body><p>正在跳轉...</p>'
+                . '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>'
+                . '</body></html>',
+                200,
+            )->header('Content-Type', 'text/html');
+        }
+
+        // ── Step 1: show simulated credit card input page ──
+        $confirmUrl = url("/api/v1/payments/ecpay/mock")
+            . "?trade_no=" . urlencode($tradeNo) . "&amount={$amount}&confirm=1";
+        $cancelUrl = $frontendUrl . '/#/app/shop?payment=cancelled';
+
         return response(
-            '<html><head><meta charset="utf-8">'
-            . '<meta http-equiv="refresh" content="0;url=' . e($redirectUrl) . '">'
-            . '</head><body><p>正在跳轉...</p>'
-            . '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>'
-            . '</body></html>',
+            view('ecpay-mock', compact('amount', 'confirmUrl', 'cancelUrl'))->render(),
             200,
-        )->header('Content-Type', 'text/html');
+        )->header('Content-Type', 'text/html; charset=utf-8');
     }
 }

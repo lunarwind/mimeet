@@ -207,6 +207,7 @@ interface SubPlan {
   duration_days: number
   is_trial: boolean
   is_active: boolean
+  membership_level: number
   promo: {
     type: 'none' | 'percentage' | 'fixed'
     value: number | null
@@ -244,6 +245,7 @@ function PricingTab() {
       original_price: plan.original_price,
       duration_days: plan.duration_days,
       is_active: plan.is_active,
+      membership_level: plan.membership_level ?? 2,
       promo_type: plan.promo?.type ?? 'none',
       promo_value: plan.promo?.value ?? undefined,
       promo_start_at: plan.promo?.start_at ? dayjs(plan.promo.start_at) : null,
@@ -262,6 +264,7 @@ function PricingTab() {
         original_price: vals.original_price,
         duration_days: vals.duration_days,
         is_active: vals.is_active,
+        membership_level: vals.membership_level,
         promo_type: vals.promo_type,
         promo_value: vals.promo_value ?? null,
         promo_start_at: vals.promo_start_at?.toISOString() ?? null,
@@ -358,6 +361,15 @@ function PricingTab() {
           </Form.Item>
           <Form.Item label="啟用" name="is_active" valuePropName="checked">
             <Switch checkedChildren="啟用" unCheckedChildren="停用" />
+          </Form.Item>
+          <Form.Item label="購買後會員等級" name="membership_level" rules={[{ required: true }]}
+            tooltip="購買此方案後，用戶的 membership_level 將升至此等級"
+          >
+            <Select>
+              <Select.Option value={1}>Lv1 — 驗證會員</Select.Option>
+              <Select.Option value={2}>Lv2 — 進階驗證會員</Select.Option>
+              <Select.Option value={3}>Lv3 — 付費會員</Select.Option>
+            </Select>
           </Form.Item>
 
           <Divider style={{ fontSize: 13, color: '#888' }}>優惠折扣設定</Divider>

@@ -111,8 +111,11 @@ function formatPrice(n: number) {
   return n.toLocaleString('zh-TW')
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('zh-TW')
+function formatDate(iso: string | null | undefined) {
+  if (!iso) return '未知'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '未知'
+  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
 const PAID_FEATURES = [

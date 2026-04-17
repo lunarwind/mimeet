@@ -61,9 +61,25 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      const res = await client.get<{ data: { subscription: CurrentSubscription | null } }>('/subscriptions/me')
-      currentSubscription.value = res.data.data.subscription
-      return currentSubscription.value
+      const res = await client.get('/subscriptions/me')
+      const raw = res.data?.data?.subscription
+      if (!raw) {
+        currentSubscription.value = null
+        return null
+      }
+      // Map backend snake_case → frontend camelCase
+      const sub: CurrentSubscription = {
+        planType: raw.plan_id ?? raw.planType ?? '',
+        planName: raw.plan_name ?? raw.planName ?? '',
+        expiresAt: raw.expires_at ?? raw.expiresAt ?? '',
+        autoRenew: raw.auto_renew ?? raw.autoRenew ?? false,
+        daysRemaining: raw.days_remaining ?? raw.daysRemaining
+          ?? (raw.expires_at
+            ? Math.max(0, Math.ceil((new Date(raw.expires_at).getTime() - Date.now()) / 86400000))
+            : 0),
+      }
+      currentSubscription.value = sub
+      return sub
     } catch (e) {
       error.value = '載入訂閱狀態失敗'
       return null

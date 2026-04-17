@@ -487,6 +487,7 @@ class SystemControlController extends Controller
                 'duration_days'  => (int) $p->duration_days,
                 'is_trial'       => (bool) $p->is_trial,
                 'is_active'      => (bool) $p->is_active,
+                'membership_level' => (int) ($p->membership_level ?? 2),
                 'promo' => [
                     'type'      => $p->promo_type ?? 'none',
                     'value'     => $p->promo_value ? (float) $p->promo_value : null,
@@ -512,11 +513,12 @@ class SystemControlController extends Controller
         }
 
         $data = $request->validate([
-            'name'           => 'sometimes|string|max:100',
-            'original_price' => 'sometimes|integer|min:1',
-            'duration_days'  => 'sometimes|integer|min:1',
-            'is_active'      => 'sometimes|boolean',
-            'promo_type'     => 'sometimes|in:none,percentage,fixed',
+            'name'             => 'sometimes|string|max:100',
+            'original_price'   => 'sometimes|integer|min:1',
+            'duration_days'    => 'sometimes|integer|min:1',
+            'is_active'        => 'sometimes|boolean',
+            'membership_level' => 'sometimes|integer|in:1,2,3',
+            'promo_type'       => 'sometimes|in:none,percentage,fixed',
             'promo_value'    => 'nullable|numeric|min:0',
             'promo_start_at' => 'nullable|date',
             'promo_end_at'   => 'nullable|date',
