@@ -64,7 +64,11 @@ class DatasetController extends Controller
                 Log::error('[Dataset] Reset failed', ['exit_code' => $exitCode, 'output' => $output]);
                 return response()->json([
                     'success' => false,
-                    'error' => ['code' => 'RESET_FAILED', 'message' => '清空失敗', 'detail' => $output],
+                    'error' => [
+                        'code' => 'RESET_FAILED',
+                        'message' => '清空失敗（exit ' . $exitCode . '）',
+                        'detail' => $output,
+                    ],
                 ], 500);
             }
 
@@ -79,7 +83,7 @@ class DatasetController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => ['message' => '資料庫已重置為乾淨狀態'],
+            'data' => ['message' => '資料庫已重置為乾淨狀態，uid=1 官方帳號已重建'],
         ]);
     }
 

@@ -63,7 +63,7 @@ class ResetToCleanState extends Command
             $deleted = DB::table('users')->where('id', '!=', 1)->delete();
             $this->line("  ✓ users (kept id=1, deleted {$deleted})");
 
-            // System demo account (always update to latest defaults)
+            // ── 重建 uid=1 官方示範帳號（每次 reset 都更新為最新預設值）──
             DB::table('users')->updateOrInsert(
                 ['id' => 1],
                 [
@@ -77,9 +77,9 @@ class ResetToCleanState extends Command
                     'weight'           => 55,
                     'occupation'       => '金融分析師',
                     'education'        => 'master',
-                    'bio'              => "台北都會區OL，金融碩士，現職為金融分析師。理性與感性並存的氣質，既能在數據與市場之間精準判斷，也帶著一絲從容與優雅。\n\n工作上，冷靜、專注、精準；在生活裡，則多了一分柔和與細膩。",
+                    'bio'              => "台北都會區OL，金融碩士，現職為金融分析師。理性與感性並存的氣質，既能在數據與市場之間精準判斷，也帶著一絲從容與優雅，讓人不自覺被吸引。\n\n工作上，冷靜、專注、精準；在生活裡，則多了一分柔和與細膩。習慣用理性掌控世界，卻也懂得在適當的時候，展現出屬於自己的溫柔與撫媚，讓人感受到一種恰到好處的距離。",
                     'email_verified'   => true,
-                    'phone_verified'   => false,
+                    'phone_verified'   => true,
                     'membership_level' => 3,
                     'credit_score'     => 100,
                     'status'           => 'active',
@@ -87,7 +87,11 @@ class ResetToCleanState extends Command
                     'updated_at'       => now(),
                 ],
             );
-            $this->line('  ✓ users id=1 (updated to latest defaults)');
+            $this->line('  ✓ uid=1 官方示範帳號已重建（admin@mimeet.club）');
+
+            // ── 驗證 uid=1 資料正確 ──
+            $u1 = DB::table('users')->where('id', 1)->first();
+            $this->line("  ✓ 驗證：email={$u1->email}, gender={$u1->gender}, membership_level={$u1->membership_level}");
         } finally {
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
@@ -114,7 +118,9 @@ class ResetToCleanState extends Command
 
         // Show summary
         $this->table(['Item', 'Status'], [
-            ['users.id=1 (系統帳號)', DB::table('users')->where('id', 1)->exists() ? '✅ exists' : '❌ missing'],
+            ['users.id=1 (官方示範帳號)', DB::table('users')->where('id', 1)->exists()
+                ? '✅ ' . DB::table('users')->where('id', 1)->value('email')
+                : '❌ missing'],
             ['admin_users', DB::table('admin_users')->count() . ' accounts'],
             ['subscription_plans', DB::table('subscription_plans')->count() . ' plans'],
             ['system_settings', DB::table('system_settings')->count() . ' entries'],

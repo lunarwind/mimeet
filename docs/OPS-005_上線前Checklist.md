@@ -27,6 +27,11 @@
 - [ ] php artisan db:seed --class=AdminPermissionsSeeder
 - [ ] php artisan db:seed --class=MemberLevelPermissionsSeeder
 
+### 2.1 資料庫清空功能驗證
+- [ ] 執行 `php artisan mimeet:reset --force` 確認清空功能正常
+- [ ] 確認 uid=1（admin@mimeet.club）資料正確重建
+- [ ] 確認 phone_verified=1, membership_level=3
+
 ## 3. 快取
 - [ ] php artisan config:cache
 - [ ] php artisan route:cache
