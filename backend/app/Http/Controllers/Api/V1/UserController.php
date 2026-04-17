@@ -34,14 +34,15 @@ class UserController extends Controller
             'bio' => 'sometimes|string|max:500',
             'avatar_url' => 'sometimes|string',
             'height' => 'sometimes|integer|min:100|max:250',
+            'weight' => 'sometimes|nullable|integer|min:30|max:200',
             'location' => 'sometimes|string|max:50',
             'occupation' => 'sometimes|string|max:50',
-            'education' => 'sometimes|string|in:high_school,bachelor,master,phd,other',
+            'education' => 'sometimes|nullable|string|in:high_school,associate,bachelor,master,phd,other',
             'interests' => 'sometimes|array',
         ]);
 
         $user = $request->user();
-        $fields = $request->only(['nickname', 'bio', 'avatar_url', 'height', 'location', 'occupation', 'education', 'interests']);
+        $fields = $request->only(['nickname', 'bio', 'avatar_url', 'height', 'weight', 'location', 'occupation', 'education', 'interests']);
         $user->update($fields);
 
         UserActivityLogService::logProfileUpdate($user->id, array_keys($fields), $request);
@@ -323,7 +324,7 @@ class UserController extends Controller
                     'avatar_url' => $user->avatar_url,
                     'city' => $user->location ?? '',
                     'height' => $user->height,
-                    'weight' => null,
+                    'weight' => $user->weight,
                     'job' => $user->occupation ?? '',
                     'education' => $user->education ?? '',
                     'introduction' => $user->bio ?? '',

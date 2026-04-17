@@ -21,6 +21,7 @@ const form = ref({
   height: null as number | null,
   weight: null as number | null,
   job: '',
+  education: '',
   introduction: '',
 })
 
@@ -71,6 +72,7 @@ async function loadProfile() {
       height: p.height ?? null,
       weight: p.weight ?? null,
       job: p.job ?? '',
+      education: p.education ?? '',
       introduction: p.introduction ?? '',
     }
     avatarUrl.value = p.avatar_url ?? null
@@ -179,7 +181,9 @@ async function saveProfile() {
       nickname: form.value.nickname,
       location: form.value.location,
       height: form.value.height,
+      weight: form.value.weight,
       occupation: form.value.job,
+      education: form.value.education,
       bio: form.value.introduction,
     })
     uiStore.showToast('資料已更新', 'success')
@@ -319,6 +323,19 @@ const settingsLinks = [
         <div class="field">
           <label class="field__label">職業</label>
           <input v-model="form.job" type="text" class="field__input" placeholder="例：軟體工程師" />
+        </div>
+
+        <div class="field">
+          <label class="field__label">學歷</label>
+          <select v-model="form.education" class="field__input">
+            <option value="">請選擇學歷</option>
+            <option value="high_school">高中 / 高職</option>
+            <option value="associate">專科</option>
+            <option value="bachelor">大學</option>
+            <option value="master">碩士</option>
+            <option value="phd">博士</option>
+            <option value="other">其他</option>
+          </select>
         </div>
 
         <div class="field">
