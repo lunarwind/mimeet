@@ -131,7 +131,7 @@ class AdminController extends Controller
                 'introduction' => $user->bio,
                 'location' => $user->location,
                 'height' => $user->height,
-                'weight' => null,
+                'weight' => $user->weight,
                 'job' => $user->occupation,
                 'education' => $user->education,
                 'level' => $user->membership_level ?? 0,

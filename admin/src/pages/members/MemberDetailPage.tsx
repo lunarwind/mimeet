@@ -153,6 +153,7 @@ export default function MemberDetailPage() {
       avatar_url: member.avatar,
       gender: member.gender,
       height: member.height,
+      weight: member.weight,
       location: member.location,
       occupation: member.job,
       education: member.education,
@@ -171,6 +172,7 @@ export default function MemberDetailPage() {
       if (values.avatar_url !== undefined) payload.avatar_url = values.avatar_url || null
       if (values.gender !== undefined) payload.gender = values.gender
       if (values.height !== undefined) payload.height = values.height || null
+      if (values.weight !== undefined) payload.weight = values.weight || null
       if (values.location !== undefined) payload.location = values.location || null
       if (values.occupation !== undefined) payload.occupation = values.occupation || null
       if (values.education !== undefined) payload.education = values.education || null
@@ -257,11 +259,11 @@ export default function MemberDetailPage() {
                         <Descriptions.Item label="性別">{member.gender === 'male' ? '男' : '女'}</Descriptions.Item>
                         <Descriptions.Item label="年齡">{member.age}</Descriptions.Item>
                         <Descriptions.Item label="生日">{member.birth_date}</Descriptions.Item>
-                        <Descriptions.Item label="地區">{member.location}</Descriptions.Item>
-                        <Descriptions.Item label="身高">{member.height} cm</Descriptions.Item>
-                        <Descriptions.Item label="體重">{member.weight} kg</Descriptions.Item>
-                        <Descriptions.Item label="職業">{member.job}</Descriptions.Item>
-                        <Descriptions.Item label="學歷">{member.education}</Descriptions.Item>
+                        <Descriptions.Item label="地區">{member.location || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="身高">{member.height ? `${member.height} cm` : '—'}</Descriptions.Item>
+                        <Descriptions.Item label="體重">{member.weight ? `${member.weight} kg` : '—'}</Descriptions.Item>
+                        <Descriptions.Item label="職業">{member.job || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="學歷">{member.education || '—'}</Descriptions.Item>
                         <Descriptions.Item label="Email" span={2}>{member.email}</Descriptions.Item>
                         <Descriptions.Item label="簡介" span={2}>{member.introduction}</Descriptions.Item>
                       </Descriptions>
@@ -469,6 +471,13 @@ export default function MemberDetailPage() {
                 <InputNumber min={100} max={250} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item name="weight" label="體重 (kg)">
+                <InputNumber min={30} max={200} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="location" label="居住地區">
                 <Input placeholder="台北市" />
