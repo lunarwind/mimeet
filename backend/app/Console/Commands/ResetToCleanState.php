@@ -63,23 +63,30 @@ class ResetToCleanState extends Command
             $deleted = DB::table('users')->where('id', '!=', 1)->delete();
             $this->line("  ✓ users (kept id=1, deleted {$deleted})");
 
-            // Ensure id=1 exists (re-create if somehow missing)
-            if (! DB::table('users')->where('id', 1)->exists()) {
-                DB::table('users')->insert([
-                    'id'               => 1,
-                    'email'            => 'system@mimeet.tw',
+            // System demo account (always update to latest defaults)
+            DB::table('users')->updateOrInsert(
+                ['id' => 1],
+                [
+                    'email'            => 'admin@mimmet.club',
                     'password'         => bcrypt('SYSTEM_ACCOUNT_DO_NOT_LOGIN'),
                     'nickname'         => 'MiMeet 官方',
-                    'gender'           => 'male',
+                    'gender'           => 'female',
+                    'birth_date'       => '2000-04-04',
+                    'location'         => '台北市',
+                    'height'           => 172,
+                    'occupation'       => '金融分析師',
+                    'education'        => 'master',
+                    'bio'              => "台北都會區OL，金融碩士，現職為金融分析師。理性與感性並存的氣質，既能在數據與市場之間精準判斷，也帶著一絲從容與優雅。\n\n工作上，冷靜、專注、精準；在生活裡，則多了一分柔和與細膩。",
                     'email_verified'   => true,
+                    'phone_verified'   => false,
                     'membership_level' => 3,
                     'credit_score'     => 100,
                     'status'           => 'active',
                     'created_at'       => now(),
                     'updated_at'       => now(),
-                ]);
-                $this->line('  ✓ re-created id=1 (was missing)');
-            }
+                ],
+            );
+            $this->line('  ✓ users id=1 (updated to latest defaults)');
         } finally {
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }

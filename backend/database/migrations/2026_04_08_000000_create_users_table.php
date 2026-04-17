@@ -43,10 +43,16 @@ return new class extends Migration
         // Seed system user id=1 — guaranteed to exist after any migrate:fresh
         DB::table('users')->insert([
             'id'               => 1,
-            'email'            => 'system@mimeet.tw',
+            'email'            => 'admin@mimmet.club',
             'password'         => bcrypt('SYSTEM_ACCOUNT_DO_NOT_LOGIN'),
             'nickname'         => 'MiMeet 官方',
-            'gender'           => 'male',
+            'gender'           => 'female',
+            'birth_date'       => '2000-04-04',
+            'location'         => '台北市',
+            'height'           => 172,
+            'occupation'       => '金融分析師',
+            'education'        => 'master',
+            'bio'              => '台北都會區OL，金融碩士，現職為金融分析師。理性與感性並存的氣質。',
             'email_verified'   => true,
             'membership_level' => 3,
             'credit_score'     => 100,
