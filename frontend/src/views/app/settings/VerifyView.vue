@@ -148,7 +148,7 @@ async function handleFileChange(e: Event) {
   try {
     const formData = new FormData()
     formData.append('photo', file)
-    const res = await client.post('/me/photos', formData, {
+    const res = await client.post('/users/me/photos', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     photoUrl.value = res.data?.data?.photo?.url ?? res.data?.data?.url ?? ''
