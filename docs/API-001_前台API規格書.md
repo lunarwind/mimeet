@@ -585,7 +585,7 @@ Content-Type: application/json
     "location": "新北市",
     "height": 165,
     "weight": 50,
-    "education": "4",
+    "education": "master",
     "job": "軟體工程師",
     "preferences": {
       "age_range": [25, 35],
@@ -701,7 +701,7 @@ Authorization: Bearer {access_token}
       "avatar_url": "https://cdn.mimeet.tw/avatars/123.webp",
       "city": "台北市",
       "job": "軟體工程師",
-      "education": "university",
+      "education": "bachelor",
       "introduction": "喜歡旅遊和攝影",
       "height": 165,
       "weight": 50
@@ -759,6 +759,7 @@ gender: male|female
 age_min: 18
 age_max: 35
 location: 台北市
+education: bachelor,master,phd
 credit_score_min: 60
 verified_only: true|false
 vip_only: true|false
