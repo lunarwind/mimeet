@@ -114,6 +114,14 @@ class ResetToCleanState extends Command
             $this->line('  ✓ admin_users re-seeded (' . DB::table('admin_users')->count() . ' accounts)');
         }
 
+        // Ensure subscription plans exist
+        if (DB::table('subscription_plans')->count() === 0) {
+            $this->warn('  ⚠ subscription_plans table is empty — re-seeding...');
+            Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\SubscriptionPlanSeeder', '--force' => true]);
+        } else {
+            $this->line('  ✓ subscription_plans: ' . DB::table('subscription_plans')->count() . ' plans (preserved)');
+        }
+
         // Clear cache
         try {
             Artisan::call('cache:clear');
