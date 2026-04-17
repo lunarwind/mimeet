@@ -174,7 +174,14 @@ async function saveProfile() {
   if (!isDirty.value) return
   isSaving.value = true
   try {
-    await (await import('@/api/client')).default.patch('/me/profile', form.value)
+    // Map frontend field names to backend column names
+    await apiClient.patch('/users/me', {
+      nickname: form.value.nickname,
+      location: form.value.location,
+      height: form.value.height,
+      occupation: form.value.job,
+      bio: form.value.introduction,
+    })
     uiStore.showToast('資料已更新', 'success')
     isDirty.value = false
   } catch {
