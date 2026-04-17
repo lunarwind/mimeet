@@ -150,11 +150,25 @@ class PaymentService
             ]);
 
             $plan = $order->plan;
+            $paidAt = $order->fresh()->paid_at;
+
+            // Capture the latest active expiry before deactivating, so early
+            // renewals extend from the existing end date instead of losing days.
+            $existingExpiry = Subscription::where('user_id', $order->user_id)
+                ->where('status', 'active')
+                ->where('expires_at', '>', $paidAt)
+                ->max('expires_at');
 
             // Deactivate old active subscriptions
             Subscription::where('user_id', $order->user_id)
                 ->where('status', 'active')
                 ->update(['status' => 'expired']);
+
+            // New subscription starts from whichever is later: payment time
+            // or the previous subscription's expiry (early renewal).
+            $startedAt = $existingExpiry
+                ? \Carbon\Carbon::parse($existingExpiry)
+                : $paidAt;
 
             // Create new subscription
             Subscription::create([
@@ -162,8 +176,8 @@ class PaymentService
                 'plan_id' => $plan->id,
                 'order_id' => $order->id,
                 'status' => 'active',
-                'started_at' => now(),
-                'expires_at' => now()->addDays($plan->duration_days),
+                'started_at' => $startedAt,
+                'expires_at' => $startedAt->copy()->addDays($plan->duration_days),
             ]);
 
             // Upgrade membership level
@@ -248,6 +262,7 @@ class PaymentService
             'auto_renew' => $sub->auto_renew,
             'started_at' => $sub->started_at->toISOString(),
             'expires_at' => $sub->expires_at->toISOString(),
+            'days_remaining' => (int) max(0, now()->diffInDays($sub->expires_at, false)),
             'membership_level' => $sub->plan->membership_level,
         ];
     }

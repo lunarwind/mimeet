@@ -62,7 +62,17 @@ class PaymentCallbackController extends Controller
         $tradeNo = $request->query('trade_no');
         $order = $this->paymentService->handleMockPayment($tradeNo);
 
-        // Redirect back to frontend shop page
+        // Return JSON when the client expects it (e.g. tests), redirect otherwise
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $order->status,
+                    'order_number' => $order->order_number,
+                ],
+            ]);
+        }
+
         $frontendUrl = rtrim(config('app.frontend_url', 'https://mimeet.online'), '/');
         return redirect($frontendUrl . '/#/app/shop?payment=success');
     }

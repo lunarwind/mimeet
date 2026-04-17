@@ -143,6 +143,79 @@ class PaymentTest extends TestCase
         ]);
     }
 
+    public function test_early_renewal_extends_from_existing_expiry(): void
+    {
+        $this->seedPlans();
+        $user = $this->createUser();
+        $plan = SubscriptionPlan::where('slug', 'plan_monthly')->first();
+
+        // Create an existing active subscription that expires in 5 days
+        $oldExpiresAt = now()->addDays(5);
+        Subscription::create([
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'order_id' => 0,
+            'status' => 'active',
+            'started_at' => now()->subDays(25),
+            'expires_at' => $oldExpiresAt,
+        ]);
+
+        // User buys the same plan again (early renewal)
+        $orderResp = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
+            'plan_id' => 'plan_monthly',
+        ]);
+        $orderNumber = $orderResp->json('data.order.order_number');
+
+        // Simulate payment
+        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
+
+        // The new subscription should extend from old expiry, not from now
+        $newSub = Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+        $this->assertNotNull($newSub);
+        $this->assertEquals(
+            $oldExpiresAt->startOfSecond()->toISOString(),
+            $newSub->started_at->startOfSecond()->toISOString(),
+            'New subscription should start at old expiry date'
+        );
+        $this->assertEquals(
+            $oldExpiresAt->copy()->addDays($plan->duration_days)->startOfSecond()->toISOString(),
+            $newSub->expires_at->startOfSecond()->toISOString(),
+            'New subscription should expire old_expiry + duration_days'
+        );
+
+        // Old subscription should be marked expired
+        $this->assertDatabaseHas('subscriptions', [
+            'user_id' => $user->id,
+            'status' => 'expired',
+        ]);
+    }
+
+    public function test_new_subscription_uses_paid_at_when_no_existing(): void
+    {
+        $this->seedPlans();
+        $user = $this->createUser();
+
+        $orderResp = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
+            'plan_id' => 'plan_monthly',
+        ]);
+        $orderNumber = $orderResp->json('data.order.order_number');
+
+        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
+
+        $order = Order::where('order_number', $orderNumber)->first();
+        $sub = Subscription::where('user_id', $user->id)->where('status', 'active')->first();
+
+        $this->assertNotNull($sub);
+        // started_at should match the order's paid_at
+        $this->assertEquals(
+            $order->paid_at->startOfSecond()->toISOString(),
+            $sub->started_at->startOfSecond()->toISOString(),
+        );
+    }
+
     public function test_unauthenticated_returns_401(): void
     {
         $response = $this->postJson('/api/v1/subscriptions/orders', [
