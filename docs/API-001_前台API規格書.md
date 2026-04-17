@@ -3738,57 +3738,54 @@ paths:
 
 > 本節整合自 DEV-008 Part A。
 
-### 16.1 統一上傳端點
+### 16.1 照片上傳端點
+
+> **⚠️ 實作說明：** 目前無統一 `/uploads` 端點。各類照片使用專用端點上傳。
+
+#### 個人相冊 / 驗證照片上傳
 
 ```
-POST /api/v1/uploads
+POST /api/v1/users/me/photos
+Authorization: Bearer {access_token}
+Content-Type: multipart/form-data
 ```
-
-**認證：** Bearer Token / Sanctum Cookie（已登入用戶）  
-**Content-Type：** `multipart/form-data`
 
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
-| `file` | File | 是 | 上傳的圖片檔案 |
-| `context` | string | 是 | 上傳用途（見下方列表） |
-| `post_uuid` | string | 條件必填 | context=post_image 時必填 |
+| `photo` | File | 是 | 圖片檔案（jpeg/png/gif/webp，最大 5MB） |
 
-**context 可選值：**
+> **注意：** 上傳 field name 為 `photo`（非 `file`）。
 
-| context | 說明 | 所需等級 |
-|---------|------|---------|
-| `avatar` | 用戶頭像 | 已登入 |
-| `profile_photo` | 個人相冊照片 | 已登入 |
-| `post_image` | 動態貼文圖片 | 驗證會員+ |
-| `verification_photo` | 進階驗證照片（女性） | 已登入 |
-| `report_image` | 回報佐證圖片 | 已登入 |
-
-所有 context 最大檔案 5 MB，格式限制及處理規則見 DEV-006 §6.2。
-
-**成功回應 200：**
+**成功回應 (201)：**
 ```json
 {
   "success": true,
   "data": {
-    "url": "https://cdn.mimeet.tw/photos/gallery/a1b2c3/img_1234567890.webp",
-    "original_filename": "photo.jpg",
-    "size_bytes": 524288,
-    "width": 1200,
-    "height": 900,
-    "context": "profile_photo"
+    "photo": {
+      "url": "https://api.mimeet.online/storage/photos/3/xxx.jpg",
+      "is_primary": false,
+      "created_at": "2026-04-18T10:00:00Z"
+    }
   }
 }
 ```
 
 **錯誤 422（格式/大小不符）：**
 ```json
-{ "success": false, "error": { "code": "4221", "message": "圖片驗證失敗", "detail": "檔案大小超過 5MB 限制" } }
+{ "success": false, "code": 422, "message": "檔案格式不合法（偽裝 MIME 偵測）" }
 ```
 
-**錯誤 451（AI 審核拒絕）：**
-```json
-{ "success": false, "error": { "code": "4510", "message": "圖片內容不符規範，請上傳適當的照片", "detail": null } }
+#### 頭像上傳
+
 ```
+POST /api/v1/users/me/avatars
+Authorization: Bearer {access_token}
+Content-Type: multipart/form-data
+```
+
+| 欄位 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `photo` | File | 是 | 圖片檔案（jpeg/png/webp，最大 5MB） |
 
 ---
 
@@ -3810,39 +3807,73 @@ DELETE /api/v1/uploads
 ### 16.3 取得驗證隨機碼（女性進階驗證）
 
 ```
-GET /api/v1/me/verification/photo-code
+POST /api/v1/me/verification-photo/request
+Authorization: Bearer {access_token}
 ```
+
+> 僅限女性會員（`gender=female`），已通過 Lv1.5 驗證者會回傳 422。
 
 **成功回應 200：**
 ```json
 {
   "success": true,
-  "data": { "code": "739284", "expires_at": "2025-01-15T10:10:00Z", "remaining_seconds": 487 }
+  "data": {
+    "verification_id": 42,
+    "random_code": "AB1C2D",
+    "expires_at": "2026-04-18T10:10:00Z",
+    "remaining_seconds": 600
+  }
 }
 ```
 
-> 每次呼叫重新生成 6 位數隨機碼，10 分鐘有效。
+> 每次呼叫重新生成 6 位英數隨機碼，10 分鐘有效。舊的 pending_code 自動過期。
 
 ---
 
 ### 16.4 提交驗證照片（女性進階驗證）
 
 ```
-POST /api/v1/me/verification/photo
+POST /api/v1/me/verification-photo/upload
+Authorization: Bearer {access_token}
+Content-Type: application/json
 ```
 
-流程：先呼叫 `POST /api/v1/uploads?context=verification_photo` 取得 URL，再提交此端點。
+**流程：**
+1. 先呼叫 `POST /api/v1/users/me/photos`（field: `photo`）上傳照片取得 URL
+2. 再呼叫此端點提交 URL + 隨機碼
 
 **Request Body：**
 ```json
-{ "photo_url": "https://cdn.mimeet.tw/verifications/a1b2c3/ts_photo.jpg", "random_code": "739284" }
+{ "photo_url": "https://api.mimeet.online/storage/photos/3/xxx.jpg", "random_code": "AB1C2D" }
 ```
 
 **成功回應 200：**
 ```json
 {
   "success": true,
-  "data": { "status": "pending", "message": "照片已送出，審核通常在 24 小時內完成", "submitted_at": "2025-01-15T10:00:00Z" }
+  "data": { "status": "pending_review", "message": "照片已送出，審核通常在 24 小時內完成", "submitted_at": "2026-04-18T10:00:00Z" }
+}
+```
+
+---
+
+### 16.5 查詢驗證狀態
+
+```
+GET /api/v1/me/verification-photo/status
+Authorization: Bearer {access_token}
+```
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "pending_review",
+    "submitted_at": "2026-04-18T10:00:00Z",
+    "reviewed_at": null,
+    "reject_reason": null
+  }
 }
 ```
 
