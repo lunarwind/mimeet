@@ -7,7 +7,7 @@ import client from '@/api/client'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 3)
+const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
 
 interface Visitor {
   id: number

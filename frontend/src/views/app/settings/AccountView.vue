@@ -34,7 +34,7 @@ const isDirty = ref(false)
 const isSaving = ref(false)
 
 const introLength = computed(() => form.value.introduction.length)
-const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 3)
+const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
 
 // 隱私設定
 const stealthMode = ref(false)

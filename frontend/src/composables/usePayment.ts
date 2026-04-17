@@ -22,7 +22,7 @@ export function usePayment() {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 3)
+  const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
   const isExpiringSoon = computed(() => {
     if (!currentSubscription.value) return false
     return currentSubscription.value.daysRemaining <= 7
