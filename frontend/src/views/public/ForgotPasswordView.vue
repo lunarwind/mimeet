@@ -57,7 +57,7 @@ function tryAgain() {
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
       </button>
-      <MiMeetLogo size="md" />
+      <MiMeetLogo size="md" clickable />
       <div class="placeholder" />
     </header>
 

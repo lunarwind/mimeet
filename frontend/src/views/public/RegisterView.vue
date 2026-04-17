@@ -312,7 +312,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
       </button>
       <div v-else class="back-btn-placeholder" />
 
-      <MiMeetLogo size="md" />
+      <MiMeetLogo size="md" clickable />
 
       <div class="back-btn-placeholder" />
     </header>

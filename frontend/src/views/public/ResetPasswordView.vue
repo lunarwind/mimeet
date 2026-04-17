@@ -80,7 +80,7 @@ function goForgot() { router.push('/forgot-password') }
     <!-- Topbar -->
     <header class="rp-topbar">
       <div class="placeholder" />
-      <MiMeetLogo size="md" />
+      <MiMeetLogo size="md" clickable />
       <div class="placeholder" />
     </header>
 

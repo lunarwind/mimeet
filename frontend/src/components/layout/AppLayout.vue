@@ -15,7 +15,7 @@
             <path d="m15 18-6-6 6-6" />
           </svg>
         </button>
-        <span class="top-bar-title">{{ title }}</span>
+        <span class="top-bar-title" :class="{ 'top-bar-title--clickable': title === 'MiMeet' }" @click="handleTitleClick">{{ title }}</span>
       </div>
       <div class="top-bar-right">
         <slot name="topbar-right" />
@@ -34,11 +34,13 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import BottomNav from './BottomNav.vue'
 
 const router = useRouter()
+const auth = useAuthStore()
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title?: string
     showBack?: boolean
@@ -48,6 +50,15 @@ withDefaults(
     showBack: false,
   },
 )
+
+function handleTitleClick() {
+  if (props.title !== 'MiMeet') return
+  if (auth.isLoggedIn && auth.user?.email_verified) {
+    router.push('/app/explore')
+  } else {
+    router.push('/login')
+  }
+}
 </script>
 
 <style scoped>
@@ -82,6 +93,10 @@ withDefaults(
   font-weight: 500;
   color: #111827;
   font-family: 'Noto Sans TC', sans-serif;
+}
+
+.top-bar-title--clickable {
+  cursor: pointer;
 }
 
 .back-btn {
