@@ -3,6 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { forgotPassword } from '@/api/auth'
 import { validateEmail } from '@/utils/validators'
+import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 
 const router = useRouter()
 
@@ -56,7 +57,7 @@ function tryAgain() {
           <path d="M19 12H5M12 5l-7 7 7 7"/>
         </svg>
       </button>
-      <span class="fp-logo">MiMeet</span>
+      <MiMeetLogo size="md" />
       <div class="placeholder" />
     </header>
 

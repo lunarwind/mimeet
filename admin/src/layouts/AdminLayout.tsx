@@ -19,6 +19,7 @@ import {
   SoundOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
+import MiMeetLogo from '../components/MiMeetLogo'
 import type { AdminRole } from '../types/admin'
 
 const { Header, Sider, Content } = Layout
@@ -110,9 +111,10 @@ export default function AdminLayout() {
       >
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           {!collapsed ? (
-            <Text strong style={{ color: '#fff', fontSize: 18 }}>
-              <span style={{ color: '#F0294E' }}>Mi</span>Meet Admin
-            </Text>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+              <MiMeetLogo variant="dark" size="sm" />
+              <span style={{ color: '#fff', fontSize: 13, marginLeft: 4, fontWeight: 400 }}>Admin</span>
+            </span>
           ) : (
             <Text strong style={{ color: '#F0294E', fontSize: 20 }}>M</Text>
           )}

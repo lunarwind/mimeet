@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { login } from '@/api/auth'
 import { validateEmail, validatePassword } from '@/utils/validators'
+import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -131,7 +132,7 @@ function goLanding() { router.push('/') }
 
       <!-- Logo + 標題 -->
       <div class="login-header">
-        <div class="logo" @click="goLanding">MiMeet</div>
+        <div class="logo" @click="goLanding"><MiMeetLogo size="lg" /></div>
         <h1 class="login-title">歡迎回來</h1>
         <p class="login-subtitle">登入你的 MiMeet 帳號</p>
       </div>

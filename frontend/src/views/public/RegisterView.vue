@@ -3,6 +3,7 @@ import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, verifyEmail, resendVerification } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 import {
   validateEmail,
   validatePassword,
@@ -311,7 +312,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
       </button>
       <div v-else class="back-btn-placeholder" />
 
-      <span class="reg-logo">MiMeet</span>
+      <MiMeetLogo size="md" />
 
       <div class="back-btn-placeholder" />
     </header>

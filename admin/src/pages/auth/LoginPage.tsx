@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
-import { Card, Form, Input, Button, Alert, Typography } from 'antd'
+import { Card, Form, Input, Button, Alert } from 'antd'
+import { Typography } from 'antd'
 import { MailOutlined, LockOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
+import MiMeetLogo from '../../components/MiMeetLogo'
 import apiClient from '../../api/client'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -69,9 +71,9 @@ export default function LoginPage() {
     >
       <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Title level={3} style={{ marginBottom: 4 }}>
-            <span style={{ color: '#F0294E' }}>Mi</span>Meet
-          </Title>
+          <div style={{ marginBottom: 4 }}>
+            <MiMeetLogo variant="light" size="lg" />
+          </div>
           <Text type="secondary">後台管理系統</Text>
         </div>
 

@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { resetPassword } from '@/api/auth'
 import { validatePassword, validatePasswordConfirm, getPasswordStrength } from '@/utils/validators'
+import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -79,7 +80,7 @@ function goForgot() { router.push('/forgot-password') }
     <!-- Topbar -->
     <header class="rp-topbar">
       <div class="placeholder" />
-      <span class="rp-logo">MiMeet</span>
+      <MiMeetLogo size="md" />
       <div class="placeholder" />
     </header>
 
