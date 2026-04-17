@@ -118,14 +118,14 @@ class SendBroadcastJob implements ShouldQueue
             'sent_at' => now(),
         ]);
 
-        $unreadCol = $conversation->user_a_id === $systemUserId
-            ? 'unread_count_b'
-            : 'unread_count_a';
+        $isSystemA = $conversation->user_a_id === $systemUserId;
 
-        $conversation->update([
+        DB::table('conversations')->where('id', $conversation->id)->update([
             'last_message_id' => $message->id,
             'last_message_at' => now(),
-            $unreadCol => DB::raw("{$unreadCol} + 1"),
+            ($isSystemA ? 'unread_count_b' : 'unread_count_a') => DB::raw(
+                ($isSystemA ? 'unread_count_b' : 'unread_count_a') . ' + 1'
+            ),
         ]);
     }
 
