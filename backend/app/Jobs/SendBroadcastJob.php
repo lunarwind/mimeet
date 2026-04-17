@@ -53,12 +53,11 @@ class SendBroadcastJob implements ShouldQueue
                     if ($mode === 'notification' || $mode === 'both') {
                         DB::table('notifications')->insert([
                             'user_id' => $user->id,
-                            'type' => 'broadcast',
+                            'type' => 'system',
                             'title' => $this->campaign->title,
                             'body' => $this->campaign->content,
                             'is_read' => false,
                             'created_at' => now(),
-                            'updated_at' => now(),
                         ]);
                     }
 
