@@ -24,7 +24,7 @@
 
     <!-- 主內容區 -->
     <main class="main-content">
-      <router-view />
+      <slot />
     </main>
 
     <!-- 底部導覽 -->

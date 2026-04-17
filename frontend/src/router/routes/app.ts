@@ -1,10 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
-import AppLayout from '@/components/layout/AppLayout.vue'
+import AppShell from '@/components/layout/AppShell.vue'
 
 export const appRoutes: RouteRecordRaw[] = [
   {
     path: '/app',
-    component: AppLayout,
+    component: AppShell,
     meta: { requiresAuth: true },
     children: [
       {
