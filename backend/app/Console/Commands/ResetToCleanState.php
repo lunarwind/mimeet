@@ -74,6 +74,7 @@ class ResetToCleanState extends Command
                     'birth_date'       => '2000-04-04',
                     'location'         => '台北市',
                     'height'           => 172,
+                    'weight'           => 55,
                     'occupation'       => '金融分析師',
                     'education'        => 'master',
                     'bio'              => "台北都會區OL，金融碩士，現職為金融分析師。理性與感性並存的氣質，既能在數據與市場之間精準判斷，也帶著一絲從容與優雅。\n\n工作上，冷靜、專注、精準；在生活裡，則多了一分柔和與細膩。",

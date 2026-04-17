@@ -41,6 +41,7 @@ class User extends Authenticatable
         'avatar_slots',
         'bio',
         'height',
+        'weight',
         'location',
         'occupation',
         'education',
