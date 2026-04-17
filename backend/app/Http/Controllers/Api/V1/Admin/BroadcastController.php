@@ -99,11 +99,25 @@ class BroadcastController extends Controller
 
         $campaign->update(['status' => 'sending']);
 
-        SendBroadcastJob::dispatch($campaign);
+        // Use dispatchSync so it runs immediately (no queue worker needed)
+        try {
+            SendBroadcastJob::dispatchSync($campaign);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[Broadcast] Send failed', [
+                'campaign_id' => $campaign->id,
+                'error' => $e->getMessage(),
+            ]);
+            $campaign->update(['status' => 'failed']);
+
+            return response()->json([
+                'success' => false,
+                'message' => '發送失敗：' . $e->getMessage(),
+            ], 500);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => '廣播已開始發送',
+            'message' => '廣播已發送完成',
             'data' => ['broadcast' => $campaign->fresh()],
         ]);
     }
