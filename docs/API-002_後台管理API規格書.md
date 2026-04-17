@@ -1884,43 +1884,7 @@ PATCH /api/v1/admin/verifications/{id}
 
 ### 10.C 廣播訊息 API（Sprint 11 新增）
 
-> 所需權限：`admin` 以上
-
-#### 取得廣播列表
-
-```
-GET /api/v1/admin/broadcasts
-```
-
-**Query 參數：** `status`（draft/sending/completed/failed）、`page`
-
----
-
-#### 建立廣播草稿
-
-```
-POST /api/v1/admin/broadcasts
-```
-
-建立後狀態為 `draft`，需呼叫 send 端點才會實際發送。
-
----
-
-#### 取得廣播詳情
-
-```
-GET /api/v1/admin/broadcasts/{id}
-```
-
----
-
-#### 觸發發送廣播
-
-```
-POST /api/v1/admin/broadcasts/{id}/send
-```
-
-> 只有 `status=draft` 的廣播可執行。非同步以 Queue Job 批次發出。
+> 詳見 §13 廣播管理 API。
 
 ---
 
@@ -2217,26 +2181,44 @@ DELETE /api/v1/admin/anon-chat/messages/{id}
 GET /api/v1/admin/broadcasts
 ```
 
-**Query 參數：** `status`（draft/sending/completed/failed）、`page`
+**Query 參數：** `status`（`draft` / `sending` / `completed` / `failed`）、`page`、`per_page`
 
 **成功回應 200：**
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "id": 1,
-      "title": "農曆新年活動通知",
-      "delivery_mode": "both",
-      "status": "completed",
-      "target_count": 1234,
-      "sent_count": 1231,
-      "created_by": "Super Admin",
-      "completed_at": "2025-01-15T10:05:00Z"
-    }
-  ]
+  "data": {
+    "broadcasts": [
+      {
+        "id": 1,
+        "title": "農曆新年活動通知",
+        "content": "MiMeet 新年快樂！",
+        "delivery_mode": "both",
+        "filters": { "gender": "all" },
+        "status": "completed",
+        "target_count": 1234,
+        "sent_count": 1231,
+        "created_by": 1,
+        "completed_at": "2026-01-15T10:05:00Z",
+        "created_at": "2026-01-15T10:00:00Z"
+      }
+    ]
+  },
+  "pagination": { "current_page": 1, "per_page": 20, "total": 3, "total_pages": 1 }
 }
 ```
+
+**欄位說明：**
+
+| 欄位 | 說明 |
+|------|------|
+| `delivery_mode` | `notification`（站內通知）/ `dm`（私訊）/ `both`（通知 + 私訊） |
+| `filters` | JSON 篩選條件，包含 `gender`（`all`/`male`/`female`）、`level_min`、`level_max`、`credit_min`、`credit_max` |
+| `status` | `draft`（草稿）/ `sending`（發送中）/ `completed`（已完成）/ `failed`（失敗） |
+| `target_count` | 符合篩選條件的目標人數（建立時計算） |
+| `sent_count` | 實際已發送數 |
+
+> **注意：** 目標性別不是頂層欄位 `target_gender`，而是 `filters.gender`。
 
 ---
 
@@ -2244,30 +2226,53 @@ GET /api/v1/admin/broadcasts
 
 ```
 POST /api/v1/admin/broadcasts
+Content-Type: application/json
 ```
 
 **請求參數：**
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `title` | 是 | 標題（max 200） |
+| `content` | 是 | 內容 |
+| `delivery_mode` | 是 | `notification` / `dm` / `both` |
+| `filters` | 否 | 篩選條件 JSON |
+| `filters.gender` | 否 | `all`（預設）/ `male` / `female` |
+| `filters.level_min` | 否 | 最低會員等級（0-3） |
+| `filters.level_max` | 否 | 最高會員等級（0-3） |
+| `filters.credit_min` | 否 | 最低誠信分數（0-100） |
+| `filters.credit_max` | 否 | 最高誠信分數（0-100） |
+
 ```json
 {
   "title": "農曆新年活動通知",
   "content": "MiMeet 新年快樂！即日起至 2/14，新訂閱享 85 折優惠。",
   "delivery_mode": "both",
-  "target_gender": "all",
-  "target_level": "all",
-  "target_credit_min": 31,
-  "target_credit_max": 100,
-  "scheduled_at": null
+  "filters": {
+    "gender": "all",
+    "credit_min": 31
+  }
 }
 ```
 
-> `delivery_mode` 預設值從 `system_settings.broadcast.delivery_mode` 取得，可覆蓋。  
-> `scheduled_at` 為 null 表示立即發送（建立後呼叫 send 端點）。
+> 建立後狀態為 `draft`，需呼叫 send 端點才會實際發送。
 
 **成功回應 201：**
 ```json
 {
   "success": true,
-  "data": { "id": 2, "status": "draft", "target_count": 982 }
+  "data": {
+    "broadcast": {
+      "id": 2,
+      "title": "農曆新年活動通知",
+      "delivery_mode": "both",
+      "filters": { "gender": "all", "credit_min": 31 },
+      "status": "draft",
+      "target_count": 982,
+      "created_by": 1,
+      "created_at": "2026-01-15T10:00:00Z"
+    }
+  }
 }
 ```
 
