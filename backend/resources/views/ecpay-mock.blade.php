@@ -100,8 +100,8 @@
       </div>
     </div>
 
-    <a class="btn-pay" href="{{ $confirmUrl }}">確認付款</a>
-    <a class="btn-cancel" href="{{ $cancelUrl }}">取消</a>
+    <a class="btn-pay" href="{!! $confirmUrl !!}">確認付款</a>
+    <a class="btn-cancel" href="{!! $cancelUrl !!}">取消</a>
 
     <div class="footer">此為測試環境，信用卡資料不會被儲存或傳送至銀行</div>
   </div>
