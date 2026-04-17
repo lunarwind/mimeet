@@ -149,12 +149,25 @@ class PaymentTest extends TestCase
         $user = $this->createUser();
         $plan = SubscriptionPlan::where('slug', 'plan_monthly')->first();
 
+        // Create a paid order to satisfy FK on the existing subscription
+        $existingOrder = Order::create([
+            'order_number' => 'MM_OLD_ORDER',
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'amount' => $plan->price,
+            'currency' => 'TWD',
+            'payment_method' => 'credit_card',
+            'status' => 'paid',
+            'paid_at' => now()->subDays(25),
+            'expires_at' => now(),
+        ]);
+
         // Create an existing active subscription that expires in 5 days
         $oldExpiresAt = now()->addDays(5);
         Subscription::create([
             'user_id' => $user->id,
             'plan_id' => $plan->id,
-            'order_id' => 0,
+            'order_id' => $existingOrder->id,
             'status' => 'active',
             'started_at' => now()->subDays(25),
             'expires_at' => $oldExpiresAt,
