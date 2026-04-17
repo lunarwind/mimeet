@@ -1888,20 +1888,22 @@ GET /api/v1/subscription/plans
 
 #### 7.1.2 創建訂閱訂單
 ```http
-POST /api/v1/subscription/orders
+POST /api/v1/subscriptions/orders
 Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
 
 **請求參數：**
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `plan_id` | 是 | 方案 slug（`plan_weekly` / `plan_monthly` / `plan_quarterly` / `plan_yearly`） |
+| `payment_method` | 否 | 付款方式，預設 `credit_card`（可選：`credit_card` / `atm` / `cvs`） |
+
 ```json
 {
-  "data": {
-    "plan_id": 2,
-    "payment_method": "green_world",
-    "return_url": "https://app.example.com/subscription/callback",
-    "discount_code": "FIRST_TIME_50"
-  }
+  "plan_id": "plan_monthly",
+  "payment_method": "credit_card"
 }
 ```
 
@@ -1910,25 +1912,28 @@ Content-Type: application/json
 {
   "success": true,
   "code": 201,
-  "message": "訂單創建成功",
+  "message": "訂單已建立",
   "data": {
     "order": {
-      "id": "order_1234567890",
-      "plan_id": 2,
-      "original_amount": 799,
-      "discount_amount": 50,
-      "final_amount": 749,
-      "currency": "TWD",
-      "status": "pending_payment",
-      "expires_at": "2024-12-20T11:30:00Z"
+      "id": 42,
+      "order_number": "MM20260417123456ABCD",
+      "amount": 599,
+      "status": "pending",
+      "expires_at": "2026-04-17T13:00:00Z"
     },
-    "payment": {
-      "payment_url": "https://payment.greenworld.com.tw/...",
-      "payment_method": "green_world"
-    }
+    "payment_url": "https://api.mimeet.online/api/v1/payments/ecpay/checkout/{token}"
   }
 }
 ```
+
+> **前台處理：** 收到 `payment_url` 後，用 `window.location.href = payment_url`
+> 跳轉（不用 Vue Router，因為是跨域外部 URL）。
+>
+> **Sandbox 模式：** `payment_url` 為 mock 端點，訪問後模擬付款完成，
+> 自動跳轉回 `https://mimeet.online/#/app/shop?payment=success`。
+>
+> **Production 模式：** `payment_url` 為 checkout 端點，
+> 提供自動 POST 表單跳轉至綠界付款頁面（信用卡輸入界面）。
 
 #### 7.1.3 獲取訂閱狀態
 ```http

@@ -27,10 +27,18 @@ class PaymentCallbackController extends Controller
      */
     public function returnUrl(Request $request): Response
     {
-        // Redirect user back to frontend
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $frontendUrl = rtrim(
+            config('app.frontend_url', env('FRONTEND_URL', 'https://mimeet.online')),
+            '/',
+        );
+        $redirectUrl = $frontendUrl . '/#/app/shop?payment=complete';
+
         return response(
-            '<html><head><meta http-equiv="refresh" content="0;url=' . $frontendUrl . '/#/app/shop?payment=complete"></head></html>',
+            '<html><head><meta charset="utf-8">'
+            . '<meta http-equiv="refresh" content="0;url=' . e($redirectUrl) . '">'
+            . '</head><body><p>正在跳轉...</p>'
+            . '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>'
+            . '</body></html>',
             200,
         )->header('Content-Type', 'text/html');
     }
@@ -60,10 +68,10 @@ class PaymentCallbackController extends Controller
         }
 
         $tradeNo = $request->query('trade_no');
-        $order = $this->paymentService->handleMockPayment($tradeNo);
 
-        // Return JSON when the client expects it (e.g. tests), redirect otherwise
+        // Return JSON when the client expects it (e.g. tests)
         if ($request->expectsJson()) {
+            $order = $this->paymentService->handleMockPayment($tradeNo);
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -73,7 +81,29 @@ class PaymentCallbackController extends Controller
             ]);
         }
 
-        $frontendUrl = rtrim(config('app.frontend_url', 'https://mimeet.online'), '/');
-        return redirect($frontendUrl . '/#/app/shop?payment=success');
+        // Browser flow: process payment then redirect back to frontend
+        try {
+            $this->paymentService->handleMockPayment($tradeNo);
+            $status = 'success';
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[ECPay Mock] Failed', ['error' => $e->getMessage()]);
+            $status = 'failed';
+        }
+
+        $frontendUrl = rtrim(
+            config('app.frontend_url', env('FRONTEND_URL', 'https://mimeet.online')),
+            '/',
+        );
+        $redirectUrl = $frontendUrl . '/#/app/shop?payment=' . $status;
+
+        // Use HTML meta refresh + JS to handle hash-mode routing correctly
+        return response(
+            '<html><head><meta charset="utf-8">'
+            . '<meta http-equiv="refresh" content="0;url=' . e($redirectUrl) . '">'
+            . '</head><body><p>正在跳轉...</p>'
+            . '<script>window.location.href=' . json_encode($redirectUrl) . ';</script>'
+            . '</body></html>',
+            200,
+        )->header('Content-Type', 'text/html');
     }
 }

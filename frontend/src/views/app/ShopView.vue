@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { usePayment } from '@/composables/usePayment'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import client from '@/api/client'
 import type { SubscriptionPlan } from '@/types/payment'
 
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 const {
@@ -20,48 +20,81 @@ const {
   isLoading,
   fetchPlans,
   fetchCurrentSubscription,
-  createOrder,
   toggleAutoRenew,
 } = usePayment()
 
 const showConfirmModal = ref(false)
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const autoRenewChecked = ref(true)
+const selectedPaymentMethod = ref<'credit_card' | 'atm' | 'cvs'>('credit_card')
+const isSubmitting = ref(false)
+
+const PAYMENT_METHODS = [
+  { value: 'credit_card' as const, label: '信用卡', icon: '💳', desc: '綠界金流（Visa / Master / JCB）' },
+]
 
 onMounted(async () => {
   await Promise.all([fetchPlans(), fetchCurrentSubscription()])
 
-  // Detect payment return
-  if (route.query.payment === 'success') {
+  // Detect payment return (hash mode: params are after #/app/shop?)
+  const hashParams = new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+  const paymentStatus = hashParams.get('payment')
+
+  if (paymentStatus === 'success') {
     uiStore.showToast('付款成功！訂閱已啟用', 'success')
+    // Re-fetch user to update membership_level
+    try {
+      const { getMe } = await import('@/api/auth')
+      const data = await getMe()
+      authStore.setUser(data.user)
+    } catch { /* ignore */ }
     await fetchCurrentSubscription()
-  } else if (route.query.payment === 'complete') {
+    window.history.replaceState({}, '', window.location.pathname + window.location.hash.split('?')[0])
+  } else if (paymentStatus === 'complete') {
     uiStore.showToast('付款處理中，請稍候...', 'info')
     await fetchCurrentSubscription()
+    window.history.replaceState({}, '', window.location.pathname + window.location.hash.split('?')[0])
   }
 })
 
 function selectPlan(plan: SubscriptionPlan) {
   selectedPlan.value = plan
   autoRenewChecked.value = true
+  selectedPaymentMethod.value = 'credit_card'
   showConfirmModal.value = true
 }
 
 async function confirmPurchase() {
-  if (!selectedPlan.value) return
-  const plan = selectedPlan.value as any
-  const slug = plan.slug ?? plan.type ?? plan.id
-  const result = await createOrder(slug)
-  showConfirmModal.value = false
-  if (result) {
-    const url = (result as any).payment_url ?? (result as any).orderUrl
-    if (url) {
-      window.location.href = url
-    } else {
-      uiStore.showToast('無法取得付款連結', 'error')
+  if (!selectedPlan.value || isSubmitting.value) return
+  isSubmitting.value = true
+
+  try {
+    const plan = selectedPlan.value
+    const slug = plan.slug ?? plan.type ?? plan.id
+
+    const res = await client.post('/subscriptions/orders', {
+      plan_id: slug,
+      payment_method: selectedPaymentMethod.value,
+    })
+
+    showConfirmModal.value = false
+
+    const data = res.data?.data ?? {}
+    const paymentUrl = data.payment_url ?? null
+
+    if (!paymentUrl) {
+      uiStore.showToast('無法取得付款連結，請稍後再試', 'error')
+      return
     }
-  } else {
-    uiStore.showToast('建立訂單失敗', 'error')
+
+    // External URL — use window.location.href (not Vue Router)
+    window.location.href = paymentUrl
+  } catch (err: any) {
+    showConfirmModal.value = false
+    const msg = err.response?.data?.message ?? '建立訂單失敗，請稍後再試'
+    uiStore.showToast(msg, 'error')
+  } finally {
+    isSubmitting.value = false
   }
 }
 
@@ -178,6 +211,28 @@ const PAID_FEATURES = [
           <template v-if="selectedPlan">
             <div class="modal-card__plan">{{ selectedPlan.name }}</div>
             <div class="modal-card__amount">NT${{ formatPrice(selectedPlan.price) }}</div>
+
+            <!-- 金流選擇 -->
+            <div class="modal-card__section">
+              <div class="modal-card__section-title">付款方式</div>
+              <div
+                v-for="pm in PAYMENT_METHODS"
+                :key="pm.value"
+                class="payment-method-row"
+                :class="{ 'payment-method-row--selected': selectedPaymentMethod === pm.value }"
+                @click="selectedPaymentMethod = pm.value"
+              >
+                <span class="payment-method-row__icon">{{ pm.icon }}</span>
+                <div class="payment-method-row__info">
+                  <span class="payment-method-row__label">{{ pm.label }}</span>
+                  <span class="payment-method-row__desc">{{ pm.desc }}</span>
+                </div>
+                <div class="payment-method-row__check">
+                  <span v-if="selectedPaymentMethod === pm.value">✓</span>
+                </div>
+              </div>
+            </div>
+
             <label class="modal-card__check">
               <input type="checkbox" v-model="autoRenewChecked" />
               <span>到期後自動續訂</span>
@@ -185,8 +240,8 @@ const PAID_FEATURES = [
           </template>
           <div class="modal-card__actions">
             <button class="btn-secondary" @click="showConfirmModal = false">取消</button>
-            <button class="btn-primary" :disabled="isLoading" @click="confirmPurchase">
-              {{ isLoading ? '處理中...' : '確認付款' }}
+            <button class="btn-primary" :disabled="isSubmitting" @click="confirmPurchase">
+              {{ isSubmitting ? '處理中...' : '確認付款' }}
             </button>
           </div>
         </div>
@@ -254,9 +309,21 @@ const PAID_FEATURES = [
 .modal-card__title { font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 16px; }
 .modal-card__plan { font-size: 16px; font-weight: 600; color: #374151; }
 .modal-card__amount { font-size: 28px; font-weight: 800; color: #F0294E; margin: 8px 0 16px; }
+.modal-card__section { margin-bottom: 16px; text-align: left; }
+.modal-card__section-title { font-size: 13px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 .modal-card__check { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; color: #374151; margin-bottom: 20px; cursor: pointer; }
 .modal-card__check input { accent-color: #F0294E; width: 18px; height: 18px; }
 .modal-card__actions { display: flex; gap: 10px; }
+
+/* ── Payment method selector ── */
+.payment-method-row { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; border: 1.5px solid #E5E7EB; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.payment-method-row--selected { border-color: #F0294E; background: #FFF5F7; }
+.payment-method-row__icon { font-size: 20px; }
+.payment-method-row__info { flex: 1; display: flex; flex-direction: column; }
+.payment-method-row__label { font-size: 14px; font-weight: 600; color: #111827; }
+.payment-method-row__desc { font-size: 12px; color: #9CA3AF; }
+.payment-method-row__check { width: 20px; height: 20px; border-radius: 50%; background: #F0294E; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0; }
+.payment-method-row--selected .payment-method-row__check { opacity: 1; }
 
 /* ── Buttons ── */
 .btn-primary { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #F0294E; color: white; font-size: 15px; font-weight: 600; cursor: pointer; }
