@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { usePayment } from '@/composables/usePayment'
 import { useAuthStore } from '@/stores/auth'
@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import type { SubscriptionPlan } from '@/types/payment'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
 const {
@@ -29,6 +30,15 @@ const autoRenewChecked = ref(true)
 
 onMounted(async () => {
   await Promise.all([fetchPlans(), fetchCurrentSubscription()])
+
+  // Detect payment return
+  if (route.query.payment === 'success') {
+    uiStore.showToast('付款成功！訂閱已啟用', 'success')
+    await fetchCurrentSubscription()
+  } else if (route.query.payment === 'complete') {
+    uiStore.showToast('付款處理中，請稍候...', 'info')
+    await fetchCurrentSubscription()
+  }
 })
 
 function selectPlan(plan: SubscriptionPlan) {
@@ -39,10 +49,17 @@ function selectPlan(plan: SubscriptionPlan) {
 
 async function confirmPurchase() {
   if (!selectedPlan.value) return
-  const result = await createOrder(selectedPlan.value.type)
+  const plan = selectedPlan.value as any
+  const slug = plan.slug ?? plan.type ?? plan.id
+  const result = await createOrder(slug)
   showConfirmModal.value = false
   if (result) {
-    window.location.href = result.orderUrl
+    const url = (result as any).payment_url ?? (result as any).orderUrl
+    if (url) {
+      window.location.href = url
+    } else {
+      uiStore.showToast('無法取得付款連結', 'error')
+    }
   } else {
     uiStore.showToast('建立訂單失敗', 'error')
   }

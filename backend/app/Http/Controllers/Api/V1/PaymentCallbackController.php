@@ -53,7 +53,7 @@ class PaymentCallbackController extends Controller
     /**
      * GET /api/v1/payments/ecpay/mock — Sandbox mock payment (dev only)
      */
-    public function mock(Request $request): \Illuminate\Http\JsonResponse
+    public function mock(Request $request): mixed
     {
         if (config('app.env') === 'production') {
             abort(404);
@@ -62,14 +62,8 @@ class PaymentCallbackController extends Controller
         $tradeNo = $request->query('trade_no');
         $order = $this->paymentService->handleMockPayment($tradeNo);
 
-        return response()->json([
-            'success' => true,
-            'code' => 200,
-            'message' => '模擬付款成功',
-            'data' => [
-                'order_number' => $order->order_number,
-                'status' => $order->status,
-            ],
-        ]);
+        // Redirect back to frontend shop page
+        $frontendUrl = rtrim(config('app.frontend_url', 'https://mimeet.online'), '/');
+        return redirect($frontendUrl . '/#/app/shop?payment=success');
     }
 }
