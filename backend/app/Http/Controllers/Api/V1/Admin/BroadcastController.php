@@ -99,25 +99,16 @@ class BroadcastController extends Controller
 
         $campaign->update(['status' => 'sending']);
 
-        // Use dispatchSync so it runs immediately (no queue worker needed)
-        try {
-            SendBroadcastJob::dispatchSync($campaign);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[Broadcast] Send failed', [
-                'campaign_id' => $campaign->id,
-                'error' => $e->getMessage(),
-            ]);
-            $campaign->update(['status' => 'failed']);
+        // Async dispatch — processed by Supervisor-managed queue worker
+        SendBroadcastJob::dispatch($campaign);
 
-            return response()->json([
-                'success' => false,
-                'message' => '發送失敗：' . $e->getMessage(),
-            ], 500);
-        }
+        \Illuminate\Support\Facades\Log::info('[Broadcast] Campaign dispatched to queue', [
+            'campaign_id' => $campaign->id,
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => '廣播已發送完成',
+            'message' => '廣播已排入佇列，將依收件人數非同步發送',
             'data' => ['broadcast' => $campaign->fresh()],
         ]);
     }

@@ -52,7 +52,15 @@
 - [ ] 媒體檔案備份策略
 - [ ] Rollback 計畫文件化
 
-## 7. 測試
+## 7. Queue Worker
+- [ ] Supervisor 已安裝並設定開機自啟（`systemctl is-enabled supervisor`）
+- [ ] `/etc/supervisor/conf.d/mimeet-worker.conf` 存在
+- [ ] `supervisorctl status mimeet-worker:*` 顯示 RUNNING
+- [ ] 監控腳本 `/opt/scripts/check-worker.sh` 存在
+- [ ] crontab 每 5 分鐘執行監控腳本
+- [ ] `failed_jobs` 表為空（無失敗 Job）
+
+## 8. 測試
 - [ ] php artisan test 全數通過
 - [ ] Frontend build 成功
 - [ ] Admin build 成功
