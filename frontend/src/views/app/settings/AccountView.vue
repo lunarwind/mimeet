@@ -48,7 +48,7 @@ onMounted(() => {
 
 async function loadProfile() {
   try {
-    const res = await (await import('@/api/client')).default.get('/me/settings')
+    const res = await (await import('@/api/client')).default.get('/users/me/settings')
     const p = res.data.data.profile
     form.value = {
       nickname: p.nickname ?? '',
@@ -155,6 +155,7 @@ async function handleLogout() {
 
 // ── 設定快捷連結 ──────────────────────────────────────────
 const settingsLinks = [
+  { label: '會員方案', path: '/app/shop', highlight: true },
   { label: '身份驗證', path: '/app/settings/verify' },
   { label: '訂閱管理', path: '/app/settings/subscription' },
   { label: '封鎖名單', path: '/app/settings/blocked' },
@@ -354,7 +355,7 @@ const settingsLinks = [
 </template>
 
 <style>
-.account-page { padding: 16px; }
+.account-page { padding: 16px; padding-bottom: 100px; }
 
 /* ── Save Button ── */
 .save-btn { padding: 6px 16px; border-radius: 8px; border: none; background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 600; cursor: not-allowed; }
