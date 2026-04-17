@@ -2292,19 +2292,37 @@ GET /api/v1/admin/broadcasts/{id}
 POST /api/v1/admin/broadcasts/{id}/send
 ```
 
-> 只有 `status=draft` 的廣播可執行。非同步以 Queue Job 批次發出，避免 timeout。
+> 只有 `status=draft` 的廣播可執行。同步執行完成後回傳結果。
 
 **成功回應 200：**
 ```json
 {
   "success": true,
+  "message": "廣播已發送完成",
   "data": {
-    "message": "廣播任務已排入佇列，預計完成時間視收件人數而定",
-    "broadcast_id": 2,
-    "status": "sending"
+    "broadcast": {
+      "id": 2,
+      "status": "completed",
+      "sent_count": 120,
+      "completed_at": "2026-04-18T03:49:31Z"
+    }
   }
 }
 ```
+
+---
+
+### 13.5 廣播接收位置（前台）
+
+| delivery_mode | 前台位置 | 說明 |
+|--------------|---------|------|
+| `notification` | `/app/notifications` | 站內通知頁（type=`system`） |
+| `dm` | `/app/messages` | 訊息頁（由 uid=1 官方帳號發送） |
+| `both` | 兩個地方都有 | 通知 + 私訊同時送出 |
+
+> 廣播建立後 status 為 `draft`，需點擊「發送」按鈕後
+> 同步執行，status 變為 `completed`（或 `failed`）。
+> uid=1（系統帳號）不會收到廣播。
 
 ---
 
