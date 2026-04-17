@@ -77,6 +77,9 @@ const photoCodeExpiry = ref('')
 const photoUrl = ref('')
 const advancedSubmitting = ref(false)
 const advancedError = ref<string | null>(null)
+const isUploading = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const cameraInput = ref<HTMLInputElement | null>(null)
 const verificationStatus = ref<VerificationStatusResponse | null>(null)
 const verificationRejectReason = ref<string | null>(null)
 
@@ -129,6 +132,31 @@ async function submitAdvancedPhoto() {
     }
   } finally {
     advancedSubmitting.value = false
+  }
+}
+
+function triggerFileUpload() { fileInput.value?.click() }
+function triggerCamera() { cameraInput.value?.click() }
+
+async function handleFileChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  ;(e.target as HTMLInputElement).value = ''
+
+  isUploading.value = true
+  advancedError.value = null
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('context', 'verification_photo')
+    const res = await client.post('/uploads', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    photoUrl.value = res.data?.data?.url ?? ''
+  } catch {
+    advancedError.value = '照片上傳失敗，請重試'
+  } finally {
+    isUploading.value = false
   }
 }
 
@@ -330,11 +358,24 @@ function goBack() {
       <div class="verify-step">
         <h2 class="verify-step__title">上傳驗證照片</h2>
         <p class="verify-step__desc">請拍攝手持證件及驗證碼 {{ photoCode }} 的自拍照</p>
-        <div class="verify-upload-area">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <span class="verify-upload-area__text">點擊上傳照片</span>
+        <!-- Hidden file inputs -->
+        <input ref="fileInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden-input" @change="handleFileChange" />
+        <input ref="cameraInput" type="file" accept="image/*" capture="user" class="hidden-input" @change="handleFileChange" />
+
+        <!-- Preview or upload area -->
+        <div v-if="photoUrl" class="verify-upload-preview">
+          <img :src="photoUrl" alt="驗證照片預覽" class="verify-upload-preview__img" />
+          <button class="verify-upload-preview__remove" @click="photoUrl = ''">重新選擇</button>
+        </div>
+        <div v-else class="verify-upload-actions">
+          <button class="upload-btn upload-btn--gallery" :disabled="isUploading" @click="triggerFileUpload">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            {{ isUploading ? '上傳中…' : '選擇照片' }}
+          </button>
+          <button class="upload-btn upload-btn--camera" :disabled="isUploading" @click="triggerCamera">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            {{ isUploading ? '上傳中…' : '拍照上傳' }}
+          </button>
         </div>
         <p v-if="advancedError" class="verify-error">{{ advancedError }}</p>
         <button
@@ -643,29 +684,65 @@ function goBack() {
   background: #CBD5E1;
 }
 
-/* ── Upload Area ───────────────────────────────────────────── */
-.verify-upload-area {
+/* ── Upload ────────────────────────────────────────────────── */
+.hidden-input { display: none; }
+
+.verify-upload-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+  flex: 1;
+  justify-content: center;
+}
+.upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.upload-btn--gallery {
+  background: #F3F4F6;
+  color: #374151;
+  border: 1.5px solid #E5E7EB;
+}
+.upload-btn--gallery:hover:not(:disabled) { background: #E5E7EB; }
+
+.upload-btn--camera {
+  background: #F0294E;
+  color: white;
+}
+.upload-btn--camera:hover:not(:disabled) { background: #D01A3C; }
+
+.verify-upload-preview {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 200px;
-  border: 2px dashed #E2E8F0;
-  border-radius: 14px;
-  background: #FAFBFC;
-  cursor: pointer;
+  gap: 12px;
   margin-bottom: 20px;
-  transition: border-color 0.15s;
 }
-
-.verify-upload-area:hover {
-  border-color: #F0294E;
+.verify-upload-preview__img {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 12px;
+  object-fit: contain;
+  border: 1px solid #E2E8F0;
 }
-
-.verify-upload-area__text {
+.verify-upload-preview__remove {
+  background: none;
+  border: none;
+  color: #F0294E;
   font-size: 13px;
-  color: #94A3B8;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .verify-note {
