@@ -11,17 +11,18 @@ interface Broadcast {
   id: number
   title: string
   content: string
-  delivery_mode: 'push' | 'in_app' | 'both'
-  target_gender: 'all' | 'male' | 'female'
-  status: 'draft' | 'sent' | 'scheduled'
+  delivery_mode: string
+  filters: { gender?: string; level_min?: number; level_max?: number; credit_min?: number; credit_max?: number } | null
+  status: string
+  target_count: number
   sent_count: number
   created_at: string
 }
 
 const DELIVERY_LABELS: Record<string, string> = {
-  push: '推播通知',
-  in_app: '站內通知',
-  both: '推播 + 站內',
+  notification: '站內通知',
+  dm: '私訊',
+  both: '通知 + 私訊',
 }
 
 const GENDER_LABELS: Record<string, string> = {
@@ -32,14 +33,16 @@ const GENDER_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'default',
-  sent: 'green',
-  scheduled: 'blue',
+  sending: 'orange',
+  completed: 'green',
+  failed: 'red',
 }
 
 const STATUS_LABELS: Record<string, string> = {
   draft: '草稿',
-  sent: '已發送',
-  scheduled: '排程中',
+  sending: '發送中',
+  completed: '已發送',
+  failed: '失敗',
 }
 
 export default function BroadcastsPage() {
@@ -69,16 +72,14 @@ export default function BroadcastsPage() {
     try {
       const values = await form.validateFields()
       try {
-        const res = await apiClient.post('/admin/broadcasts', values)
-        const newItem = res.data.data ?? {
-          id: Date.now(),
-          ...values,
-          status: 'draft',
-          sent_count: 0,
-          created_at: new Date().toISOString(),
-        }
-        setData((prev) => [newItem, ...prev])
+        await apiClient.post('/admin/broadcasts', {
+          title: values.title,
+          content: values.content,
+          delivery_mode: values.delivery_mode,
+          filters: { gender: values.target_gender ?? 'all' },
+        })
         message.success('廣播已建立')
+        fetchData()
       } catch {
         message.error('建立廣播失敗')
       }
@@ -113,41 +114,45 @@ export default function BroadcastsPage() {
       title: '標題',
       dataIndex: 'title',
       key: 'title',
+      render: (v: string) => v || '—',
     },
     {
       title: '發送方式',
       dataIndex: 'delivery_mode',
       key: 'delivery_mode',
       width: 130,
-      render: (v: string) => DELIVERY_LABELS[v] || v,
+      render: (v: string) => DELIVERY_LABELS[v] ?? v ?? '—',
     },
     {
       title: '目標性別',
-      dataIndex: 'target_gender',
       key: 'target_gender',
       width: 100,
-      render: (v: string) => GENDER_LABELS[v] || v,
+      render: (_: unknown, r: Broadcast) => {
+        const gender = r.filters?.gender ?? 'all'
+        return GENDER_LABELS[gender] ?? gender
+      },
     },
     {
       title: '狀態',
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (v: string) => <Tag color={STATUS_COLORS[v]}>{STATUS_LABELS[v]}</Tag>,
+      render: (v: string) => <Tag color={STATUS_COLORS[v] ?? 'default'}>{STATUS_LABELS[v] ?? v ?? '—'}</Tag>,
     },
     {
-      title: '發送數',
-      dataIndex: 'sent_count',
-      key: 'sent_count',
-      width: 100,
-      render: (v: number) => (v > 0 ? v.toLocaleString() : <Text type="secondary">-</Text>),
+      title: '目標 / 已送',
+      key: 'counts',
+      width: 120,
+      render: (_: unknown, r: Broadcast) => (
+        <Text>{r.sent_count > 0 ? r.sent_count.toLocaleString() : '—'} / {r.target_count ?? '—'}</Text>
+      ),
     },
     {
       title: '建立時間',
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
-      render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
+      render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '—',
     },
     {
       title: '操作',
@@ -200,7 +205,7 @@ export default function BroadcastsPage() {
         cancelText="取消"
         width={520}
       >
-        <Form form={form} layout="vertical" initialValues={{ delivery_mode: 'both', target_gender: 'all' }}>
+        <Form form={form} layout="vertical" initialValues={{ delivery_mode: 'notification', target_gender: 'all' }}>
           <Form.Item name="title" label="標題" rules={[{ required: true, message: '請輸入標題' }]}>
             <Input placeholder="廣播標題" />
           </Form.Item>
@@ -209,9 +214,9 @@ export default function BroadcastsPage() {
           </Form.Item>
           <Form.Item name="delivery_mode" label="發送方式">
             <Radio.Group>
-              <Radio value="push">推播通知</Radio>
-              <Radio value="in_app">站內通知</Radio>
-              <Radio value="both">推播 + 站內</Radio>
+              <Radio value="notification">站內通知</Radio>
+              <Radio value="dm">私訊</Radio>
+              <Radio value="both">通知 + 私訊</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item name="target_gender" label="目標性別">
