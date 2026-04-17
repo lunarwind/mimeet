@@ -107,6 +107,13 @@ class ResetToCleanState extends Command
             }
         }
 
+        // Ensure admin users exist (safety net if they were somehow lost)
+        if (DB::table('admin_users')->count() === 0) {
+            $this->warn('  ⚠ admin_users table is empty — re-seeding...');
+            Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\AdminUserSeeder', '--force' => true]);
+            $this->line('  ✓ admin_users re-seeded (' . DB::table('admin_users')->count() . ' accounts)');
+        }
+
         // Clear cache
         try {
             Artisan::call('cache:clear');
