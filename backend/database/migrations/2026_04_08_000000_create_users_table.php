@@ -43,7 +43,7 @@ return new class extends Migration
         // Seed system user id=1 — guaranteed to exist after any migrate:fresh
         DB::table('users')->insert([
             'id'               => 1,
-            'email'            => 'admin@mimmet.club',
+            'email'            => 'admin@mimeet.club',
             'password'         => bcrypt('SYSTEM_ACCOUNT_DO_NOT_LOGIN'),
             'nickname'         => 'MiMeet 官方',
             'gender'           => 'female',

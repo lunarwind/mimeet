@@ -67,7 +67,7 @@ class ResetToCleanState extends Command
             DB::table('users')->updateOrInsert(
                 ['id' => 1],
                 [
-                    'email'            => 'admin@mimmet.club',
+                    'email'            => 'admin@mimeet.club',
                     'password'         => bcrypt('SYSTEM_ACCOUNT_DO_NOT_LOGIN'),
                     'nickname'         => 'MiMeet 官方',
                     'gender'           => 'female',
