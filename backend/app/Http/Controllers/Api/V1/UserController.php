@@ -209,6 +209,105 @@ class UserController extends Controller
         ], 201);
     }
 
+    public function getAvatarSlots(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'current_avatar' => $user->avatar_url,
+                'slots' => $user->avatar_slots ?? [],
+            ],
+        ]);
+    }
+
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,webp|max:5120',
+            'set_active' => 'sometimes|boolean',
+        ]);
+
+        $user = $request->user();
+        $slots = $user->avatar_slots ?? [];
+
+        if (count($slots) >= 3) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'AVATAR_SLOTS_FULL', 'message' => '頭像槽位已滿，請先刪除一個'],
+            ], 422);
+        }
+
+        $path = Storage::disk('public')->put('avatars/' . $user->id, $request->file('photo'));
+        $url = Storage::disk('public')->url($path);
+
+        $slots[] = $url;
+        $user->avatar_slots = $slots;
+
+        if ($request->boolean('set_active', true)) {
+            $user->avatar_url = $url;
+        }
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => ['url' => $url, 'current_avatar' => $user->avatar_url, 'slots' => $user->avatar_slots],
+        ], 201);
+    }
+
+    public function setActiveAvatar(Request $request): JsonResponse
+    {
+        $request->validate(['url' => 'required|string']);
+
+        $user = $request->user();
+        $slots = $user->avatar_slots ?? [];
+
+        if (!in_array($request->url, $slots)) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'AVATAR_NOT_FOUND', 'message' => '頭像不在槽位中'],
+            ], 422);
+        }
+
+        $user->avatar_url = $request->url;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => ['current_avatar' => $user->avatar_url],
+        ]);
+    }
+
+    public function deleteAvatar(Request $request): JsonResponse
+    {
+        $request->validate(['url' => 'required|string']);
+
+        $user = $request->user();
+        $slots = $user->avatar_slots ?? [];
+
+        if ($user->avatar_url === $request->url && count($slots) <= 1) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'CANNOT_DELETE_ACTIVE', 'message' => '無法刪除使用中的唯一頭像'],
+            ], 422);
+        }
+
+        $slots = array_values(array_filter($slots, fn($s) => $s !== $request->url));
+        $user->avatar_slots = $slots;
+
+        if ($user->avatar_url === $request->url && count($slots) > 0) {
+            $user->avatar_url = $slots[0];
+        }
+
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'data' => ['current_avatar' => $user->avatar_url, 'slots' => $user->avatar_slots],
+        ]);
+    }
+
     public function settings(Request $request): JsonResponse
     {
         $user = $request->user();

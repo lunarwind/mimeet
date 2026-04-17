@@ -38,6 +38,7 @@ class User extends Authenticatable
         'gender',
         'birth_date',
         'avatar_url',
+        'avatar_slots',
         'bio',
         'height',
         'location',
@@ -80,6 +81,7 @@ class User extends Authenticatable
         'credit_score' => 'integer',
         'height' => 'integer',
         'interests' => 'array',
+        'avatar_slots' => 'array',
         // privacy_settings handled by custom accessor (getPrivacySettingsAttribute)
         'last_active_at' => 'datetime',
         'suspended_at' => 'datetime',

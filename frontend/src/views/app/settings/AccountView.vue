@@ -2,14 +2,16 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import AvatarCropModal from '@/components/common/AvatarCropModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useImageUpload } from '@/composables/useImageUpload'
+import { default as apiClient } from '@/api/client'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
-const { isUploading, uploadAvatar, uploadPhoto, error: uploadError } = useImageUpload()
+const { isUploading, uploadAvatar: _uploadAvatar, uploadPhoto, error: uploadError } = useImageUpload()
 
 // ── 表單資料 ──────────────────────────────────────────────
 const form = ref({
@@ -23,6 +25,9 @@ const form = ref({
 })
 
 const avatarUrl = ref<string | null>(null)
+const avatarSlots = ref<string[]>([])
+const showCropModal = ref(false)
+const cropSrc = ref<string | null>(null)
 const photos = ref<string[]>([])
 const isDirty = ref(false)
 const isSaving = ref(false)
@@ -42,9 +47,18 @@ const CITIES = [
   '台東縣', '澎湖縣', '金門縣', '連江縣',
 ]
 
-onMounted(() => {
-  loadProfile()
+onMounted(async () => {
+  await loadProfile()
+  await loadAvatarSlots()
 })
+
+async function loadAvatarSlots() {
+  try {
+    const res = await apiClient.get('/users/me/avatars')
+    avatarSlots.value = res.data.data.slots ?? []
+    if (res.data.data.current_avatar) avatarUrl.value = res.data.data.current_avatar
+  } catch { /* ignore */ }
+}
 
 async function loadProfile() {
   try {
@@ -79,16 +93,51 @@ function triggerAvatarUpload() {
   avatarInput.value?.click()
 }
 
-async function handleAvatarChange(e: Event) {
+function handleAvatarChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
-  const result = await uploadAvatar(file)
-  if (result) {
-    avatarUrl.value = result.url
-    isDirty.value = true
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    cropSrc.value = ev.target?.result as string
+    showCropModal.value = true
+  }
+  reader.readAsDataURL(file)
+  // Reset input so same file can be re-selected
+  if (avatarInput.value) avatarInput.value.value = ''
+}
+
+async function handleCropConfirm(blob: Blob) {
+  showCropModal.value = false
+  const formData = new FormData()
+  formData.append('photo', blob, 'avatar.jpg')
+  formData.append('set_active', '1')
+
+  try {
+    const res = await apiClient.post('/users/me/avatars', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    avatarSlots.value = res.data.data.slots ?? []
+    avatarUrl.value = res.data.data.current_avatar
     uiStore.showToast('頭像已更新', 'success')
-  } else if (uploadError.value) {
-    uiStore.showToast(uploadError.value, 'error')
+  } catch (err: any) {
+    uiStore.showToast(err.response?.data?.error?.message ?? '上傳失敗', 'error')
+  }
+}
+
+async function switchAvatar(url: string) {
+  try {
+    await apiClient.patch('/users/me/avatars/active', { url })
+    avatarUrl.value = url
+  } catch { /* ignore */ }
+}
+
+async function deleteAvatarSlot(url: string) {
+  try {
+    const res = await apiClient.delete('/users/me/avatars', { data: { url } })
+    avatarSlots.value = res.data.data.slots ?? []
+    avatarUrl.value = res.data.data.current_avatar
+  } catch (err: any) {
+    uiStore.showToast(err.response?.data?.error?.message ?? '刪除失敗', 'error')
   }
 }
 
@@ -164,6 +213,13 @@ const settingsLinks = [
 </script>
 
 <template>
+  <AvatarCropModal
+    v-if="showCropModal && cropSrc"
+    :src="cropSrc"
+    @confirm="handleCropConfirm"
+    @cancel="showCropModal = false"
+  />
+
   <AppLayout title="個人資料">
     <template #topbar-right>
       <button
@@ -197,27 +253,28 @@ const settingsLinks = [
           </div>
         </div>
         <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden-input" @change="handleAvatarChange" />
-        <span class="avatar-hint">點擊更換頭像</span>
+        <span class="avatar-hint">點擊更換頭像（最多 3 個）</span>
 
-        <!-- 相冊 -->
-        <div class="photo-row">
+        <!-- 頭像槽位 -->
+        <div class="avatar-slots">
           <div
-            v-for="(photo, i) in photos"
+            v-for="(slotUrl, i) in avatarSlots"
             :key="i"
-            class="photo-thumb"
+            class="avatar-slot"
+            :class="{ 'avatar-slot--active': slotUrl === avatarUrl }"
           >
-            <img :src="photo" alt="相冊照片" />
-            <button class="photo-remove" @click="removePhoto(i)">×</button>
+            <img :src="slotUrl" alt="頭像" @click="switchAvatar(slotUrl)" />
+            <button class="avatar-slot__delete" @click.stop="deleteAvatarSlot(slotUrl)">×</button>
+            <div v-if="slotUrl === avatarUrl" class="avatar-slot__badge">使用中</div>
           </div>
           <div
-            v-if="photos.length < 3"
-            class="photo-add"
-            @click="triggerPhotoUpload"
+            v-if="avatarSlots.length < 3"
+            class="avatar-slot avatar-slot--empty"
+            @click="triggerAvatarUpload"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </div>
         </div>
-        <input ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden-input" @change="handlePhotoChange" />
       </section>
 
       <!-- 表單 -->
@@ -373,6 +430,15 @@ const settingsLinks = [
 .avatar-edit-badge { position: absolute; bottom: 2px; right: 2px; width: 24px; height: 24px; border-radius: 50%; background: #F0294E; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
 .avatar-hint { font-size: 12px; color: #9CA3AF; }
 .hidden-input { display: none; }
+
+/* ── Avatar Slots ── */
+.avatar-slots { display: flex; gap: 12px; justify-content: center; margin-top: 12px; }
+.avatar-slot { position: relative; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; cursor: pointer; border: 2px solid #E5E7EB; }
+.avatar-slot--active { border-color: #F0294E; }
+.avatar-slot img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-slot__delete { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.5); color: white; border: none; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.avatar-slot__badge { position: absolute; bottom: 0; left: 0; right: 0; background: #F0294E; color: white; font-size: 9px; text-align: center; padding: 1px; }
+.avatar-slot--empty { background: #F3F4F6; display: flex; align-items: center; justify-content: center; border-style: dashed; }
 
 /* ── Photos ── */
 .photo-row { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }

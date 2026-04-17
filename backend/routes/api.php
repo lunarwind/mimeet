@@ -63,6 +63,10 @@ Route::prefix('api/v1')->group(function () {
         Route::patch('/me', [UserController::class, 'update']);
         Route::get('/me/settings', [UserController::class, 'settings']);
         Route::post('/me/photos', [UserController::class, 'uploadPhoto']);
+        Route::get('/me/avatars', [UserController::class, 'getAvatarSlots']);
+        Route::post('/me/avatars', [UserController::class, 'uploadAvatar']);
+        Route::patch('/me/avatars/active', [UserController::class, 'setActiveAvatar']);
+        Route::delete('/me/avatars', [UserController::class, 'deleteAvatar']);
         Route::get('/search', [UserController::class, 'search']);
         Route::get('/me/following', [UserController::class, 'following']);
         Route::get('/me/visitors', [UserController::class, 'visitors']);
