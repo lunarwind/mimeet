@@ -147,14 +147,15 @@ async function handleFileChange(e: Event) {
   advancedError.value = null
   try {
     const formData = new FormData()
-    formData.append('file', file)
-    formData.append('context', 'verification_photo')
-    const res = await client.post('/uploads', formData, {
+    formData.append('photo', file)
+    const res = await client.post('/me/photos', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    photoUrl.value = res.data?.data?.url ?? ''
-  } catch {
-    advancedError.value = '照片上傳失敗，請重試'
+    photoUrl.value = res.data?.data?.photo?.url ?? res.data?.data?.url ?? ''
+    if (!photoUrl.value) throw new Error('No URL returned')
+  } catch (err: any) {
+    const msg = err.response?.data?.message ?? '照片上傳失敗，請重試'
+    advancedError.value = msg
   } finally {
     isUploading.value = false
   }
