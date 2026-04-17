@@ -57,9 +57,20 @@ class DatasetController extends Controller
         Log::info("[Dataset] Reset executed by admin #{$request->user()->id}");
 
         try {
-            Artisan::call('mimeet:reset-clean', ['--force' => true]);
+            $exitCode = Artisan::call('mimeet:reset', ['--force' => true]);
+            $output = Artisan::output();
+
+            if ($exitCode !== 0) {
+                Log::error('[Dataset] Reset failed', ['exit_code' => $exitCode, 'output' => $output]);
+                return response()->json([
+                    'success' => false,
+                    'error' => ['code' => 'RESET_FAILED', 'message' => '清空失敗', 'detail' => $output],
+                ], 500);
+            }
+
+            Log::info('[Dataset] Reset completed', ['output' => $output]);
         } catch (\Throwable $e) {
-            Log::error('[Dataset] Reset failed', ['error' => $e->getMessage()]);
+            Log::error('[Dataset] Reset exception', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'error' => ['code' => 'RESET_FAILED', 'message' => '清空失敗：' . $e->getMessage()],
