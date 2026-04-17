@@ -34,8 +34,20 @@ export function usePayment() {
     isLoading.value = true
     error.value = null
     try {
-      const res = await client.get<{ data: { plans: SubscriptionPlan[] } }>('/subscriptions/plans')
-      plans.value = res.data.data.plans
+      const res = await client.get('/subscriptions/plans')
+      const raw = res.data.data?.plans ?? res.data.data ?? []
+      // Map backend field names to frontend type
+      plans.value = raw.map((p: any) => ({
+        id: p.id,
+        slug: p.slug ?? p.id,
+        type: p.slug ?? p.id,
+        name: p.name,
+        price: p.price,
+        originalPrice: p.original_price ?? null,
+        durationDays: p.duration_days ?? p.durationDays ?? 30,
+        features: p.features ?? [],
+        isPopular: p.is_popular ?? (p.slug ?? p.id) === 'plan_monthly',
+      }))
       return plans.value
     } catch (e) {
       error.value = '載入方案失敗'

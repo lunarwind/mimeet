@@ -12,7 +12,8 @@ onMounted(() => { fetchTrialInfo() })
 async function handlePurchase() {
   const result = await purchaseTrial()
   if (result) {
-    window.location.href = result.orderUrl
+    const url = result.payment_url ?? result.orderUrl ?? ''
+    if (url) window.location.href = url
   } else {
     uiStore.showToast('購買失敗，請稍後再試', 'error')
   }

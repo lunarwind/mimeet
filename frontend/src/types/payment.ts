@@ -4,8 +4,9 @@
  */
 
 export interface SubscriptionPlan {
-  id: number
-  type: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+  id: string
+  slug: string
+  type: string
   name: string
   price: number
   originalPrice: number | null
@@ -15,7 +16,7 @@ export interface SubscriptionPlan {
 }
 
 export interface CurrentSubscription {
-  planType: 'weekly' | 'monthly' | 'quarterly' | 'yearly'
+  planType: string
   planName: string
   expiresAt: string
   autoRenew: boolean
@@ -23,8 +24,14 @@ export interface CurrentSubscription {
 }
 
 export interface CreateOrderResponse {
-  orderUrl: string
-  orderId: string
+  payment_url?: string
+  orderUrl?: string
+  order?: {
+    id: number
+    order_number: string
+    amount: number
+    status: string
+  }
 }
 
 export interface TrialInfo {
