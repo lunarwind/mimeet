@@ -28,13 +28,20 @@ const ICON_MAP: Record<string, string> = {
   new_message: '💬',
   new_visitor: '👀',
   new_follower: '❤️',
+  new_favorite: '❤️',
+  profile_visited: '👀',
   date_invite: '📅',
+  date_invitation: '📅',
   date_accepted: '📅',
   date_verified: '✅',
   credit_changed: '📊',
+  credit_score_changed: '📊',
   subscription_expiry: '⚠️',
+  subscription_expiring: '⚠️',
+  subscription_activated: '🎉',
   verification_result: '🔒',
   ticket_replied: '📋',
+  system: '📢',
 }
 
 onMounted(async () => {
