@@ -125,6 +125,7 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
       <button class="chat-topbar__back" @click="goBack" aria-label="返回">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
       </button>
+      <span class="chat-topbar__logo" @click="$router.push('/app/explore')"><span style="color:#F0294E">Mi</span><span style="color:#111827">Meet</span></span>
       <div class="chat-topbar__user" @click="goProfile">
         <img :src="otherUser.avatarUrl ?? '/default-avatar.svg'" class="chat-topbar__avatar" alt="" />
         <div>
@@ -163,6 +164,8 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 /* ── TopBar ──────────────────────────────────────────────── */
 .chat-topbar { display:flex; align-items:center; gap:10px; height:56px; padding:0 12px; background:#fff; border-bottom:0.5px solid #E5E7EB; flex-shrink:0; }
 .chat-topbar__back { background:none; border:none; padding:4px; cursor:pointer; color:#374151; display:flex; }
+.chat-topbar__logo { font-family:'Noto Serif TC',serif; font-size:18px; font-weight:600; letter-spacing:-0.5px; cursor:pointer; line-height:1; display:none; }
+@media (min-width: 768px) { .chat-topbar__logo { display:inline; } }
 .chat-topbar__user { display:flex; align-items:center; gap:10px; flex:1; min-width:0; cursor:pointer; }
 .chat-topbar__avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
 .chat-topbar__name { display:block; font-size:15px; font-weight:600; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -200,5 +203,10 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 /* ── Large desktop (1440px+) ─────────────────────────────── */
 @media (min-width: 1440px) {
   .chat-view { max-width:1100px; height:calc(100dvh - 100px); margin-top:8px; border-radius:16px; border:0.5px solid #E5E7EB; box-shadow:0 2px 16px rgba(0,0,0,0.06); }
+}
+
+/* ── 4K (1920px+) ────────────────────────────────────────── */
+@media (min-width: 1920px) {
+  .chat-view { max-width:1300px; }
 }
 </style>
