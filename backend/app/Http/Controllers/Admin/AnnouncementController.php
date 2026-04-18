@@ -1,40 +1,103 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class AnnouncementController extends Controller
 {
+    private const CACHE_KEY = 'system_announcements';
+
     public function index(): JsonResponse
     {
-        $announcements = Cache::get('announcements', [
-            ['id' => 1, 'title' => '歡迎使用 MiMeet', 'content' => '感謝您加入 MiMeet 交友平台！', 'type' => 'info', 'is_active' => true, 'start_at' => now()->subDays(30)->toISOString(), 'end_at' => now()->addDays(30)->toISOString(), 'created_at' => now()->subDays(30)->toISOString()],
+        $announcements = Cache::get(self::CACHE_KEY, []);
+
+        return response()->json([
+            'success' => true,
+            'data' => ['announcements' => array_values($announcements)],
         ]);
-        return response()->json(['success' => true, 'data' => ['announcements' => $announcements]]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
+        $data = $request->validate([
             'title' => 'required|string|max:100',
             'content' => 'required|string|max:500',
             'type' => 'sometimes|in:info,warning,success',
             'start_at' => 'required|date',
             'end_at' => 'required|date|after:start_at',
         ]);
-        return response()->json(['success' => true, 'message' => '公告已建立'], 201);
+
+        $announcements = Cache::get(self::CACHE_KEY, []);
+        $id = count($announcements) > 0 ? max(array_column($announcements, 'id')) + 1 : 1;
+
+        $announcement = [
+            'id' => $id,
+            'title' => $data['title'],
+            'content' => $data['content'],
+            'type' => $data['type'] ?? 'info',
+            'is_active' => true,
+            'start_at' => $data['start_at'],
+            'end_at' => $data['end_at'],
+            'created_at' => now()->toISOString(),
+        ];
+
+        $announcements[] = $announcement;
+        Cache::forever(self::CACHE_KEY, $announcements);
+
+        Log::info('[Announcement] Created', ['id' => $id, 'title' => $data['title']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '公告已建立',
+            'data' => ['announcement' => $announcement],
+        ], 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
     {
+        $data = $request->validate([
+            'title' => 'sometimes|string|max:100',
+            'content' => 'sometimes|string|max:500',
+            'type' => 'sometimes|in:info,warning,success',
+            'is_active' => 'sometimes|boolean',
+            'start_at' => 'sometimes|date',
+            'end_at' => 'sometimes|date',
+        ]);
+
+        $announcements = Cache::get(self::CACHE_KEY, []);
+        $found = false;
+
+        foreach ($announcements as &$a) {
+            if ($a['id'] === $id) {
+                $a = array_merge($a, $data);
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            return response()->json(['success' => false, 'message' => '公告不存在'], 404);
+        }
+
+        Cache::forever(self::CACHE_KEY, $announcements);
+        Log::info('[Announcement] Updated', ['id' => $id]);
+
         return response()->json(['success' => true, 'message' => '公告已更新']);
     }
 
     public function destroy(int $id): JsonResponse
     {
+        $announcements = Cache::get(self::CACHE_KEY, []);
+        $announcements = array_filter($announcements, fn($a) => $a['id'] !== $id);
+        Cache::forever(self::CACHE_KEY, array_values($announcements));
+
+        Log::info('[Announcement] Deleted', ['id' => $id]);
+
         return response()->json(['success' => true, 'message' => '公告已刪除']);
     }
 }

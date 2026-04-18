@@ -209,6 +209,12 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/verifications/pending', [VerificationController::class, 'pending']);
             Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
 
+            // Announcements
+            Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);
+            Route::post('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'store']);
+            Route::patch('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'update']);
+            Route::delete('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'destroy']);
+
             // Broadcasts (Sprint 11)
             Route::get('/broadcasts', [BroadcastController::class, 'index']);
             Route::post('/broadcasts', [BroadcastController::class, 'store']);

@@ -92,8 +92,8 @@ export default function AnnouncementsPage() {
       }
       setModalOpen(false)
       fetchAnnouncements()
-    } catch {
-      // validation or API error
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? '操作失敗')
     }
   }
 
