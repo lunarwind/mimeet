@@ -125,11 +125,14 @@ const { unreadCount } = storeToRefs(notificationStore)
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   color: #9ca3af;
   text-decoration: none;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 60px;
   padding: 8px 0;
+  white-space: nowrap;
 }
 
 .nav-item.active {
@@ -166,19 +169,52 @@ const { unreadCount } = storeToRefs(notificationStore)
 
 /* ── Desktop (1024px+): constrained width ────────────────── */
 @media (min-width: 1024px) {
-  .bottom-nav { max-width: 800px; left: 50%; right: auto; transform: translateX(-50%); border-top: none; border: 0.5px solid #e5e7eb; border-bottom: none; }
+  .bottom-nav {
+    width: 100%;
+    max-width: 800px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    padding: 0 16px;
+    border-top: none;
+    border: 0.5px solid #e5e7eb;
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+  }
+  .nav-item {
+    min-width: 80px;
+    padding: 10px 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+  }
+  .nav-item:hover { background-color: #f9fafb; }
+  .nav-label { font-size: 11px; }
 }
 
 /* ── Large desktop (1440px+): floating pill ──────────────── */
 @media (min-width: 1440px) {
   .bottom-nav {
-    bottom: 16px; left: 50%; right: auto; transform: translateX(-50%);
-    width: auto; min-width: 480px; max-width: 640px; height: 60px;
-    border-radius: 20px; border: none;
-    background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06);
+    bottom: 16px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: auto;
+    min-width: 560px;
+    max-width: 720px;
+    height: 68px;
+    padding: 0 12px;
+    border-radius: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   }
-  .nav-item { padding: 8px 16px; }
-  .nav-label { font-size: 11px; }
+  .nav-item {
+    min-width: 96px;
+    padding: 10px 16px;
+  }
+  .nav-label { font-size: 12px; font-weight: 500; }
 }
 </style>
