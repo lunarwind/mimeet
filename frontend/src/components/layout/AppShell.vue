@@ -13,7 +13,7 @@ import BottomNav from './BottomNav.vue'
 const route = useRoute()
 
 // Hide BottomNav on full-screen pages (chat conversation, QR scan)
-const showNav = computed(() => route.name !== 'chat' && route.name !== 'qr-scan')
+const showNav = computed(() => route.name !== 'qr-scan')
 </script>
 
 <style scoped>

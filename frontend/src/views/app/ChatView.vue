@@ -158,7 +158,7 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 
 <style scoped>
 /* ── Base (mobile-first) ─────────────────────────────────── */
-.chat-view { display:flex; flex-direction:column; height:100dvh; background:#fff; }
+.chat-view { display:flex; flex-direction:column; height:calc(100dvh - 64px - env(safe-area-inset-bottom)); background:#fff; }
 
 /* ── TopBar ──────────────────────────────────────────────── */
 .chat-topbar { display:flex; align-items:center; gap:10px; height:56px; padding:0 12px; background:#fff; border-bottom:0.5px solid #E5E7EB; flex-shrink:0; }
@@ -192,13 +192,13 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 
 /* ── Desktop (1024px+) ────────────────────────────────────── */
 @media (min-width: 1024px) {
-  .chat-view { max-width:800px; margin:0 auto; border-left:0.5px solid #E5E7EB; border-right:0.5px solid #E5E7EB; }
+  .chat-view { max-width:960px; margin:0 auto; border-left:0.5px solid #E5E7EB; border-right:0.5px solid #E5E7EB; }
   .chat-topbar { padding:0 24px; }
   .chat-messages { padding:20px 32px; gap:6px; }
 }
 
 /* ── Large desktop (1440px+) ─────────────────────────────── */
 @media (min-width: 1440px) {
-  .chat-view { max-width:960px; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.06); margin-top:8px; height:calc(100dvh - 16px); }
+  .chat-view { max-width:1100px; height:calc(100dvh - 100px); margin-top:8px; border-radius:16px; border:0.5px solid #E5E7EB; box-shadow:0 2px 16px rgba(0,0,0,0.06); }
 }
 </style>

@@ -89,7 +89,10 @@ function clearSearch() {
   <div class="explore-view">
     <!-- TopBar -->
     <header class="explore-topbar">
-      <h1 class="explore-topbar__title">探索</h1>
+      <div class="explore-topbar__left">
+        <span class="explore-topbar__logo"><span class="explore-topbar__logo-mi">Mi</span><span class="explore-topbar__logo-meet">Meet</span></span>
+        <h1 class="explore-topbar__title">探索</h1>
+      </div>
       <button
         class="explore-topbar__filter-btn"
         :class="{ 'explore-topbar__filter-btn--active': hasActiveFilters }"
@@ -233,11 +236,25 @@ function clearSearch() {
   z-index: 10;
 }
 
-.explore-topbar__title {
+.explore-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.explore-topbar__logo {
+  font-family: 'Noto Serif TC', serif;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.explore-topbar__logo-mi { color: #F0294E; }
+.explore-topbar__logo-meet { color: #111827; }
+
+.explore-topbar__title {
+  font-size: 17px;
+  font-weight: 500;
   color: #0F172A;
-  letter-spacing: -0.3px;
 }
 
 .explore-topbar__filter-btn {
@@ -485,22 +502,19 @@ function clearSearch() {
 
 /* ── Desktop (1024px+) ───────────────────────────────────── */
 @media (min-width: 1024px) {
-  .explore-topbar { max-width: 1060px; }
-  .explore-content { max-width: 1060px; }
+  .explore-topbar, .explore-search, .explore-tags, .explore-content { max-width: 1060px; }
   .explore-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
 }
 
 /* ── Large desktop (1440px+) ─────────────────────────────── */
 @media (min-width: 1440px) {
-  .explore-topbar { max-width: 1200px; }
-  .explore-content { max-width: 1200px; }
+  .explore-topbar, .explore-search, .explore-tags, .explore-content { max-width: 1200px; }
   .explore-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
 }
 
 /* ── 4K (1920px+) ────────────────────────────────────────── */
 @media (min-width: 1920px) {
-  .explore-topbar { max-width: 1400px; }
-  .explore-content { max-width: 1400px; }
+  .explore-topbar, .explore-search, .explore-tags, .explore-content { max-width: 1400px; }
   .explore-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
 }
 </style>
