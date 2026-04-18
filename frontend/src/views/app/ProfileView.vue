@@ -817,11 +817,12 @@ function goBack() {
 
 /* ── Tablet (768px+) ─────────────────────────────────────── */
 @media (min-width: 768px) {
-  .profile-view { max-width: 680px; margin: 0 auto; }
+  .profile-view { max-width: 720px; margin: 0 auto; }
 }
-
-/* ── Desktop (1024px+) ───────────────────────────────────── */
 @media (min-width: 1024px) {
-  .profile-view { max-width: 560px; }
+  .profile-view { max-width: 800px; }
+}
+@media (min-width: 1440px) {
+  .profile-view { max-width: 960px; }
 }
 </style>

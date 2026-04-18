@@ -468,7 +468,7 @@ function clearSearch() {
   letter-spacing: 0.3px;
 }
 
-/* ── Tablet (768px+): center content ─────────────────────── */
+/* ── Tablet (768px+) ──────────────────────────────────────── */
 @media (min-width: 768px) {
   .explore-topbar { padding: 0 24px; max-width: 800px; margin: 0 auto; width: 100%; }
   .explore-search { padding: 8px 24px; }
@@ -476,8 +476,21 @@ function clearSearch() {
   .explore-content { max-width: 800px; margin: 0 auto; width: 100%; padding: 8px 24px 16px; }
 }
 
-/* ── Desktop (1024px+): narrower, centered ───────────────── */
+/* ── Desktop (1024px+) ───────────────────────────────────── */
 @media (min-width: 1024px) {
-  .explore-content { max-width: 680px; }
+  .explore-topbar { max-width: 900px; }
+  .explore-content { max-width: 900px; }
+}
+
+/* ── Large desktop (1440px+) ─────────────────────────────── */
+@media (min-width: 1440px) {
+  .explore-topbar { max-width: 1060px; }
+  .explore-content { max-width: 1060px; }
+}
+
+/* ── 4K (1920px+) ────────────────────────────────────────── */
+@media (min-width: 1920px) {
+  .explore-topbar { max-width: 1200px; }
+  .explore-content { max-width: 1200px; }
 }
 </style>

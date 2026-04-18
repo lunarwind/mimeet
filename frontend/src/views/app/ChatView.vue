@@ -190,10 +190,15 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
   .chat-messages { padding:16px 24px; gap:6px; }
 }
 
-/* ── Desktop (1024px+): center with max-width ────────────── */
+/* ── Desktop (1024px+) ────────────────────────────────────── */
 @media (min-width: 1024px) {
   .chat-view { max-width:800px; margin:0 auto; border-left:0.5px solid #E5E7EB; border-right:0.5px solid #E5E7EB; }
   .chat-topbar { padding:0 24px; }
   .chat-messages { padding:20px 32px; gap:6px; }
+}
+
+/* ── Large desktop (1440px+) ─────────────────────────────── */
+@media (min-width: 1440px) {
+  .chat-view { max-width:960px; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,0.06); margin-top:8px; height:calc(100dvh - 16px); }
 }
 </style>

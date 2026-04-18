@@ -121,15 +121,27 @@ function handleTitleClick() {
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
-/* ── Tablet: center content ──────────────────────────────── */
+/* ── Tablet (768px+) ──────────────────────────────────────── */
 @media (min-width: 768px) {
-  .top-bar { padding: 0 24px; }
-  .main-content { max-width: 680px; margin: 0 auto; width: 100%; }
+  .top-bar { padding: 0 24px; max-width: 720px; margin: 0 auto; width: 100%; }
+  .main-content { max-width: 720px; margin: 0 auto; width: 100%; }
 }
 
-/* ── Desktop: narrower content ───────────────────────────── */
+/* ── Desktop (1024px+) ───────────────────────────────────── */
 @media (min-width: 1024px) {
-  .top-bar { max-width: 680px; margin: 0 auto; width: 100%; padding: 0 24px; }
-  .main-content { max-width: 560px; }
+  .top-bar { max-width: 800px; }
+  .main-content { max-width: 800px; }
+}
+
+/* ── Large desktop (1440px+) ─────────────────────────────── */
+@media (min-width: 1440px) {
+  .top-bar { max-width: 960px; }
+  .main-content { max-width: 960px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+
+/* ── 4K / ultra-wide (1920px+) ───────────────────────────── */
+@media (min-width: 1920px) {
+  .top-bar { max-width: 1100px; }
+  .main-content { max-width: 1100px; }
 }
 </style>

@@ -113,6 +113,7 @@ onMounted(() => fetchFavorites())
 .fav-meta { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
 .unfav-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: #FFF1F3; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
 .load-more { width: 100%; padding: 12px; background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; color: #6B7280; font-size: 14px; cursor: pointer; margin-top: 8px; }
-@media (min-width: 768px) { .fav-page { max-width: 680px; margin: 0 auto; } }
-@media (min-width: 1024px) { .fav-page { max-width: 560px; } }
+@media (min-width: 768px) { .fav-page { max-width: 720px; margin: 0 auto; } }
+@media (min-width: 1024px) { .fav-page { max-width: 800px; } }
+@media (min-width: 1440px) { .fav-page { max-width: 960px; } }
 </style>

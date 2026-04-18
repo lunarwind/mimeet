@@ -163,4 +163,22 @@ const { unreadCount } = storeToRefs(notificationStore)
   justify-content: center;
   padding: 0 3px;
 }
+
+/* ── Desktop (1024px+): constrained width ────────────────── */
+@media (min-width: 1024px) {
+  .bottom-nav { max-width: 800px; left: 50%; right: auto; transform: translateX(-50%); border-top: none; border: 0.5px solid #e5e7eb; border-bottom: none; }
+}
+
+/* ── Large desktop (1440px+): floating pill ──────────────── */
+@media (min-width: 1440px) {
+  .bottom-nav {
+    bottom: 16px; left: 50%; right: auto; transform: translateX(-50%);
+    width: auto; min-width: 480px; max-width: 640px; height: 60px;
+    border-radius: 20px; border: none;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 0 0 0.5px rgba(0,0,0,0.06);
+  }
+  .nav-item { padding: 8px 16px; }
+  .nav-label { font-size: 11px; }
+}
 </style>
