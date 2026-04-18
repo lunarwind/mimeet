@@ -115,4 +115,6 @@ onMounted(() => fetchVisitors())
 .vis-info { flex: 1; }
 .vis-name { font-size: 15px; font-weight: 600; color: #111827; }
 .vis-time { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
+@media (min-width: 768px) { .vis-page { max-width: 680px; margin: 0 auto; } }
+@media (min-width: 1024px) { .vis-page { max-width: 560px; } }
 </style>

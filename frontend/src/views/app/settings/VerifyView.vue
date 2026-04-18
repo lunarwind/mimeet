@@ -769,4 +769,9 @@ function goBack() {
   flex-shrink: 0;
   border-radius: 6px;
 }
+
+/* ── Tablet/Desktop: center content ──────────────────────── */
+@media (min-width: 768px) {
+  .verify-view { max-width: 560px; margin: 0 auto; }
+}
 </style>

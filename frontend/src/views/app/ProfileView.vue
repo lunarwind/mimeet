@@ -814,4 +814,14 @@ function goBack() {
   from { opacity: 0; transform: translateX(-50%) translateY(20px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+/* ── Tablet (768px+) ─────────────────────────────────────── */
+@media (min-width: 768px) {
+  .profile-view { max-width: 680px; margin: 0 auto; }
+}
+
+/* ── Desktop (1024px+) ───────────────────────────────────── */
+@media (min-width: 1024px) {
+  .profile-view { max-width: 560px; }
+}
 </style>

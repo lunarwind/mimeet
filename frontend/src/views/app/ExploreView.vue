@@ -467,4 +467,17 @@ function clearSearch() {
   color: #CBD5E1;
   letter-spacing: 0.3px;
 }
+
+/* ── Tablet (768px+): center content ─────────────────────── */
+@media (min-width: 768px) {
+  .explore-topbar { padding: 0 24px; max-width: 800px; margin: 0 auto; width: 100%; }
+  .explore-search { padding: 8px 24px; }
+  .explore-tags { padding: 0 24px 10px; }
+  .explore-content { max-width: 800px; margin: 0 auto; width: 100%; padding: 8px 24px 16px; }
+}
+
+/* ── Desktop (1024px+): narrower, centered ───────────────── */
+@media (min-width: 1024px) {
+  .explore-content { max-width: 680px; }
+}
 </style>

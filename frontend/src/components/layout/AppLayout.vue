@@ -120,4 +120,16 @@ function handleTitleClick() {
   overflow-y: auto;
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
+
+/* ── Tablet: center content ──────────────────────────────── */
+@media (min-width: 768px) {
+  .top-bar { padding: 0 24px; }
+  .main-content { max-width: 680px; margin: 0 auto; width: 100%; }
+}
+
+/* ── Desktop: narrower content ───────────────────────────── */
+@media (min-width: 1024px) {
+  .top-bar { max-width: 680px; margin: 0 auto; width: 100%; padding: 0 24px; }
+  .main-content { max-width: 560px; }
+}
 </style>
