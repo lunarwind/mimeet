@@ -15,7 +15,10 @@
             <path d="m15 18-6-6 6-6" />
           </svg>
         </button>
-        <span class="top-bar-title" :class="{ 'top-bar-title--clickable': title === 'MiMeet' }" @click="handleTitleClick">{{ title }}</span>
+        <span v-if="!showBack" class="top-bar-logo" @click="handleLogoClick">
+          <span class="top-bar-logo__mi">Mi</span><span class="top-bar-logo__meet">Meet</span>
+        </span>
+        <span v-if="title !== 'MiMeet'" class="top-bar-title">{{ title }}</span>
       </div>
       <div class="top-bar-right">
         <slot name="topbar-right" />
@@ -51,8 +54,7 @@ const props = withDefaults(
   },
 )
 
-function handleTitleClick() {
-  if (props.title !== 'MiMeet') return
+function handleLogoClick() {
   if (auth.isLoggedIn && auth.user?.email_verified) {
     router.push('/app/explore')
   } else {
@@ -88,15 +90,22 @@ function handleTitleClick() {
   gap: 8px;
 }
 
+.top-bar-logo {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  cursor: pointer;
+  line-height: 1;
+}
+.top-bar-logo__mi { color: #F0294E; }
+.top-bar-logo__meet { color: #111827; }
+
 .top-bar-title {
   font-size: 17px;
   font-weight: 500;
   color: #111827;
   font-family: 'Noto Sans TC', sans-serif;
-}
-
-.top-bar-title--clickable {
-  cursor: pointer;
 }
 
 .back-btn {

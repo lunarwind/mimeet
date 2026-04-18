@@ -169,12 +169,14 @@ function clearSearch() {
 
       <!-- 用戶卡片列表 -->
       <template v-else>
-        <UserCard
-          v-for="user in users"
-          :key="user.id"
-          :user="user"
-          @click="goToProfile(user.id)"
-        />
+        <div class="explore-grid">
+          <UserCard
+            v-for="user in users"
+            :key="user.id"
+            :user="user"
+            @click="goToProfile(user.id)"
+          />
+        </div>
 
         <!-- 無限滾動 Sentinel -->
         <div ref="sentinelRef" class="explore-sentinel" aria-hidden="true" />
@@ -468,29 +470,37 @@ function clearSearch() {
   letter-spacing: 0.3px;
 }
 
+/* ── Grid container ──────────────────────────────────────── */
+.explore-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+.explore-grid :deep(.user-card) { margin-bottom: 0; }
+
 /* ── Tablet (768px+) ──────────────────────────────────────── */
 @media (min-width: 768px) {
-  .explore-topbar { padding: 0 24px; max-width: 800px; margin: 0 auto; width: 100%; }
-  .explore-search { padding: 8px 24px; }
-  .explore-tags { padding: 0 24px 10px; }
-  .explore-content { max-width: 800px; margin: 0 auto; width: 100%; padding: 8px 24px 16px; }
+  .explore-topbar { padding: 0 24px; max-width: 900px; margin: 0 auto; width: 100%; }
+  .explore-search { padding: 8px 24px; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+  .explore-tags { padding: 0 24px 10px; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+  .explore-content { max-width: 900px; margin: 0 auto; width: 100%; padding: 8px 24px 16px; }
+  .explore-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
 }
 
 /* ── Desktop (1024px+) ───────────────────────────────────── */
 @media (min-width: 1024px) {
-  .explore-topbar { max-width: 900px; }
-  .explore-content { max-width: 900px; }
+  .explore-topbar { max-width: 1060px; }
+  .explore-content { max-width: 1060px; }
+  .explore-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
 }
 
 /* ── Large desktop (1440px+) ─────────────────────────────── */
 @media (min-width: 1440px) {
-  .explore-topbar { max-width: 1060px; }
-  .explore-content { max-width: 1060px; }
+  .explore-topbar { max-width: 1200px; }
+  .explore-content { max-width: 1200px; }
+  .explore-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
 }
 
 /* ── 4K (1920px+) ────────────────────────────────────────── */
 @media (min-width: 1920px) {
-  .explore-topbar { max-width: 1200px; }
-  .explore-content { max-width: 1200px; }
+  .explore-topbar { max-width: 1400px; }
+  .explore-content { max-width: 1400px; }
+  .explore-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
 }
 </style>
