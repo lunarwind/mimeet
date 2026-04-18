@@ -164,8 +164,7 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 /* ── TopBar ──────────────────────────────────────────────── */
 .chat-topbar { display:flex; align-items:center; gap:10px; height:56px; padding:0 12px; background:#fff; border-bottom:0.5px solid #E5E7EB; flex-shrink:0; }
 .chat-topbar__back { background:none; border:none; padding:4px; cursor:pointer; color:#374151; display:flex; }
-.chat-topbar__logo { font-family:'Noto Serif TC',serif; font-size:18px; font-weight:600; letter-spacing:-0.5px; cursor:pointer; line-height:1; display:none; }
-@media (min-width: 768px) { .chat-topbar__logo { display:inline; } }
+.chat-topbar__logo { font-family:'Noto Serif TC',serif; font-size:18px; font-weight:600; letter-spacing:-0.5px; cursor:pointer; line-height:1; flex-shrink:0; }
 .chat-topbar__user { display:flex; align-items:center; gap:10px; flex:1; min-width:0; cursor:pointer; }
 .chat-topbar__avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
 .chat-topbar__name { display:block; font-size:15px; font-weight:600; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
