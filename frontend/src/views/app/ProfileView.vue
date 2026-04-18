@@ -102,9 +102,19 @@ async function toggleFavorite() {
   }
 }
 
-function sendMessage() {
+async function sendMessage() {
   if (!profile.value) return
-  router.push(`/app/messages/${profile.value.id}`)
+  try {
+    const { getOrCreateConversation } = await import('@/api/chat')
+    const conversationId = await getOrCreateConversation(profile.value.id)
+    if (conversationId) {
+      router.push(`/app/messages/${conversationId}`)
+    }
+  } catch (err: any) {
+    const msg = err.response?.data?.message ?? err.response?.data?.error?.message ?? '無法開啟對話'
+    const { useUiStore } = await import('@/stores/ui')
+    useUiStore().showToast(msg, 'error')
+  }
 }
 
 async function toggleBlock() {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\CreditScoreRestrictionException;
 use App\Exceptions\DailyLimitException;
 use App\Models\Conversation;
 use App\Models\UserBlock;
@@ -142,6 +143,14 @@ class ChatController extends Controller
 
         try {
             $message = $this->chatService->sendMessage($id, $userId, $request->input('content'));
+        } catch (CreditScoreRestrictionException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code' => '2001',
+                    'message' => $e->getMessage(),
+                ],
+            ], 403);
         } catch (DailyLimitException $e) {
             return response()->json([
                 'success' => false,

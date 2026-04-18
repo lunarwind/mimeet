@@ -112,6 +112,22 @@ class ChatService
 
         $conversation = Conversation::findOrFail($conversationId);
 
+        // Credit score check (PRD §4.3.3):
+        // - Lv3 paid members bypass this check (reverse-tier messaging privilege)
+        // - Others: can only message users with equal or lower credit_score
+        if ($user->membership_level < 3) {
+            $receiverId = $conversation->user_a_id === $senderId
+                ? $conversation->user_b_id
+                : $conversation->user_a_id;
+            $receiver = User::find($receiverId);
+
+            if ($receiver && $user->credit_score < $receiver->credit_score) {
+                throw new \App\Exceptions\CreditScoreRestrictionException(
+                    '誠信分數不足，無法向較高分數的用戶發送訊息'
+                );
+            }
+        }
+
         $message = Message::create([
             'uuid' => Str::uuid()->toString(),
             'conversation_id' => $conversationId,
@@ -194,16 +210,23 @@ class ChatService
      */
     private function checkDailyLimit(User $user): void
     {
-        // Lv3 (paid members) have no limit
-        if ($user->membership_level >= 3) {
-            return;
-        }
+        // Per-level daily message limits (PRD §4.3.3)
+        $level = (float) $user->membership_level;
+        if ($level >= 3) return; // Lv3 paid: unlimited
+
+        $limits = [
+            0   => 5,    // Lv0
+            1   => 30,   // Lv1
+            1.5 => 100,  // Lv1.5 (verified female)
+            2   => 30,   // Lv2
+        ];
+        $limit = $limits[$level] ?? 30;
 
         $cacheKey = "msg_daily:{$user->id}:" . now()->format('Y-m-d');
         $count = Cache::get($cacheKey, 0);
 
-        if ($count >= 30) {
-            throw new DailyLimitException();
+        if ($count >= $limit) {
+            throw new DailyLimitException("今日訊息已達上限（{$limit}則）");
         }
     }
 }

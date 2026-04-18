@@ -5,6 +5,12 @@
 import client from './client'
 import type { Conversation, Message } from '@/types/chat'
 
+// ── 建立/取得對話 ─────────────────────────────────────────
+export async function getOrCreateConversation(targetUserId: number): Promise<number> {
+  const res = await client.post('/chats', { user_id: targetUserId })
+  return res.data?.data?.conversation?.id ?? 0
+}
+
 // ── 取得聊天列表 ──────────────────────────────────────────
 export async function fetchConversations(): Promise<Conversation[]> {
   const res = await client.get('/chats')
