@@ -176,6 +176,9 @@ Route::prefix('api/v1')->group(function () {
         Route::patch('notifications/{id}/read', [NotificationController::class, 'markRead']);
     });
 
+    // ─── Announcements (public) ─────────────────────────────────────
+    Route::get('announcements/active', [\App\Http\Controllers\Admin\AnnouncementController::class, 'getActive']);
+
     // ─── Admin ───────────────────────────────────────────────────────
     Route::prefix('admin')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:admin-login');

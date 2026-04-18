@@ -22,6 +22,27 @@ class AnnouncementController extends Controller
         ]);
     }
 
+    /**
+     * GET /api/v1/announcements/active — public, returns only active announcements within date range
+     */
+    public function getActive(): JsonResponse
+    {
+        $all = Cache::get(self::CACHE_KEY, []);
+        $now = now();
+
+        $active = array_values(array_filter($all, function ($a) use ($now) {
+            if (!($a['is_active'] ?? false)) return false;
+            if (!empty($a['start_at']) && $now->lt($a['start_at'])) return false;
+            if (!empty($a['end_at']) && $now->gt($a['end_at'])) return false;
+            return true;
+        }));
+
+        return response()->json([
+            'success' => true,
+            'data' => ['announcements' => $active],
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

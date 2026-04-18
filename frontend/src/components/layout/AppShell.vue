@@ -1,5 +1,6 @@
 <template>
   <div class="app-shell">
+    <AnnouncementBanner />
     <router-view />
     <BottomNav v-if="showNav" />
   </div>
@@ -9,6 +10,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import BottomNav from './BottomNav.vue'
+import AnnouncementBanner from '@/components/common/AnnouncementBanner.vue'
 
 const route = useRoute()
 
