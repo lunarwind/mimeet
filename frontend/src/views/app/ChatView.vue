@@ -194,18 +194,18 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 
 /* ── Desktop (1024px+) ────────────────────────────────────── */
 @media (min-width: 1024px) {
-  .chat-view { max-width:960px; margin:0 auto; border-left:0.5px solid #E5E7EB; border-right:0.5px solid #E5E7EB; }
+  .chat-view { max-width:90%; margin:0 auto; }
   .chat-topbar { padding:0 24px; }
   .chat-messages { padding:20px 32px; gap:6px; }
 }
 
 /* ── Large desktop (1440px+) ─────────────────────────────── */
 @media (min-width: 1440px) {
-  .chat-view { max-width:1100px; height:calc(100dvh - 100px); margin-top:8px; border-radius:16px; border:0.5px solid #E5E7EB; box-shadow:0 2px 16px rgba(0,0,0,0.06); }
+  .chat-view { max-width:85%; }
 }
 
 /* ── 4K (1920px+) ────────────────────────────────────────── */
 @media (min-width: 1920px) {
-  .chat-view { max-width:1300px; }
+  .chat-view { max-width:1600px; }
 }
 </style>
