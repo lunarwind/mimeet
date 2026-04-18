@@ -53,5 +53,10 @@ export async function sendMessage(conversationId: number, content: string): Prom
 
 // ── 標記已讀 ──────────────────────────────────────────────
 export async function markConversationRead(conversationId: number): Promise<void> {
-  await client.patch(`/chats/${conversationId}/messages/read`)
+  await client.patch(`/chats/${conversationId}/read`)
+}
+
+// ── 全部標記已讀 ──────────────────────────────────────────
+export async function markAllConversationsRead(): Promise<void> {
+  await client.patch('/chats/read-all')
 }

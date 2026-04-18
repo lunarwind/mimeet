@@ -195,6 +195,29 @@ class ChatController extends Controller
     }
 
     /**
+     * PATCH /api/v1/chats/read-all — mark all conversations as read
+     */
+    public function readAll(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $conversations = Conversation::where('user_a_id', $userId)
+            ->orWhere('user_b_id', $userId)
+            ->get();
+
+        foreach ($conversations as $conv) {
+            $this->chatService->markAsRead($conv->id, $userId);
+        }
+
+        return response()->json([
+            'success' => true,
+            'code' => 200,
+            'message' => '所有對話已標記為已讀',
+            'data' => ['marked_count' => $conversations->count()],
+        ]);
+    }
+
+    /**
      * DELETE /api/v1/chats/{id} — soft delete conversation
      */
     public function destroy(Request $request, int $id): JsonResponse

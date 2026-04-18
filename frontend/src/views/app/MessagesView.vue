@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
-import { fetchConversations } from '@/api/chat'
+import { fetchConversations, markAllConversationsRead } from '@/api/chat'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import type { Conversation } from '@/types/chat'
 
@@ -57,6 +57,14 @@ function handleDelete(id: number) {
   swipedId.value = null
 }
 
+async function handleMarkAllRead() {
+  try {
+    await markAllConversationsRead()
+    chatStore.markAllAsRead()
+    conversations.value.forEach(c => { c.unreadCount = 0 })
+  } catch { /* ignore */ }
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
@@ -73,9 +81,13 @@ function timeAgo(iso: string): string {
 <template>
   <AppLayout title="訊息">
     <template #topbar-right>
-      <span v-if="chatStore.totalUnread > 0" class="msg-badge">
-        {{ chatStore.totalUnread > 99 ? '99+' : chatStore.totalUnread }}
-      </span>
+      <button
+        v-if="chatStore.totalUnread > 0"
+        class="mark-all-read-btn"
+        @click="handleMarkAllRead"
+      >
+        全部已讀
+      </button>
     </template>
 
     <!-- 搜尋欄 -->
@@ -149,8 +161,8 @@ function timeAgo(iso: string): string {
 </template>
 
 <style scoped>
-/* ── TopBar Badge ────────────────────────────────────────── */
-.msg-badge { background:#F0294E; color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px; border-radius:9999px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+/* ── TopBar ──────────────────────────────────────────────── */
+.mark-all-read-btn { background:none; border:none; color:#F0294E; font-size:13px; font-weight:600; cursor:pointer; padding:4px 8px; }
 
 /* ── Search ──────────────────────────────────────────────── */
 .msg-search { padding:8px 16px; background:#fff; border-bottom:0.5px solid #F1F5F9; }

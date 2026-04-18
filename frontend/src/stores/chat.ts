@@ -23,6 +23,10 @@ export const useChatStore = defineStore('chat', () => {
     if (conv) conv.unreadCount = 0
   }
 
+  function markAllAsRead() {
+    conversations.value.forEach((c) => { c.unreadCount = 0 })
+  }
+
   function incrementUnread(conversationId: number) {
     const conv = conversations.value.find((c) => c.id === conversationId)
     if (conv) conv.unreadCount++
@@ -43,6 +47,7 @@ export const useChatStore = defineStore('chat', () => {
     setConversations,
     initFromApi,
     markAsRead,
+    markAllAsRead,
     incrementUnread,
     updateLastMessage,
   }
