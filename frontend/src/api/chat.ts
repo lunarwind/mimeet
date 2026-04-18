@@ -65,10 +65,18 @@ export async function fetchMessages(conversationId: number): Promise<Message[]> 
 
 // ── 發送訊息 ──────────────────────────────────────────────
 export async function sendMessage(conversationId: number, content: string): Promise<Message> {
-  const res = await client.post<{ data: { message: Message } }>(`/chats/${conversationId}/messages`, {
-    content, message_type: 'text',
-  })
-  return res.data.data.message
+  const res = await client.post(`/chats/${conversationId}/messages`, { content })
+  const m = res.data?.data?.message ?? {}
+  return {
+    id: m.id,
+    conversationId,
+    senderId: m.sender_id ?? 0,
+    type: m.type ?? 'text',
+    content: m.content ?? content,
+    status: 'sent',
+    createdAt: m.sent_at ?? m.created_at ?? new Date().toISOString(),
+    isOwn: true,
+  }
 }
 
 // ── 標記已讀 ──────────────────────────────────────────────

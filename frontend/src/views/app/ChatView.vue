@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useChat } from '@/composables/useChat'
-import { fetchMessages, markConversationRead, fetchConversationInfo } from '@/api/chat'
+import { fetchMessages, markConversationRead, fetchConversationInfo, sendMessage as apiSendMessage } from '@/api/chat'
 import MessageBubble from '@/components/chat/MessageBubble.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import type { ChatMessage } from '@/types/chat'
@@ -71,19 +71,47 @@ onMounted(async () => {
 onUnmounted(() => disconnect())
 
 // ── 發送 ──────────────────────────────────────────────────
-function handleSend(content: string) {
-  const msg: ChatMessage = {
-    id: Date.now(),
+const isSending = ref(false)
+
+async function handleSend(content: string) {
+  if (isSending.value) return
+  isSending.value = true
+
+  // Optimistic: show immediately
+  const tempId = Date.now()
+  const tempMsg: ChatMessage = {
+    id: tempId,
     conversationId: conversationId.value,
     senderId: authStore.user?.id ?? 0,
     type: 'text',
     content,
-    status: 'sent',
+    status: 'sending',
     createdAt: new Date().toISOString(),
     isOwn: true,
   }
-  localMessages.value.push(msg)
+  localMessages.value.push(tempMsg)
   scrollToBottom()
+
+  try {
+    const sent = await apiSendMessage(conversationId.value, content)
+    // Replace temp message with server response
+    const idx = localMessages.value.findIndex(m => m.id === tempId)
+    if (idx !== -1) {
+      localMessages.value[idx] = { ...sent, isOwn: true, status: 'sent' }
+    }
+    chatStore.updateLastMessage(conversationId.value, content)
+  } catch (err: any) {
+    // Mark as failed
+    const idx = localMessages.value.findIndex(m => m.id === tempId)
+    const failedMsg = idx !== -1 ? localMessages.value[idx] : undefined
+    if (failedMsg) failedMsg.status = 'failed'
+
+    const msg = err.response?.data?.error?.message ?? err.response?.data?.message ?? '發送失敗'
+    const { useUiStore } = await import('@/stores/ui')
+    useUiStore().showToast(msg, 'error')
+  } finally {
+    isSending.value = false
+  }
 }
 
 function goBack() { router.back() }
