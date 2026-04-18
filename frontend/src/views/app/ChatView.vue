@@ -157,6 +157,7 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 </template>
 
 <style scoped>
+/* ── Base (mobile-first) ─────────────────────────────────── */
 .chat-view { display:flex; flex-direction:column; height:100dvh; background:#fff; }
 
 /* ── TopBar ──────────────────────────────────────────────── */
@@ -180,4 +181,19 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 /* ── Date Separator ──────────────────────────────────────── */
 .date-sep { display:flex; justify-content:center; padding:12px 0 8px; }
 .date-sep span { font-size:11px; color:#9CA3AF; background:#F1F5F9; padding:2px 10px; border-radius:9999px; }
+
+/* ── Tablet (768px+) ─────────────────────────────────────── */
+@media (min-width: 768px) {
+  .chat-topbar { padding:0 24px; }
+  .chat-topbar__avatar { width:40px; height:40px; }
+  .chat-topbar__name { font-size:16px; }
+  .chat-messages { padding:16px 24px; gap:6px; }
+}
+
+/* ── Desktop (1024px+): center with max-width ────────────── */
+@media (min-width: 1024px) {
+  .chat-view { max-width:800px; margin:0 auto; border-left:0.5px solid #E5E7EB; border-right:0.5px solid #E5E7EB; }
+  .chat-topbar { padding:0 24px; }
+  .chat-messages { padding:20px 32px; gap:6px; }
+}
 </style>

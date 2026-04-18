@@ -57,9 +57,10 @@ function handleSend() {
 </template>
 
 <style scoped>
-.chat-input { display:flex; align-items:flex-end; gap:8px; padding:8px 16px; background:#fff; border-top:1px solid #F1F5F9; padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+/* ── Base (mobile) ───────────────────────────────────────── */
+.chat-input { display:flex; align-items:flex-end; gap:8px; padding:8px 16px; background:#fff; border-top:1px solid #F1F5F9; padding-bottom:max(8px, env(safe-area-inset-bottom)); flex-shrink:0; }
 
-.chat-input__field { flex:1; min-height:44px; max-height:120px; border:1.5px solid #E5E7EB; border-radius:20px; padding:10px 16px; font-size:14px; color:#111827; background:#F9FAFB; outline:none; resize:none; font-family:inherit; line-height:1.5; box-sizing:border-box; }
+.chat-input__field { flex:1; min-height:44px; max-height:120px; border:1.5px solid #E5E7EB; border-radius:20px; padding:10px 16px; font-size:16px; color:#111827; background:#F9FAFB; outline:none; resize:none; font-family:inherit; line-height:1.5; box-sizing:border-box; }
 .chat-input__field:focus { border-color:#F0294E; background:#fff; }
 .chat-input__field::placeholder { color:#9CA3AF; }
 
@@ -67,4 +68,17 @@ function handleSend() {
 .chat-input__send--active { background:#F0294E; color:#fff; }
 .chat-input__send:active:not(:disabled) { transform:scale(0.93); }
 .chat-input__send:disabled { cursor:not-allowed; }
+
+/* ── Tablet (768px+) ─────────────────────────────────────── */
+@media (min-width: 768px) {
+  .chat-input { padding:12px 24px; gap:10px; }
+  .chat-input__field { min-height:48px; max-height:140px; font-size:15px; }
+}
+
+/* ── Desktop (1024px+) ───────────────────────────────────── */
+@media (min-width: 1024px) {
+  .chat-input { padding:14px 32px; gap:12px; }
+  .chat-input__field { min-height:52px; max-height:160px; font-size:15px; padding:12px 20px; }
+  .chat-input__send { width:48px; height:48px; }
+}
 </style>
