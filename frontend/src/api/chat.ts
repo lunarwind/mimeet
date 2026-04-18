@@ -33,6 +33,20 @@ export async function fetchConversations(): Promise<Conversation[]> {
   }))
 }
 
+// ── 取得對話對方資訊 ──────────────────────────────────────
+export async function fetchConversationInfo(conversationId: number) {
+  const res = await client.get(`/chats/${conversationId}/info`)
+  const u = res.data?.data?.user ?? {}
+  return {
+    id: u.id as number,
+    nickname: u.nickname as string ?? '',
+    avatarUrl: (u.avatar_url ?? null) as string | null,
+    onlineStatus: (u.online_status ?? null) as string | null,
+    lastActiveLabel: (u.last_active_label ?? null) as string | null,
+    creditScore: (u.credit_score ?? 0) as number,
+  }
+}
+
 // ── 取得聊天訊息 ──────────────────────────────────────────
 export async function fetchMessages(conversationId: number): Promise<Message[]> {
   const res = await client.get(`/chats/${conversationId}/messages`)

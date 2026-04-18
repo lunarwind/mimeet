@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Exceptions\CreditScoreRestrictionException;
 use App\Exceptions\DailyLimitException;
 use App\Models\Conversation;
+use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\ChatService;
 use Illuminate\Http\JsonResponse;
@@ -68,6 +69,81 @@ class ChatController extends Controller
                 ],
             ],
         ], 201);
+    }
+
+    /**
+     * GET /api/v1/chats/{id}/info — conversation info (other user details)
+     */
+    public function info(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$this->chatService->isParticipant($id, $user->id)) {
+            return response()->json([
+                'success' => false, 'code' => 403, 'message' => '您不是此對話的參與者',
+            ], 403);
+        }
+
+        $conversation = Conversation::findOrFail($id);
+        $otherId = $conversation->user_a_id === $user->id
+            ? $conversation->user_b_id
+            : $conversation->user_a_id;
+        $other = User::find($otherId);
+
+        if (!$other) {
+            return response()->json([
+                'success' => false, 'code' => 404, 'message' => '用戶不存在',
+            ], 404);
+        }
+
+        // Online status: only visible to Lv3 paid members
+        $onlineStatus = null;
+        $lastActiveLabel = null;
+        $isPaid = ((float) $user->membership_level) >= 3;
+
+        if ($isPaid) {
+            $privacy = $other->privacy_settings;
+            $stealthMode = !($privacy['show_online_status'] ?? true);
+
+            if ($stealthMode) {
+                $onlineStatus = 'offline';
+                $lastActiveLabel = '離線中';
+            } elseif ($other->last_active_at) {
+                $diff = now()->diffInMinutes($other->last_active_at);
+                if ($diff < 5) {
+                    $onlineStatus = 'online';
+                    $lastActiveLabel = '線上中';
+                } elseif ($diff < 60) {
+                    $onlineStatus = 'away';
+                    $lastActiveLabel = "{$diff}分鐘前上線";
+                } elseif ($diff < 1440) {
+                    $hours = intdiv($diff, 60);
+                    $onlineStatus = 'away';
+                    $lastActiveLabel = "{$hours}小時前上線";
+                } else {
+                    $days = intdiv($diff, 1440);
+                    $onlineStatus = 'offline';
+                    $lastActiveLabel = "{$days}天前上線";
+                }
+            } else {
+                $onlineStatus = 'offline';
+                $lastActiveLabel = '離線中';
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => $other->id,
+                    'nickname' => $other->nickname,
+                    'avatar_url' => $other->avatar_url,
+                    'online_status' => $onlineStatus,
+                    'last_active_label' => $lastActiveLabel,
+                    'credit_score' => $other->credit_score,
+                ],
+            ],
+        ]);
     }
 
     /**

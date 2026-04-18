@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useChat } from '@/composables/useChat'
-import { fetchMessages, markConversationRead } from '@/api/chat'
+import { fetchMessages, markConversationRead, fetchConversationInfo } from '@/api/chat'
 import MessageBubble from '@/components/chat/MessageBubble.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import type { ChatMessage } from '@/types/chat'
@@ -21,10 +21,10 @@ const localMessages = ref<ChatMessage[]>([])
 const messagesEndRef = ref<HTMLElement | null>(null)
 
 // ── 對方資訊 ──────────────────────────────────────────────
-const otherUser = computed(() => {
-  const conv = chatStore.conversations.find(c => c.id === conversationId.value)
-  return conv?.targetUser ?? { id: 0, nickname: '用戶', avatarUrl: null, isOnline: false, creditScore: 0 }
-})
+const otherUser = ref<{
+  id: number; nickname: string; avatarUrl: string | null;
+  onlineStatus: string | null; lastActiveLabel: string | null; creditScore: number
+}>({ id: 0, nickname: '', avatarUrl: null, onlineStatus: null, lastActiveLabel: null, creditScore: 0 })
 
 // ── 日期分隔 ──────────────────────────────────────────────
 function dateSeparator(msg: ChatMessage, prev: ChatMessage | undefined): string | null {
@@ -48,7 +48,12 @@ async function scrollToBottom() {
 
 // ── 載入 ──────────────────────────────────────────────────
 onMounted(async () => {
-  const data = await fetchMessages(conversationId.value)
+  // Fetch other user info and messages in parallel
+  const [userData, data] = await Promise.all([
+    fetchConversationInfo(conversationId.value).catch(() => null),
+    fetchMessages(conversationId.value),
+  ])
+  if (userData) otherUser.value = userData
   localMessages.value = data
   chatStore.markAsRead(conversationId.value)
   markConversationRead(conversationId.value)
@@ -95,9 +100,8 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
       <div class="chat-topbar__user" @click="goProfile">
         <img :src="otherUser.avatarUrl ?? '/default-avatar.svg'" class="chat-topbar__avatar" alt="" />
         <div>
-          <span class="chat-topbar__name">{{ otherUser.nickname }}</span>
-          <span v-if="otherUser.isOnline" class="chat-topbar__status">在線</span>
-          <span v-else class="chat-topbar__status chat-topbar__status--off">離線</span>
+          <span class="chat-topbar__name">{{ otherUser.nickname || '用戶' }}</span>
+          <span v-if="otherUser.lastActiveLabel" class="chat-topbar__status" :class="{ 'chat-topbar__status--on': otherUser.onlineStatus === 'online', 'chat-topbar__status--off': otherUser.onlineStatus !== 'online' }">{{ otherUser.lastActiveLabel }}</span>
         </div>
       </div>
       <button class="chat-topbar__info" @click="goProfile" aria-label="查看資訊">
@@ -133,8 +137,8 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 .chat-topbar__user { display:flex; align-items:center; gap:10px; flex:1; min-width:0; cursor:pointer; }
 .chat-topbar__avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
 .chat-topbar__name { display:block; font-size:15px; font-weight:600; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.chat-topbar__status { display:block; font-size:11px; color:#22C55E; font-weight:500; }
-.chat-topbar__status--off { color:#9CA3AF; }
+.chat-topbar__status { display:block; font-size:11px; color:#9CA3AF; font-weight:500; }
+.chat-topbar__status--on { color:#22C55E; }
 .chat-topbar__info { background:none; border:none; padding:4px; cursor:pointer; color:#9CA3AF; display:flex; }
 
 /* ── Messages ────────────────────────────────────────────── */

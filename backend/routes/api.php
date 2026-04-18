@@ -101,6 +101,7 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/', [ChatController::class, 'index'])->middleware('membership:2');
         Route::post('/', [ChatController::class, 'store'])->middleware('membership:2');
         Route::patch('/read-all', [ChatController::class, 'readAll']);
+        Route::get('/{id}/info', [ChatController::class, 'info']);
         Route::get('/{id}/messages', [ChatController::class, 'messages']);
         Route::post('/{id}/messages', [ChatController::class, 'sendMessage'])->middleware('membership:2');
         Route::patch('/{id}/read', [ChatController::class, 'markRead']);
