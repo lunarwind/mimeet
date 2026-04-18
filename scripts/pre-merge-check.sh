@@ -85,6 +85,11 @@ check \
   "other_user"
 
 check \
+  "fetchMessages maps sent_at to createdAt" \
+  "grep 'sent_at' frontend/src/api/chat.ts" \
+  "sent_at"
+
+check \
   "VerifyView uploads to /users/me/photos" \
   "grep '/users/me/photos' frontend/src/views/app/settings/VerifyView.vue" \
   "/users/me/photos"

@@ -28,9 +28,11 @@ const otherUser = computed(() => {
 
 // ── 日期分隔 ──────────────────────────────────────────────
 function dateSeparator(msg: ChatMessage, prev: ChatMessage | undefined): string | null {
+  if (!msg.createdAt) return null
   const d = new Date(msg.createdAt)
-  const pd = prev ? new Date(prev.createdAt) : null
-  if (pd && d.toDateString() === pd.toDateString()) return null
+  if (isNaN(d.getTime())) return null
+  const pd = prev?.createdAt ? new Date(prev.createdAt) : null
+  if (pd && !isNaN(pd.getTime()) && d.toDateString() === pd.toDateString()) return null
   const today = new Date()
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
   if (d.toDateString() === today.toDateString()) return '今天'

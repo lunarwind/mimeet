@@ -29,8 +29,18 @@ export async function fetchConversations(): Promise<Conversation[]> {
 
 // ── 取得聊天訊息 ──────────────────────────────────────────
 export async function fetchMessages(conversationId: number): Promise<Message[]> {
-  const res = await client.get<{ data: { messages: Message[] } }>(`/chats/${conversationId}/messages`)
-  return res.data.data.messages
+  const res = await client.get(`/chats/${conversationId}/messages`)
+  const raw = res.data?.data?.messages ?? []
+  return raw.map((m: any) => ({
+    id: m.id,
+    conversationId: m.conversation_id ?? conversationId,
+    senderId: m.sender_id ?? 0,
+    type: m.type ?? 'text',
+    content: m.content ?? '',
+    status: m.is_read ? 'read' : 'sent',
+    isOwn: false, // set by ChatView based on current user
+    createdAt: m.sent_at ?? m.created_at ?? '',
+  }))
 }
 
 // ── 發送訊息 ──────────────────────────────────────────────

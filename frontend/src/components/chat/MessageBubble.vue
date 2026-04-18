@@ -25,7 +25,10 @@ function recallMsg() {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
