@@ -1,81 +1,67 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\SeoMeta;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 class SeoController extends Controller
 {
+    /**
+     * GET /api/v1/admin/seo/meta — list all page meta entries
+     * 對應 A17 SEO Meta Tag 管理（API-002 §9.4）
+     */
     public function metaIndex(): JsonResponse
     {
-        $metas = Cache::get('seo_meta_tags', [
-            ['id' => 1, 'page_key' => 'landing', 'title' => 'MiMeet - 台灣高端交友平台', 'description' => '透過誠信分數系統，找到真實可信賴的另一半', 'og_image' => ''],
-            ['id' => 2, 'page_key' => 'login', 'title' => 'MiMeet - 登入', 'description' => '登入你的 MiMeet 帳號', 'og_image' => ''],
-            ['id' => 3, 'page_key' => 'register', 'title' => 'MiMeet - 註冊', 'description' => '立即加入 MiMeet 交友平台', 'og_image' => ''],
+        $metas = SeoMeta::orderBy('id')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $metas,
         ]);
-        return response()->json(['success' => true, 'data' => ['metas' => $metas]]);
     }
 
+    /**
+     * PATCH /api/v1/admin/seo/meta/{id} — update single page meta (partial)
+     * 對應 A17 SEO Meta Tag 管理（API-002 §9.5）
+     */
     public function metaUpdate(Request $request, int $id): JsonResponse
     {
-        $request->validate([
-            'title' => 'required|string|max:70',
-            'description' => 'required|string|max:200',
-            'og_image' => 'sometimes|string',
+        $validated = $request->validate([
+            'title'          => 'sometimes|required|string|max:70',
+            'description'    => 'sometimes|required|string|max:200',
+            'og_title'       => 'sometimes|nullable|string|max:70',
+            'og_description' => 'sometimes|nullable|string|max:200',
+            'og_image_url'   => 'sometimes|nullable|url|max:500',
         ]);
-        return response()->json(['success' => true, 'message' => 'SEO Meta 已更新']);
-    }
 
-    public function linkIndex(): JsonResponse
-    {
-        $links = Cache::get('seo_links', [
-            ['id' => 1, 'slug' => 'ig-2024', 'target_url' => 'https://mimeet.tw/register', 'campaign' => 'Instagram廣告', 'click_count' => 342, 'register_count' => 28, 'is_active' => true, 'created_at' => now()->subDays(30)->toISOString()],
-            ['id' => 2, 'slug' => 'fb-spring', 'target_url' => 'https://mimeet.tw/register', 'campaign' => 'Facebook春季活動', 'click_count' => 156, 'register_count' => 12, 'is_active' => true, 'created_at' => now()->subDays(15)->toISOString()],
+        $meta = SeoMeta::findOrFail($id);
+        $meta->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'SEO Meta 已更新',
+            'data' => $meta->fresh(),
         ]);
-        return response()->json(['success' => true, 'data' => ['links' => $links]]);
     }
 
-    public function linkStore(Request $request): JsonResponse
-    {
-        $request->validate([
-            'slug' => 'required|string|max:50',
-            'target_url' => 'required|url',
-            'campaign' => 'sometimes|string|max:100',
-        ]);
-        return response()->json(['success' => true, 'message' => '跳轉連結已建立', 'data' => [
-            'link' => ['id' => rand(10,99), 'slug' => $request->slug, 'target_url' => $request->target_url, 'campaign' => $request->campaign, 'click_count' => 0, 'register_count' => 0, 'is_active' => true, 'created_at' => now()->toISOString()]
-        ]], 201);
-    }
+    // ─────────────────────────────────────────────────────────────
+    // [Phase 2] A18 廣告跳轉連結管理
+    // 以下方法保留為 Phase 2 骨架，尚未實作。
+    // 啟用時需補：
+    //   - seo_links / seo_click_logs migrations + models
+    //   - 路由註冊（見 routes/api.php）
+    //   - 前端 SeoPage 廣告連結 tab 解除隱藏
+    //   - 前台 /go/{slug} 公開路由 (redirect)
+    // 規格：docs/API-002_後台管理API規格書.md §9.1–9.3
+    // ─────────────────────────────────────────────────────────────
 
-    public function linkUpdate(Request $request, int $id): JsonResponse
-    {
-        return response()->json(['success' => true, 'message' => '連結已更新']);
-    }
-
-    public function linkDestroy(int $id): JsonResponse
-    {
-        return response()->json(['success' => true, 'message' => '連結已刪除']);
-    }
-
-    public function linkStats(int $id): JsonResponse
-    {
-        return response()->json(['success' => true, 'data' => [
-            'total_clicks' => 342, 'total_registers' => 28, 'conversion_rate' => '8.19%',
-            'daily_stats' => array_map(fn($i) => ['date' => now()->subDays($i)->format('Y-m-d'), 'clicks' => rand(5, 30), 'registers' => rand(0, 5)], range(0, 6))
-        ]]);
-    }
-
-    // Public endpoint for /go/:slug redirect
-    public function redirect(string $slug): \Illuminate\Http\RedirectResponse|JsonResponse
-    {
-        $links = Cache::get('seo_links', []);
-        $link = collect($links)->firstWhere('slug', $slug);
-        if (!$link || !($link['is_active'] ?? false)) {
-            return response()->json(['success' => false, 'message' => '連結不存在或已停用'], 404);
-        }
-        return redirect($link['target_url'], 302);
-    }
+    // public function linkIndex(): JsonResponse { ... }
+    // public function linkStore(Request $request): JsonResponse { ... }
+    // public function linkUpdate(Request $request, int $id): JsonResponse { ... }
+    // public function linkDestroy(int $id): JsonResponse { ... }
+    // public function linkStats(int $id): JsonResponse { ... }
+    // public function redirect(string $slug) { ... }
 }

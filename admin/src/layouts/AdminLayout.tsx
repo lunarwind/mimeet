@@ -41,7 +41,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/payments', roles: ['super_admin', 'admin'] },
   { key: 'verifications', icon: <SafetyCertificateOutlined />, label: '驗證審核', path: '/verifications', roles: ['super_admin', 'admin'] },
   { key: 'broadcasts', icon: <NotificationOutlined />, label: '廣播訊息', path: '/broadcasts', roles: ['super_admin', 'admin'] },
-  { key: 'seo', icon: <LinkOutlined />, label: 'SEO 管理', path: '/seo', roles: ['super_admin', 'admin'] },
+  { key: 'seo', icon: <LinkOutlined />, label: 'SEO Meta 管理', path: '/seo', roles: ['super_admin', 'admin'] },
   { key: 'announcements', icon: <SoundOutlined />, label: '系統公告', path: '/announcements', roles: ['super_admin', 'admin'] },
   { key: 'settings', icon: <SettingOutlined />, label: '系統設定', path: '/settings/system', roles: ['super_admin'] },
   { key: 'logs', icon: <AuditOutlined />, label: '操作日誌', path: '/logs', roles: ['super_admin'] },

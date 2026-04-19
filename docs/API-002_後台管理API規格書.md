@@ -1127,6 +1127,10 @@ GET /api/v1/admin/payments/export?start_date=2025-01-01&end_date=2025-01-31&form
 ## 9. SEO 管理 API
 
 > 所需權限：`seo.manage`
+>
+> **實作狀態（2026-04-19）：**
+> - §9.4、§9.5（SEO Meta Tag 管理 / A17）**已實作**，路由 `GET/PATCH /api/v1/admin/seo/meta[/{id}]` 於 `admin.auth + admin.log` group 內。
+> - §9.1、§9.2、§9.3（廣告跳轉連結 / A18）**保留 Phase 2**。SeoController 已保留方法骨架註解，尚未接 DB、未註冊路由，前端 tab 亦已隱藏。
 
 ### 9.1 取得廣告跳轉連結列表
 

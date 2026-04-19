@@ -117,8 +117,8 @@
 | A11 | 聊天記錄匯出 | Phase 2 | 🚀 CSV export API | 含 BOM UTF-8 |
 | A14 | 廣播訊息 | Phase 2 | 🚀 BroadcastController + BroadcastsPage | 建立/發送/篩選目標 |
 | A16 | 訂閱折扣管理 | Phase 2 | 🚀 PricingTab + promo_* 欄位 | 百分比/固定/期限 |
-| A17 | SEO Meta 管理 | Phase 2 | 🚀 SeoPage | Meta tag + 廣告跳轉連結 |
-| A18 | 廣告跳轉追蹤 | Phase 2 | 🚀 SeoPage | 點擊/註冊轉換率 |
+| A17 | SEO Meta 管理 | Phase 2 | ✅ 2026-04-19 補完 | `seo_metas` 表 + SeoController::metaIndex/metaUpdate + SeoPage Meta tab + SeoMetaSeeder 3 筆（/、/login、/register）|
+| A18 | 廣告跳轉追蹤 | Phase 2 | ⏳ 保留 Phase 2 | SeoController 有骨架註解；SeoPage links tab 已隱藏（註解保留）；無 Migration/Route |
 
 ---
 
