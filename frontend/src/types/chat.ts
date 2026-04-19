@@ -43,6 +43,7 @@ export interface Conversation {
   lastMessage: string
   lastMessageAt: string
   unreadCount: number
+  isMuted?: boolean
 }
 
 export interface DateInvitation {

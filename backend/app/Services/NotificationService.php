@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\NotificationReceived;
+use App\Models\Conversation;
 use App\Models\FcmToken;
 use App\Models\Notification;
 use App\Models\User;
@@ -13,7 +14,10 @@ class NotificationService
         private readonly FcmService $fcmService,
     ) {}
 
-    public function notify(User $user, string $type, string $title, string $body, array $data = []): Notification
+    /**
+     * @param bool $skipPush  F22：為 true 時跳過 FCM 推播（站內 + WebSocket 仍會發出）
+     */
+    public function notify(User $user, string $type, string $title, string $body, array $data = [], bool $skipPush = false): Notification
     {
         $notification = Notification::create([
             'user_id' => $user->id,
@@ -31,10 +35,12 @@ class NotificationService
             // Broadcast driver not available
         }
 
-        // Push via FCM
-        $tokens = FcmToken::where('user_id', $user->id)->pluck('token');
-        foreach ($tokens as $token) {
-            $this->fcmService->send($token, $title, $body, $data);
+        // Push via FCM — skip if receiver is muted for this source or in global DND
+        if (!$skipPush) {
+            $tokens = FcmToken::where('user_id', $user->id)->pluck('token');
+            foreach ($tokens as $token) {
+                $this->fcmService->send($token, $title, $body, $data);
+            }
         }
 
         return $notification;
@@ -44,12 +50,17 @@ class NotificationService
 
     public function notifyNewMessage(User $receiver, int $conversationId, User $sender): void
     {
+        // F22：對話靜音或全域 DND 時，跳過 FCM 推播（站內通知仍寫入）
+        $muted = Conversation::find($conversationId)?->isMutedBy($receiver->id) ?? false;
+        $skipPush = $muted || $receiver->isInDndPeriod();
+
         $this->notify(
             $receiver,
             'new_message',
             "{$sender->nickname} 傳訊息給你",
             '你有一則新訊息',
             ['conversation_id' => $conversationId],
+            $skipPush,
         );
     }
 

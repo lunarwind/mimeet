@@ -41,6 +41,10 @@ const stealthMode = ref(false)
 const hideLastActive = ref(false)
 const readReceipt = ref(true)
 
+// F22 全域免打擾
+const dnd = ref({ dndEnabled: false, dndStart: '22:00', dndEnd: '08:00' })
+const isDndSaving = ref(false)
+
 const CITIES = [
   '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市',
   '基隆市', '新竹市', '嘉義市', '新竹縣', '苗栗縣', '彰化縣',
@@ -51,7 +55,47 @@ const CITIES = [
 onMounted(async () => {
   await loadProfile()
   await loadAvatarSlots()
+  await loadDnd()
 })
+
+async function loadDnd() {
+  try {
+    const { getDnd } = await import('@/api/dnd')
+    const s = await getDnd()
+    dnd.value = {
+      dndEnabled: s.dndEnabled,
+      dndStart: s.dndStart ?? '22:00',
+      dndEnd: s.dndEnd ?? '08:00',
+    }
+  } catch { /* ignore */ }
+}
+
+async function persistDnd() {
+  if (isDndSaving.value) return
+  isDndSaving.value = true
+  try {
+    const { updateDnd } = await import('@/api/dnd')
+    await updateDnd({
+      dndEnabled: dnd.value.dndEnabled,
+      dndStart: dnd.value.dndEnabled ? dnd.value.dndStart : null,
+      dndEnd: dnd.value.dndEnabled ? dnd.value.dndEnd : null,
+    })
+    uiStore.showToast(dnd.value.dndEnabled ? '已啟用免打擾' : '已關閉免打擾', 'success')
+  } catch {
+    uiStore.showToast('免打擾設定儲存失敗', 'error')
+  } finally {
+    isDndSaving.value = false
+  }
+}
+
+function handleDndToggle() {
+  dnd.value.dndEnabled = !dnd.value.dndEnabled
+  persistDnd()
+}
+
+function handleDndTimeChange() {
+  if (dnd.value.dndEnabled) persistDnd()
+}
 
 async function loadAvatarSlots() {
   try {
@@ -412,6 +456,50 @@ const settingsLinks = [
         </p>
       </section>
 
+      <!-- 免打擾設定（F22 Part B） -->
+      <section class="privacy-section">
+        <h3 class="section-label">免打擾模式</h3>
+
+        <div class="privacy-row" @click="handleDndToggle">
+          <div class="privacy-row__left">
+            <span class="privacy-row__label">啟用免打擾</span>
+            <span class="privacy-row__desc">在指定時段內不發送推播通知</span>
+          </div>
+          <div class="privacy-row__right">
+            <button class="toggle-sm" :class="{ 'toggle-sm--on': dnd.dndEnabled }">
+              <span class="toggle-sm__dot" />
+            </button>
+          </div>
+        </div>
+
+        <div v-if="dnd.dndEnabled" class="dnd-time-row">
+          <div class="dnd-time-field">
+            <label for="dnd-start" class="dnd-time-label">開始時間</label>
+            <input
+              id="dnd-start"
+              v-model="dnd.dndStart"
+              type="time"
+              class="dnd-time-input"
+              @change="handleDndTimeChange"
+            />
+          </div>
+          <div class="dnd-time-field">
+            <label for="dnd-end" class="dnd-time-label">結束時間</label>
+            <input
+              id="dnd-end"
+              v-model="dnd.dndEnd"
+              type="time"
+              class="dnd-time-input"
+              @change="handleDndTimeChange"
+            />
+          </div>
+        </div>
+
+        <p v-if="dnd.dndEnabled" class="privacy-note">
+          若結束時間早於開始時間（如 22:00 → 08:00），代表跨午夜的時段。
+        </p>
+      </section>
+
       <!-- 設定連結 -->
       <section class="links-section">
         <h3 class="section-label">帳號設定</h3>
@@ -442,6 +530,13 @@ const settingsLinks = [
 .save-btn { padding: 6px 16px; border-radius: 8px; border: none; background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 600; cursor: not-allowed; }
 .save-btn--active { background: #F0294E; color: white; cursor: pointer; }
 .save-btn--active:hover { background: #D01A3C; }
+
+/* ── DND 免打擾時段 ── */
+.dnd-time-row { display:flex; gap:12px; padding:12px 16px; background:#F9FAFB; border-radius:10px; margin:4px 0 8px; }
+.dnd-time-field { flex:1; display:flex; flex-direction:column; gap:6px; }
+.dnd-time-label { font-size:12px; color:#6B7280; font-weight:500; }
+.dnd-time-input { height:40px; border:1.5px solid #E5E7EB; border-radius:8px; padding:0 12px; font-size:15px; color:#111827; background:#FFFFFF; outline:none; font-family:inherit; }
+.dnd-time-input:focus { border-color:#F0294E; }
 
 /* ── Avatar ── */
 .avatar-section { text-align: center; margin-bottom: 24px; }

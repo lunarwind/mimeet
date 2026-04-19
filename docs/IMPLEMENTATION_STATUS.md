@@ -57,6 +57,7 @@
 | F19 | 訊息回收 | ✅ DELETE /chats/{id}/messages/{messageId} + MessageRecalled event | ✅ MessageBubble 長按選單「收回」 | 🚀 Phase 2 超前 | sender + 5 分鐘內 + 未讀 + Lv3 付費 |
 | F20 | 聊天搜尋 | ✅ GET /chats/{id}/messages/search | ✅ ChatView 搜尋面板（debounce 300ms + 跳轉高亮） | 🚀 Phase 2 超前 | |
 | F21 | 搜尋聊天對象 | — | ✅ MessagesView 搜尋框 filter | 🚀 Phase 2 超前 | 純前端 computed filter |
+| F22 | 免打擾模式 | ✅ Conversation.isMutedBy + User.isInDndPeriod + NotificationService 跳過 FCM | ✅ MessagesView 靜音按鈕 + AccountView DND 設定 | 🚀 Phase 2 超前 | 2026-04-20：對話靜音 (Part A) + 全域時段 DND (Part B)；Badge 仍計入，僅 FCM 推播被跳過 |
 
 ### QR 約會驗證
 

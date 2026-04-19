@@ -406,6 +406,32 @@ class ChatController extends Controller
     }
 
     /**
+     * PATCH /api/v1/chats/{id}/mute — toggle per-conversation mute (F22 Part A)
+     */
+    public function toggleMute(Request $request, int $id): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        if (!$this->chatService->isParticipant($id, $userId)) {
+            return response()->json([
+                'success' => false,
+                'code' => 403,
+                'message' => '您不是此對話的參與者',
+            ], 403);
+        }
+
+        $conversation = Conversation::findOrFail($id);
+        $isMuted = $conversation->toggleMute($userId);
+
+        return response()->json([
+            'success' => true,
+            'code' => 200,
+            'message' => $isMuted ? '已靜音此對話' : '已取消靜音',
+            'data' => ['is_muted' => $isMuted],
+        ]);
+    }
+
+    /**
      * DELETE /api/v1/chats/{id} — soft delete conversation
      */
     public function destroy(Request $request, int $id): JsonResponse

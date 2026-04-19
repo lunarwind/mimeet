@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
+use App\Http\Controllers\Api\V1\DndController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
 use App\Http\Controllers\Api\V1\Admin\SystemControlController;
 use App\Http\Controllers\Api\V1\Admin\DatasetController;
@@ -107,7 +108,14 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/{id}/messages', [ChatController::class, 'sendMessage'])->middleware('membership:2');
         Route::delete('/{id}/messages/{messageId}', [ChatController::class, 'recallMessage'])->middleware('membership:3');
         Route::patch('/{id}/read', [ChatController::class, 'markRead']);
+        Route::patch('/{id}/mute', [ChatController::class, 'toggleMute']);
         Route::delete('/{id}', [ChatController::class, 'destroy']);
+    });
+
+    // ─── DND / Do Not Disturb (F22 Part B) ─────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('me/dnd', [DndController::class, 'show']);
+        Route::patch('me/dnd', [DndController::class, 'update']);
     });
 
     // ─── Date Invitations (legacy) ─────────────────────────────────────
