@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Events\ChatMessageSent;
+use App\Events\MessageRead;
+use App\Events\MessageRecalled;
 use App\Exceptions\DailyLimitException;
+use App\Exceptions\CreditScoreRestrictionException;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
@@ -105,8 +108,13 @@ class ChatService
     /**
      * @throws DailyLimitException
      */
-    public function sendMessage(int $conversationId, int $senderId, string $content): Message
-    {
+    public function sendMessage(
+        int $conversationId,
+        int $senderId,
+        string $content,
+        string $type = 'text',
+        ?string $imageUrl = null,
+    ): Message {
         $user = User::findOrFail($senderId);
         $this->checkDailyLimit($user);
 
@@ -122,7 +130,7 @@ class ChatService
             $receiver = User::find($receiverId);
 
             if ($receiver && $user->credit_score < $receiver->credit_score) {
-                throw new \App\Exceptions\CreditScoreRestrictionException(
+                throw new CreditScoreRestrictionException(
                     '誠信分數不足，無法向較高分數的用戶發送訊息'
                 );
             }
@@ -132,8 +140,9 @@ class ChatService
             'uuid' => Str::uuid()->toString(),
             'conversation_id' => $conversationId,
             'sender_id' => $senderId,
-            'type' => 'text',
+            'type' => $type,
             'content' => $content,
+            'image_url' => $imageUrl,
             'sent_at' => now(),
         ]);
 
@@ -176,13 +185,15 @@ class ChatService
 
     public function markAsRead(int $conversationId, int $userId): void
     {
+        $now = now();
+
         // Mark all unread messages as read (where sender is not the current user)
-        Message::where('conversation_id', $conversationId)
+        $affected = Message::where('conversation_id', $conversationId)
             ->where('sender_id', '!=', $userId)
             ->where('is_read', 0)
             ->update([
                 'is_read' => 1,
-                'read_at' => now(),
+                'read_at' => $now,
             ]);
 
         // Reset unread count
@@ -192,6 +203,93 @@ class ChatService
         } else {
             $conversation->update(['unread_count_b' => 0]);
         }
+
+        // Broadcast read receipt so sender's client can render "已讀" in realtime
+        if ($affected > 0) {
+            try {
+                broadcast(new MessageRead($conversationId, $userId, $now->toISOString()));
+            } catch (\Exception) {
+                // Broadcast driver not available
+            }
+        }
+    }
+
+    /**
+     * Recall (unsend) a message. Conditions (F19, PRD):
+     *  - sender 本人
+     *  - 5 分鐘內
+     *  - 尚未被對方讀取
+     *  - 付費會員（呼叫端已用 middleware:3 擋，這裡做 defense-in-depth）
+     *
+     * @throws \Exception on any rule violation
+     */
+    public function recallMessage(int $conversationId, int $messageId, int $userId): Message
+    {
+        $message = Message::where('id', $messageId)
+            ->where('conversation_id', $conversationId)
+            ->firstOrFail();
+
+        if ($message->sender_id !== $userId) {
+            throw new \RuntimeException('只能回收自己發出的訊息');
+        }
+        if ($message->is_recalled) {
+            throw new \RuntimeException('訊息已經被回收過');
+        }
+        if ($message->is_read) {
+            throw new \RuntimeException('訊息已被對方讀取，無法回收');
+        }
+        if (now()->diffInSeconds($message->sent_at) > 300) {
+            throw new \RuntimeException('僅限 5 分鐘內的訊息可回收');
+        }
+
+        $recalledAt = now();
+        $message->update([
+            'is_recalled' => true,
+            'recalled_at' => $recalledAt,
+        ]);
+
+        try {
+            broadcast(new MessageRecalled($message->id, $conversationId, $recalledAt->toISOString()));
+        } catch (\Exception) {
+            // Broadcast driver not available
+        }
+
+        return $message->fresh();
+    }
+
+    /**
+     * Search messages by keyword within a single conversation (F20).
+     * Returns paginated results newest-first, excluding recalled messages.
+     */
+    public function searchMessages(int $conversationId, string $keyword, int $perPage = 20): array
+    {
+        $paginator = Message::where('conversation_id', $conversationId)
+            ->where('is_recalled', false)
+            ->where('content', 'LIKE', '%' . $keyword . '%')
+            ->orderByDesc('sent_at')
+            ->paginate($perPage);
+
+        $data = $paginator->getCollection()->map(fn (Message $msg) => [
+            'id' => $msg->id,
+            'uuid' => $msg->uuid,
+            'sender_id' => $msg->sender_id,
+            'type' => $msg->type,
+            'content' => $msg->content,
+            'image_url' => $msg->image_url,
+            'is_read' => (bool) $msg->is_read,
+            'is_recalled' => (bool) $msg->is_recalled,
+            'sent_at' => $msg->sent_at->toISOString(),
+        ])->values();
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'total' => $paginator->total(),
+                'page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'last_page' => $paginator->lastPage(),
+            ],
+        ];
     }
 
     public function softDelete(int $conversationId, int $userId): void

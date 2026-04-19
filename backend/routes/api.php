@@ -103,7 +103,9 @@ Route::prefix('api/v1')->group(function () {
         Route::patch('/read-all', [ChatController::class, 'readAll']);
         Route::get('/{id}/info', [ChatController::class, 'info']);
         Route::get('/{id}/messages', [ChatController::class, 'messages']);
+        Route::get('/{id}/messages/search', [ChatController::class, 'searchMessages']);
         Route::post('/{id}/messages', [ChatController::class, 'sendMessage'])->middleware('membership:2');
+        Route::delete('/{id}/messages/{messageId}', [ChatController::class, 'recallMessage'])->middleware('membership:3');
         Route::patch('/{id}/read', [ChatController::class, 'markRead']);
         Route::delete('/{id}', [ChatController::class, 'destroy']);
     });

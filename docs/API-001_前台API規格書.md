@@ -1264,6 +1264,62 @@ Content-Type: application/json
 }
 ```
 
+#### 4.1.5 回收訊息（F19）
+```http
+DELETE /api/v1/chats/{chat_id}/messages/{message_id}
+Authorization: Bearer {access_token}
+```
+
+**業務規則：**
+- 僅 sender 本人可回收
+- 訊息需在 **5 分鐘內**（`now() - sent_at <= 300s`）
+- 訊息**尚未**被對方讀取（`is_read = false`）
+- 僅**付費會員**（`membership_level >= 3`）可用；路由已掛 `membership:3`
+- 成功後：`is_recalled = true`、`recalled_at = now()`；廣播 `MessageRecalled` 事件至 `private-chat.{conversation_id}` 頻道
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "訊息已收回",
+  "data": { "message_id": 791, "recalled_at": "2026-04-19T10:35:00Z" }
+}
+```
+
+**條件不符 (422)：**
+```json
+{ "success": false, "error": { "code": "RECALL_DENIED", "message": "訊息已被對方讀取，無法回收" } }
+```
+
+#### 4.1.6 聊天內關鍵字搜尋（F20）
+```http
+GET /api/v1/chats/{chat_id}/messages/search?keyword=xxx&per_page=20
+Authorization: Bearer {access_token}
+```
+
+**Query 參數：**
+| 參數 | 類型 | 必填 | 說明 |
+|------|------|------|------|
+| `keyword` | string | 是 | 搜尋字串（1–100 字）|
+| `per_page` | int | 否 | 每頁筆數（預設 20，上限 50）|
+
+**業務規則：**
+- 僅對話參與者可呼叫
+- 排除已回收訊息（`is_recalled = false`）
+- `content LIKE %keyword%`，依 `sent_at` 倒序
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": { "messages": [
+    { "id": 791, "sender_id": 123, "type": "text", "content": "...關鍵字...", "image_url": null, "is_read": true, "is_recalled": false, "sent_at": "2026-04-19T10:00:00Z" }
+  ] },
+  "meta": { "total": 1, "page": 1, "per_page": 20, "last_page": 1 }
+}
+```
+
 ### 4.2 WebSocket實時通訊
 
 #### 4.2.1 連接建立

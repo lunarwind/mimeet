@@ -1,5 +1,5 @@
 export type MessageType = 'text' | 'image'
-export type MessageStatus = 'sending' | 'sent' | 'read' | 'failed'
+export type MessageStatus = 'sending' | 'sent' | 'read' | 'failed' | 'recalled'
 
 export interface ChatMessage {
   id: number
@@ -7,9 +7,12 @@ export interface ChatMessage {
   senderId: number
   type: MessageType
   content: string
+  imageUrl?: string | null
   status: MessageStatus
   createdAt: string
   isOwn: boolean
+  isRead?: boolean
+  isRecalled?: boolean
 }
 
 /** @deprecated use ChatMessage */

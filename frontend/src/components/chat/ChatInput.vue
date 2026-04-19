@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 
-const emit = defineEmits<{ send: [content: string] }>()
+const emit = defineEmits<{
+  send: [content: string]
+  sendImage: [file: File]
+}>()
 
 const text = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 function adjustHeight() {
   const el = textareaRef.value
@@ -30,10 +34,41 @@ function handleSend() {
     textareaRef.value?.focus()
   })
 }
+
+function triggerImagePicker() {
+  fileInputRef.value?.click()
+}
+
+function onImageSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    alert('圖片不可超過 5MB')
+    input.value = ''
+    return
+  }
+  emit('sendImage', file)
+  input.value = ''
+}
 </script>
 
 <template>
   <div class="chat-input">
+    <button class="chat-input__image" @click="triggerImagePicker" aria-label="傳送圖片">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21 15 16 10 5 21"/>
+      </svg>
+    </button>
+    <input
+      ref="fileInputRef"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      class="chat-input__file"
+      @change="onImageSelected"
+    />
     <textarea
       ref="textareaRef"
       v-model="text"
@@ -60,6 +95,11 @@ function handleSend() {
 /* ── Base (mobile) ───────────────────────────────────────── */
 .chat-input { display:flex; align-items:flex-end; gap:8px; padding:8px 16px; background:#fff; border-top:1px solid #F1F5F9; padding-bottom:max(8px, env(safe-area-inset-bottom)); flex-shrink:0; }
 
+.chat-input__image { width:44px; height:44px; border:1.5px solid #E5E7EB; border-radius:50%; background:#F9FAFB; color:#6B7280; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:all 0.15s; }
+.chat-input__image:hover { background:#F1F5F9; color:#F0294E; border-color:#F0294E; }
+.chat-input__image:active { transform:scale(0.93); }
+.chat-input__file { display:none; }
+
 .chat-input__field { flex:1; min-height:44px; max-height:120px; border:1.5px solid #E5E7EB; border-radius:20px; padding:10px 16px; font-size:16px; color:#111827; background:#F9FAFB; outline:none; resize:none; font-family:inherit; line-height:1.5; box-sizing:border-box; }
 .chat-input__field:focus { border-color:#F0294E; background:#fff; }
 .chat-input__field::placeholder { color:#9CA3AF; }
@@ -72,13 +112,16 @@ function handleSend() {
 /* ── Tablet (768px+) ─────────────────────────────────────── */
 @media (min-width: 768px) {
   .chat-input { padding:12px 24px; gap:10px; }
+  .chat-input__image { width:48px; height:48px; }
   .chat-input__field { min-height:48px; max-height:140px; font-size:15px; }
+  .chat-input__send { width:48px; height:48px; }
 }
 
 /* ── Desktop (1024px+) ───────────────────────────────────── */
 @media (min-width: 1024px) {
   .chat-input { padding:14px 32px; gap:12px; }
   .chat-input__field { min-height:52px; max-height:160px; font-size:15px; padding:12px 20px; }
-  .chat-input__send { width:48px; height:48px; }
+  .chat-input__send { width:52px; height:52px; }
+  .chat-input__image { width:52px; height:52px; }
 }
 </style>
