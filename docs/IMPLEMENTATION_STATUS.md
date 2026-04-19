@@ -96,7 +96,7 @@
 | A08 | 要求重新驗證 | ✅ AdminController::memberAction (require_reverify) | ✅ MemberDetailPage | ✅ | |
 | A09 | 女性驗證審核 | ✅ VerificationController | ✅ VerificationsPage | ✅ | 核准/拒絕 + 分數獎勵 |
 | A12 | 系統公告 | ✅ (AnnouncementsPage API) | ✅ AnnouncementsPage | ✅ | CRUD 完整 |
-| A13 | 問題回報管理 | ✅ TicketController | ✅ TicketsPage | ✅ | 狀態更新 + 回覆 + 追蹤留言 |
+| A13 | 問題回報管理 | ✅ TicketController | ✅ TicketsPage | ✅ | 狀態更新 + 回覆 + 追蹤留言；F43~F46 亦共用此 Ticket 系統（DB 表 `reports`，`type` 區分）|
 | A15 | 支付紀錄 | ✅ AdminController::payments | ✅ PaymentsPage | ✅ | 篩選 + CSV 匯出 |
 | A19 | 系統參數設定 | ✅ SystemControlController | ✅ SystemSettingsPage (7 Tabs) | ✅ | 分數規則/等級矩陣/方案/mail/sms/db |
 | A20 | 角色權限管理 | ✅ AdminCrudController + RBAC | ✅ AdminUsersPage | ✅ | super_admin/admin/cs |
