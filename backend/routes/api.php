@@ -212,6 +212,10 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/verifications/pending', [VerificationController::class, 'pending']);
             Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
 
+            // SEO Meta 管理（A17）— A18 廣告跳轉連結保留 Phase 2
+            Route::get('/seo/meta', [\App\Http\Controllers\Admin\SeoController::class, 'metaIndex']);
+            Route::patch('/seo/meta/{id}', [\App\Http\Controllers\Admin\SeoController::class, 'metaUpdate']);
+
             // Announcements
             Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);
             Route::post('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'store']);

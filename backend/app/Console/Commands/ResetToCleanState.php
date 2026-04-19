@@ -122,6 +122,12 @@ class ResetToCleanState extends Command
             $this->line('  ✓ subscription_plans: ' . DB::table('subscription_plans')->count() . ' plans (preserved)');
         }
 
+        // Ensure SEO meta defaults exist (A17)
+        if (Schema::hasTable('seo_metas') && DB::table('seo_metas')->count() === 0) {
+            $this->warn('  ⚠ seo_metas table is empty — re-seeding...');
+            Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\SeoMetaSeeder', '--force' => true]);
+        }
+
         // Clear cache
         try {
             Artisan::call('cache:clear');
