@@ -18,6 +18,8 @@ class Conversation extends Model
         'unread_count_b',
         'deleted_by_a',
         'deleted_by_b',
+        'is_muted_by_a',
+        'is_muted_by_b',
     ];
 
     protected $casts = [
@@ -26,6 +28,8 @@ class Conversation extends Model
         'unread_count_b' => 'integer',
         'deleted_by_a' => 'boolean',
         'deleted_by_b' => 'boolean',
+        'is_muted_by_a' => 'boolean',
+        'is_muted_by_b' => 'boolean',
     ];
 
     public function userA(): BelongsTo
@@ -63,5 +67,27 @@ class Conversation extends Model
     public function isParticipant(int $userId): bool
     {
         return $this->user_a_id === $userId || $this->user_b_id === $userId;
+    }
+
+    public function isMutedBy(int $userId): bool
+    {
+        if ($this->user_a_id === $userId) return (bool) $this->is_muted_by_a;
+        if ($this->user_b_id === $userId) return (bool) $this->is_muted_by_b;
+        return false;
+    }
+
+    public function toggleMute(int $userId): bool
+    {
+        if ($this->user_a_id === $userId) {
+            $this->is_muted_by_a = !$this->is_muted_by_a;
+            $this->save();
+            return $this->is_muted_by_a;
+        }
+        if ($this->user_b_id === $userId) {
+            $this->is_muted_by_b = !$this->is_muted_by_b;
+            $this->save();
+            return $this->is_muted_by_b;
+        }
+        return false;
     }
 }

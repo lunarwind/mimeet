@@ -1320,6 +1320,23 @@ Authorization: Bearer {access_token}
 }
 ```
 
+#### 4.1.7 對話靜音（F22 Part A）
+```http
+PATCH /api/v1/chats/{chat_id}/mute
+Authorization: Bearer {access_token}
+```
+
+**業務規則：**
+- Toggle 切換目前用戶對該對話的靜音狀態
+- 靜音後：該對話的新訊息**仍會**走 WebSocket 廣播、仍會寫入 `notifications` 表 → 前端和 `chats` 列表 badge 仍更新；**只有** FCM 推播（行動裝置鎖屏通知）會跳過
+- 前端收到 WebSocket `MessageSent` 事件後，需自行讀取 `is_muted` 決定是否播放提示音
+- 對話列表 `GET /chats` 回傳每筆 `conversation` 均含 `is_muted` 欄位
+
+**成功回應 (200)：**
+```json
+{ "success": true, "data": { "is_muted": true } }
+```
+
 ### 4.2 WebSocket實時通訊
 
 #### 4.2.1 連接建立
@@ -3363,6 +3380,54 @@ Authorization: Bearer {access_token}
 ```json
 { "success": false, "error": { "code": "NO_PENDING_DELETION", "message": "目前沒有待執行的刪除申請" } }
 ```
+
+---
+
+### 10.12 免打擾模式 API（F22 Part B）
+
+全域時段型 DND：使用者設定「每天 22:00 → 08:00 不要收推播」等規則，後端判斷當下是否處於時段內，跳過 FCM 推播。WebSocket 廣播 + 站內通知 (`notifications` 表) **仍會** 寫入與發送。
+
+**資料表：** `users` 新增 `dnd_enabled` BOOL、`dnd_start` TIME、`dnd_end` TIME。`dnd_start > dnd_end` 代表跨午夜時段。
+
+#### 10.12.1 取得 DND 設定
+```http
+GET /api/v1/me/dnd
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": {
+    "dnd_enabled": true,
+    "dnd_start": "22:00",
+    "dnd_end": "08:00",
+    "currently_active": true
+  }
+}
+```
+
+`currently_active`：後端依據伺服器時區（Asia/Taipei）計算目前是否在時段內，方便前端直接套用提示 UI。
+
+#### 10.12.2 更新 DND 設定
+```http
+PATCH /api/v1/me/dnd
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+**請求參數：**
+```json
+{ "dnd_enabled": true, "dnd_start": "22:00", "dnd_end": "08:00" }
+```
+
+**驗證：**
+- `dnd_enabled`：必填，boolean
+- `dnd_start` / `dnd_end`：`dnd_enabled=true` 時必填，格式 `H:i`（如 `22:00`）
+- 允許 `dnd_start > dnd_end`（跨午夜）
+
+**成功回應 (200)：** 格式同 §10.12.1。
 
 ---
 

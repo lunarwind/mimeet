@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
-import { fetchConversations, markAllConversationsRead } from '@/api/chat'
+import { fetchConversations, markAllConversationsRead, toggleConversationMute } from '@/api/chat'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import type { Conversation } from '@/types/chat'
 
@@ -55,6 +55,15 @@ function handleBlock(id: number) {
 function handleDelete(id: number) {
   conversations.value = conversations.value.filter(c => c.id !== id)
   swipedId.value = null
+}
+
+async function handleToggleMute(id: number) {
+  swipedId.value = null
+  try {
+    const isMuted = await toggleConversationMute(id)
+    const conv = conversations.value.find(c => c.id === id)
+    if (conv) conv.isMuted = isMuted
+  } catch { /* ignore */ }
 }
 
 async function handleMarkAllRead() {
@@ -142,6 +151,13 @@ function timeAgo(iso: string): string {
           <div class="chat-card__body">
             <div class="chat-card__row">
               <span class="chat-card__name" :class="{ 'chat-card__name--bold': conv.unreadCount > 0 }">{{ conv.targetUser.nickname }}</span>
+              <span v-if="conv.isMuted" class="chat-card__muted" title="已靜音" aria-label="已靜音">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 5 6 9H2v6h4l5 4V5z"/>
+                  <line x1="23" y1="9" x2="17" y2="15"/>
+                  <line x1="17" y1="9" x2="23" y2="15"/>
+                </svg>
+              </span>
               <span class="chat-card__time">{{ timeAgo(conv.lastMessageAt) }}</span>
             </div>
             <div class="chat-card__row">
@@ -152,6 +168,9 @@ function timeAgo(iso: string): string {
         </div>
         <!-- 左滑操作 -->
         <div v-if="swipedId === conv.id" class="swipe-actions">
+          <button class="swipe-btn swipe-btn--mute" @click.stop="handleToggleMute(conv.id)">
+            {{ conv.isMuted ? '取消靜音' : '靜音' }}
+          </button>
           <button class="swipe-btn swipe-btn--block" @click.stop="handleBlock(conv.id)">封鎖</button>
           <button class="swipe-btn swipe-btn--delete" @click.stop="handleDelete(conv.id)">刪除</button>
         </div>
@@ -191,7 +210,7 @@ function timeAgo(iso: string): string {
 .chat-card-wrap { position:relative; overflow:hidden; }
 .chat-card { display:flex; align-items:center; gap:12px; padding:14px 16px; height:72px; box-sizing:border-box; cursor:pointer; border-bottom:0.5px solid #F3F4F6; transition:transform 0.2s ease,background 0.15s; background:#fff; }
 .chat-card--unread { background:#F9FAFB; }
-.chat-card--swiped { transform:translateX(-140px); }
+.chat-card--swiped { transform:translateX(-210px); }
 .chat-card:active { background:#F3F4F6; }
 
 .chat-card__avatar-wrap { position:relative; flex-shrink:0; }
@@ -210,6 +229,10 @@ function timeAgo(iso: string): string {
 /* ── Swipe Actions ───────────────────────────────────────── */
 .swipe-actions { position:absolute; right:0; top:0; bottom:0; display:flex; }
 .swipe-btn { width:70px; border:none; color:#fff; font-size:12px; font-weight:600; cursor:pointer; }
+.swipe-btn--mute { background:#6B7280; }
 .swipe-btn--block { background:#F59E0B; }
 .swipe-btn--delete { background:#EF4444; }
+
+.chat-card__muted { display:inline-flex; align-items:center; color:#9CA3AF; flex-shrink:0; }
+.chat-card__muted svg { display:block; }
 </style>

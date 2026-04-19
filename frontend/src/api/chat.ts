@@ -30,7 +30,14 @@ export async function fetchConversations(): Promise<Conversation[]> {
       : c.last_message?.content ?? '',
     lastMessageAt: c.last_message?.sent_at ?? c.updated_at ?? '',
     unreadCount: c.unread_count ?? 0,
+    isMuted: !!c.is_muted,
   }))
+}
+
+// ── Toggle 對話靜音（F22 Part A） ─────────────────────────
+export async function toggleConversationMute(conversationId: number): Promise<boolean> {
+  const res = await client.patch(`/chats/${conversationId}/mute`)
+  return !!res.data?.data?.is_muted
 }
 
 // ── 取得對話對方資訊 ──────────────────────────────────────

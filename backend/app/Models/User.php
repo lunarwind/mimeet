@@ -53,6 +53,9 @@ class User extends Authenticatable
         'preferences',
         'profile',
         'last_active_at',
+        'dnd_enabled',
+        'dnd_start',
+        'dnd_end',
     ];
 
     // Admin-only fields (credit_score, status, membership_level, suspended_at,
@@ -90,6 +93,7 @@ class User extends Authenticatable
         'deleted_at' => 'datetime',
         'password' => 'hashed',
         'phone' => 'encrypted',
+        'dnd_enabled' => 'boolean',
     ];
 
     public function getPrivacySettingsAttribute($value): array
@@ -102,5 +106,25 @@ class User extends Authenticatable
             'allow_stranger_message' => true,
         ];
         return array_merge($defaults, $value ? (is_string($value) ? json_decode($value, true) : $value) : []);
+    }
+
+    /**
+     * F22 Part B：是否處於免打擾時段
+     * - 未啟用 / 時間未設定 → false
+     * - start > end（如 22:00→08:00）視為跨午夜
+     */
+    public function isInDndPeriod(): bool
+    {
+        if (!$this->dnd_enabled) return false;
+        if (!$this->dnd_start || !$this->dnd_end) return false;
+
+        $now = now()->format('H:i');
+        $start = substr((string) $this->dnd_start, 0, 5); // H:i
+        $end = substr((string) $this->dnd_end, 0, 5);
+
+        if ($start > $end) {
+            return $now >= $start || $now < $end;
+        }
+        return $now >= $start && $now < $end;
     }
 }

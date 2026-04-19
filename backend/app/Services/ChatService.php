@@ -65,6 +65,7 @@ class ChatService
                         'type' => $lastMsg->type,
                     ] : null,
                     'unread_count' => $conv->getUnreadCount($userId),
+                    'is_muted' => $conv->isMutedBy($userId),
                     'updated_at' => $conv->last_message_at?->toISOString(),
                 ];
             });
