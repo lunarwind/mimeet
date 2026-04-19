@@ -12,7 +12,7 @@
 |------|-----------|--------|---------|--------|--------|
 | 用戶系統 (F01-F11) | 10 | 6 | 3 | 1 | 65% |
 | 誠信分數 (F12-F15) | 2 (MVP) | 2 | 0 | 0 | 100% |
-| 即時聊天 (F16-F17) | 2 | 2 | 0 | 0 | 100% |
+| 即時聊天 (F16-F17, +F18-F21 超前) | 2 (MVP) + 4 (超前) | 6 | 0 | 0 | 100% |
 | QR 約會驗證 (F23-F25) | 3 | 3 | 0 | 0 | 100% |
 | 搜尋配對 (F26) | 1 | 1 | 0 | 0 | 100% |
 | 商業/金流 (F36-F39) | 4 | 4 | 0 | 0 | 100% |
@@ -51,8 +51,12 @@
 
 | ID | 功能 | 後端 | 前端 | 狀態 | 說明 |
 |----|------|------|------|------|------|
-| F16 | 即時聊天 | ✅ ChatService + ChatMessageSent event | ✅ ChatView.vue + useChat composable | ✅ | Socket.IO / Reverb 雙通道 |
+| F16 | 即時聊天 | ✅ ChatService + ChatMessageSent event | ✅ ChatView.vue + useChat composable | ✅ | Socket.IO / Reverb 雙通道；支援文字/圖片兩種 message_type |
 | F17 | 未讀 Badge | ✅ 後端追蹤 is_read | ✅ BottomNav.vue badge | ✅ | Pinia chat store 管理 |
+| F18 | 已讀狀態 | ✅ markAsRead 廣播 MessageRead | ✅ MessageBubble 付費會員顯示「已讀」 | 🚀 Phase 2 超前 | 2026-04-19 補完 |
+| F19 | 訊息回收 | ✅ DELETE /chats/{id}/messages/{messageId} + MessageRecalled event | ✅ MessageBubble 長按選單「收回」 | 🚀 Phase 2 超前 | sender + 5 分鐘內 + 未讀 + Lv3 付費 |
+| F20 | 聊天搜尋 | ✅ GET /chats/{id}/messages/search | ✅ ChatView 搜尋面板（debounce 300ms + 跳轉高亮） | 🚀 Phase 2 超前 | |
+| F21 | 搜尋聊天對象 | — | ✅ MessagesView 搜尋框 filter | 🚀 Phase 2 超前 | 純前端 computed filter |
 
 ### QR 約會驗證
 

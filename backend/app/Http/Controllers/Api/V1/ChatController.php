@@ -11,6 +11,8 @@ use App\Models\UserBlock;
 use App\Services\ChatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
@@ -178,13 +180,25 @@ class ChatController extends Controller
     }
 
     /**
-     * POST /api/v1/chats/{id}/messages — send a message
+     * POST /api/v1/chats/{id}/messages — send a message (text or image)
+     *
+     * Two request formats:
+     *  - JSON: { "content": "...", "message_type": "text" }
+     *  - multipart: message_type=image, image={file}
      */
     public function sendMessage(Request $request, int $id): JsonResponse
     {
-        $request->validate([
-            'content' => 'required|string|max:2000',
-        ]);
+        $type = $request->input('message_type', 'text');
+
+        if ($type === 'image') {
+            $request->validate([
+                'image' => 'required|file|image|mimes:jpg,jpeg,png,webp|max:5120', // 5MB
+            ]);
+        } else {
+            $request->validate([
+                'content' => 'required|string|max:2000',
+            ]);
+        }
 
         $userId = $request->user()->id;
 
@@ -217,8 +231,22 @@ class ChatController extends Controller
             }
         }
 
+        // Upload image if provided → produce public URL for the message
+        $content = (string) $request->input('content', '');
+        $imageUrl = null;
+
+        if ($type === 'image') {
+            $file = $request->file('image');
+            $filename = Str::uuid()->toString() . '.' . $file->getClientOriginalExtension();
+            $relative = "chat-images/{$id}/{$filename}";
+            Storage::disk('public')->putFileAs("chat-images/{$id}", $file, $filename);
+            $imageUrl = asset('storage/' . $relative);
+            // For image type, store URL as content too for backward compatibility with simple renderers
+            $content = $content !== '' ? $content : $imageUrl;
+        }
+
         try {
-            $message = $this->chatService->sendMessage($id, $userId, $request->input('content'));
+            $message = $this->chatService->sendMessage($id, $userId, $content, $type, $imageUrl);
         } catch (CreditScoreRestrictionException $e) {
             return response()->json([
                 'success' => false,
@@ -247,12 +275,87 @@ class ChatController extends Controller
                     'uuid' => $message->uuid,
                     'sender_id' => $message->sender_id,
                     'content' => $message->content,
+                    'image_url' => $message->image_url,
                     'type' => $message->type,
                     'sent_at' => $message->sent_at->toISOString(),
                     'is_read' => false,
+                    'is_recalled' => false,
                 ],
             ],
         ], 201);
+    }
+
+    /**
+     * DELETE /api/v1/chats/{id}/messages/{messageId} — recall message (F19)
+     * Conditions enforced in ChatService::recallMessage.
+     */
+    public function recallMessage(Request $request, int $id, int $messageId): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        if (!$this->chatService->isParticipant($id, $userId)) {
+            return response()->json([
+                'success' => false,
+                'code' => 403,
+                'message' => '您不是此對話的參與者',
+            ], 403);
+        }
+
+        try {
+            $this->chatService->recallMessage($id, $messageId, $userId);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'RECALL_DENIED', 'message' => $e->getMessage()],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'code' => 200,
+            'message' => '訊息已收回',
+            'data' => [
+                'message_id' => $messageId,
+                'recalled_at' => now()->toISOString(),
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/chats/{id}/messages/search?keyword=xxx — search within conversation (F20)
+     */
+    public function searchMessages(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'keyword' => 'required|string|min:1|max:100',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $userId = $request->user()->id;
+
+        if (!$this->chatService->isParticipant($id, $userId)) {
+            return response()->json([
+                'success' => false,
+                'code' => 403,
+                'message' => '您不是此對話的參與者',
+            ], 403);
+        }
+
+        $result = $this->chatService->searchMessages(
+            $id,
+            (string) $request->input('keyword'),
+            (int) $request->input('per_page', 20),
+        );
+
+        return response()->json([
+            'success' => true,
+            'code' => 200,
+            'message' => '搜尋成功',
+            'data' => [
+                'messages' => $result['data'],
+            ],
+            'meta' => $result['meta'],
+        ]);
     }
 
     /**

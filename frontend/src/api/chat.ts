@@ -51,32 +51,60 @@ export async function fetchConversationInfo(conversationId: number) {
 export async function fetchMessages(conversationId: number): Promise<Message[]> {
   const res = await client.get(`/chats/${conversationId}/messages`)
   const raw = res.data?.data?.messages ?? []
-  return raw.map((m: any) => ({
+  return raw.map(mapMessage(conversationId, false)).reverse()
+}
+
+// ── 發送訊息（文字） ─────────────────────────────────────
+export async function sendMessage(conversationId: number, content: string): Promise<Message> {
+  const res = await client.post(`/chats/${conversationId}/messages`, {
+    content,
+    message_type: 'text',
+  })
+  const m = res.data?.data?.message ?? {}
+  return mapMessage(conversationId, true)(m)
+}
+
+// ── 發送訊息（圖片）— multipart ────────────────────────
+export async function sendImageMessage(conversationId: number, imageFile: File): Promise<Message> {
+  const form = new FormData()
+  form.append('message_type', 'image')
+  form.append('image', imageFile)
+  const res = await client.post(`/chats/${conversationId}/messages`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  const m = res.data?.data?.message ?? {}
+  return mapMessage(conversationId, true)(m)
+}
+
+// ── 回收訊息 ─────────────────────────────────────────────
+export async function recallMessage(conversationId: number, messageId: number): Promise<void> {
+  await client.delete(`/chats/${conversationId}/messages/${messageId}`)
+}
+
+// ── 聊天內關鍵字搜尋 ─────────────────────────────────────
+export async function searchMessages(conversationId: number, keyword: string): Promise<Message[]> {
+  const res = await client.get(`/chats/${conversationId}/messages/search`, {
+    params: { keyword },
+  })
+  const raw = res.data?.data?.messages ?? []
+  return raw.map(mapMessage(conversationId, false))
+}
+
+// ── snake_case → camelCase mapper（單一來源，避免漂移） ─
+function mapMessage(conversationId: number, isOwnDefault: boolean) {
+  return (m: any): Message => ({
     id: m.id,
     conversationId: m.conversation_id ?? conversationId,
     senderId: m.sender_id ?? 0,
     type: m.type ?? 'text',
     content: m.content ?? '',
-    status: m.is_read ? 'read' : 'sent',
-    isOwn: false, // set by ChatView based on current user
+    imageUrl: m.image_url ?? null,
+    status: m.is_recalled ? 'recalled' : (m.is_read ? 'read' : 'sent'),
+    isOwn: isOwnDefault,
+    isRead: !!m.is_read,
+    isRecalled: !!m.is_recalled,
     createdAt: m.sent_at ?? m.created_at ?? '',
-  }))
-}
-
-// ── 發送訊息 ──────────────────────────────────────────────
-export async function sendMessage(conversationId: number, content: string): Promise<Message> {
-  const res = await client.post(`/chats/${conversationId}/messages`, { content })
-  const m = res.data?.data?.message ?? {}
-  return {
-    id: m.id,
-    conversationId,
-    senderId: m.sender_id ?? 0,
-    type: m.type ?? 'text',
-    content: m.content ?? content,
-    status: 'sent',
-    createdAt: m.sent_at ?? m.created_at ?? new Date().toISOString(),
-    isOwn: true,
-  }
+  })
 }
 
 // ── 標記已讀 ──────────────────────────────────────────────
