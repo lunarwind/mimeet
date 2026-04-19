@@ -807,6 +807,15 @@ DELETE /api/v1/admin/announcements/{id}
 
 ## 6. 問題回報 / 檢舉 Ticket API
 
+> **命名說明：** 資料庫表名為 `reports`，但在 API 路由和前端中統一以 **Ticket** 稱呼。
+> 包含兩種用途：
+> - 用戶對其他用戶的「檢舉」（`type=report` / `anon_report`）
+> - 用戶對系統的「問題回報」（`type=system` / `suggestion`）
+> - 取消訂閱申請（`type=unsubscribe`）與停權申訴（`type=appeal`）也走同一套 Ticket 系統
+>
+> 所有類型共用同一組 CRUD 端點（`/admin/tickets`、`/admin/tickets/{id}`），以 `type` 欄位區分。
+> 前端後台頁面：`TicketsPage.tsx`。
+
 > 所需權限：`reports.view`（查看）、`reports.process`（處理）
 
 ### 6.1 取得 Ticket 列表
