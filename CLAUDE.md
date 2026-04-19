@@ -32,6 +32,7 @@
 4. git checkout main && git pull origin main && git merge develop --no-ff && git push origin main && git checkout develop
 5. ssh root@188.166.229.100 '
    cd /var/www/mimeet && git pull origin main
+   docker exec mimeet-app sh -c "touch storage/logs/laravel.log && chown www-data:www-data storage/logs/laravel.log && chmod 664 storage/logs/laravel.log"
    docker exec mimeet-app php artisan migrate --force 2>/dev/null || true
    docker exec -u www-data mimeet-app php artisan config:cache
    docker exec -u www-data mimeet-app php artisan route:cache
