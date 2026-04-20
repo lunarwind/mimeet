@@ -59,6 +59,8 @@ return [
                 'key' => env('REVERB_APP_KEY', 'mimeet-reverb-key'),
                 'secret' => env('REVERB_APP_SECRET', 'mimeet-reverb-secret'),
                 'app_id' => env('REVERB_APP_ID', 'mimeet'),
+                'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
+                'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'options' => [
                     'host' => env('REVERB_HOST'),
                     'port' => env('REVERB_PORT', 443),
