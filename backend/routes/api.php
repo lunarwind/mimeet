@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\PointController;
 use App\Http\Controllers\Api\V1\StealthController;
 use App\Http\Controllers\Api\V1\SuperLikeController;
 use App\Http\Controllers\Api\V1\UserBroadcastController;
+use App\Http\Controllers\Api\V1\SiteConfigController;
 use App\Http\Controllers\Api\V1\Admin\AdminPointController;
 use App\Http\Controllers\Api\V1\Admin\StatsController;
 use App\Http\Controllers\Api\Admin\ChatLogController;
@@ -41,6 +42,9 @@ use App\Http\Controllers\Api\V1\Admin\UserActivityLogController;
 */
 
 Route::prefix('api/v1')->group(function () {
+
+    // ─── Public site config (不需登入) ───────────────────────────────────
+    Route::get('/site-config', [SiteConfigController::class, 'index']);
 
     // ─── Auth (public, rate-limited) ────────────────────────────────────
     Route::prefix('auth')->group(function () {
@@ -295,6 +299,8 @@ Route::prefix('api/v1')->group(function () {
                 Route::post('mail/test', [SystemControlController::class, 'testMail']);
                 Route::patch('sms', [SystemControlController::class, 'updateSms']);
                 Route::post('sms/test', [SystemControlController::class, 'testSms']);
+                Route::get('tracking', [SystemControlController::class, 'getTracking']);
+                Route::patch('tracking', [SystemControlController::class, 'updateTracking']);
                 Route::patch('database', [SystemControlController::class, 'updateDatabase']);
                 Route::post('database/test', [SystemControlController::class, 'testDatabase']);
                 Route::get('database/export', [SystemControlController::class, 'exportDatabase']);

@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Modal, Form, Input, Typography, message, Tag } from 'antd'
-import { EditOutlined } from '@ant-design/icons'
+import { Table, Button, Modal, Form, Input, Typography, message, Tag, Divider, Card, Space, Alert } from 'antd'
+import { EditOutlined, SaveOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 
-const { Title, Paragraph } = Typography
+const { Title, Paragraph, Text } = Typography
+
+interface TrackingConfig {
+  ga_measurement_id: string
+  fb_pixel_id: string
+  gtm_id: string
+}
 
 interface SeoMeta {
   id: number
@@ -23,9 +29,49 @@ export default function SeoPage() {
   const [editingMeta, setEditingMeta] = useState<SeoMeta | null>(null)
   const [metaForm] = Form.useForm()
 
+  // 追蹤碼（A17 擴充 — 2026-04-20）
+  const [tracking, setTracking] = useState<TrackingConfig>({
+    ga_measurement_id: '',
+    fb_pixel_id: '',
+    gtm_id: '',
+  })
+  const [trackingLoading, setTrackingLoading] = useState(false)
+  const [trackingSaving, setTrackingSaving] = useState(false)
+
   useEffect(() => {
     fetchMetas()
+    fetchTracking()
   }, [])
+
+  async function fetchTracking() {
+    setTrackingLoading(true)
+    try {
+      const res = await apiClient.get('/admin/settings/tracking')
+      const d = res.data?.data || {}
+      setTracking({
+        ga_measurement_id: d.ga_measurement_id || '',
+        fb_pixel_id: d.fb_pixel_id || '',
+        gtm_id: d.gtm_id || '',
+      })
+    } catch {
+      // 首次未設定時路由可能 404，視為空值
+    } finally {
+      setTrackingLoading(false)
+    }
+  }
+
+  async function saveTracking() {
+    setTrackingSaving(true)
+    try {
+      await apiClient.patch('/admin/settings/tracking', tracking)
+      message.success('追蹤碼已更新（最多 60 秒內生效）')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      message.error(e?.response?.data?.message || '儲存失敗')
+    } finally {
+      setTrackingSaving(false)
+    }
+  }
 
   async function fetchMetas() {
     setLoading(true)
@@ -159,6 +205,68 @@ export default function SeoPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Divider style={{ marginTop: 32 }} />
+
+      <Title level={3} style={{ marginBottom: 8 }}>📊 追蹤碼管理</Title>
+      <Paragraph type="secondary" style={{ marginBottom: 16 }}>
+        管理員填入 ID 後，前台下一次載入會自動插入對應 script。空白代表不啟用。
+        更新後最多 60 秒內生效（公開 site-config 端點的 Cache TTL）。
+      </Paragraph>
+
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="資料流：管理員填值 → PATCH /admin/settings/tracking → 清除 site_config Cache → 前台 GET /site-config → 動態插入 <script>"
+      />
+
+      <Card loading={trackingLoading} style={{ maxWidth: 640 }}>
+        <Form layout="vertical">
+          <Form.Item
+            label="Google Analytics 4 Measurement ID"
+            help="格式：G-XXXXXXXXXX（到 analytics.google.com 建立資源後取得）"
+          >
+            <Input
+              value={tracking.ga_measurement_id}
+              onChange={(e) => setTracking({ ...tracking, ga_measurement_id: e.target.value.trim() })}
+              placeholder="G-XXXXXXXXXX"
+              allowClear
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Facebook Pixel ID"
+            help="格式：10–20 位純數字（到 Facebook 廣告管理員取得）"
+          >
+            <Input
+              value={tracking.fb_pixel_id}
+              onChange={(e) => setTracking({ ...tracking, fb_pixel_id: e.target.value.trim() })}
+              placeholder="1234567890123456"
+              allowClear
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Google Tag Manager ID"
+            help="格式：GTM-XXXXXXX。進階用戶可用 GTM 統一管理所有追蹤碼。"
+          >
+            <Input
+              value={tracking.gtm_id}
+              onChange={(e) => setTracking({ ...tracking, gtm_id: e.target.value.trim() })}
+              placeholder="GTM-XXXXXXX"
+              allowClear
+            />
+          </Form.Item>
+
+          <Space>
+            <Button type="primary" icon={<SaveOutlined />} loading={trackingSaving} onClick={saveTracking}>
+              儲存追蹤碼
+            </Button>
+            <Text type="secondary">清空欄位並儲存即可停用對應追蹤碼</Text>
+          </Space>
+        </Form>
+      </Card>
 
       {/*
         [Phase 2] A18 廣告跳轉連結（SEO Redirect Links）

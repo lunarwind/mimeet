@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { publicRoutes } from './routes/public'
 import { appRoutes } from './routes/app'
 import { suspendedRoutes } from './routes/suspended'
+import { trackPageView } from '@/utils/tracking'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -15,6 +16,10 @@ const router = createRouter({
       component: () => import('@/views/public/NotFoundView.vue'),
     },
   ],
+})
+
+router.afterEach((to) => {
+  trackPageView(to.fullPath)
 })
 
 export default router
