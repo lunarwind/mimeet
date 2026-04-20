@@ -23,7 +23,38 @@ const form = ref({
   job: '',
   education: '',
   introduction: '',
+  // F27 profile fields
+  style: '' as '' | 'fresh' | 'sweet' | 'sexy' | 'intellectual' | 'sporty',
+  datingBudget: '' as '' | 'casual' | 'moderate' | 'generous' | 'luxury' | 'undisclosed',
+  datingFrequency: '' as '' | 'occasional' | 'weekly' | 'flexible',
+  datingType: [] as string[],
+  relationshipGoal: '' as '' | 'short_term' | 'long_term' | 'open' | 'undisclosed',
+  smoking: '' as '' | 'never' | 'sometimes' | 'often',
+  drinking: '' as '' | 'never' | 'social' | 'often',
+  carOwner: null as boolean | null,
+  availability: [] as string[],
 })
+
+// F27 選項字典 — 前端顯示用
+const DATING_TYPE_OPTIONS = [
+  { value: 'dining', label: '餐敘' },
+  { value: 'travel', label: '旅遊' },
+  { value: 'companion', label: '陪伴' },
+  { value: 'mentorship', label: '指導' },
+  { value: 'undisclosed', label: '不透露' },
+]
+const AVAILABILITY_OPTIONS = [
+  { value: 'weekday_day', label: '平日白天' },
+  { value: 'weekday_night', label: '平日晚上' },
+  { value: 'weekend', label: '週末' },
+  { value: 'flexible', label: '彈性配合' },
+]
+
+function toggleInArray(arr: string[], value: string) {
+  const idx = arr.indexOf(value)
+  if (idx >= 0) arr.splice(idx, 1)
+  else arr.push(value)
+}
 
 const avatarUrl = ref<string | null>(null)
 const avatarSlots = ref<string[]>([])
@@ -118,6 +149,15 @@ async function loadProfile() {
       job: p.job ?? '',
       education: p.education ?? '',
       introduction: p.introduction ?? '',
+      style: (p.style ?? '') as typeof form.value.style,
+      datingBudget: (p.dating_budget ?? '') as typeof form.value.datingBudget,
+      datingFrequency: (p.dating_frequency ?? '') as typeof form.value.datingFrequency,
+      datingType: Array.isArray(p.dating_type) ? p.dating_type : [],
+      relationshipGoal: (p.relationship_goal ?? '') as typeof form.value.relationshipGoal,
+      smoking: (p.smoking ?? '') as typeof form.value.smoking,
+      drinking: (p.drinking ?? '') as typeof form.value.drinking,
+      carOwner: typeof p.car_owner === 'boolean' ? p.car_owner : null,
+      availability: Array.isArray(p.availability) ? p.availability : [],
     }
     avatarUrl.value = p.avatar_url ?? null
     isDirty.value = false
@@ -229,6 +269,16 @@ async function saveProfile() {
       occupation: form.value.job,
       education: form.value.education,
       bio: form.value.introduction,
+      // F27 profile fields（空字串轉 null，讓後端 validate nullable 通過）
+      style: form.value.style || null,
+      dating_budget: form.value.datingBudget || null,
+      dating_frequency: form.value.datingFrequency || null,
+      dating_type: form.value.datingType.length ? form.value.datingType : null,
+      relationship_goal: form.value.relationshipGoal || null,
+      smoking: form.value.smoking || null,
+      drinking: form.value.drinking || null,
+      car_owner: form.value.carOwner,
+      availability: form.value.availability.length ? form.value.availability : null,
     })
     uiStore.showToast('資料已更新', 'success')
     isDirty.value = false
@@ -395,6 +445,141 @@ const settingsLinks = [
         </div>
       </section>
 
+      <!-- 外貌風格（F27） -->
+      <section class="form-section">
+        <h3 class="section-label">外貌風格（選填）</h3>
+        <div class="field">
+          <label class="field__label">自我風格</label>
+          <select v-model="form.style" class="field__input">
+            <option value="">不指定</option>
+            <option value="fresh">清新</option>
+            <option value="sweet">甜美</option>
+            <option value="sexy">性感</option>
+            <option value="intellectual">知性</option>
+            <option value="sporty">運動</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- 約會偏好（F27） -->
+      <section class="form-section">
+        <h3 class="section-label">約會偏好（選填）</h3>
+        <div class="field">
+          <label class="field__label">約會預算</label>
+          <select v-model="form.datingBudget" class="field__input">
+            <option value="">不指定</option>
+            <option value="casual">輕鬆小聚</option>
+            <option value="moderate">質感約會</option>
+            <option value="generous">高品質體驗</option>
+            <option value="luxury">頂級享受</option>
+            <option value="undisclosed">不透露</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label">見面頻率</label>
+          <select v-model="form.datingFrequency" class="field__input">
+            <option value="">不指定</option>
+            <option value="occasional">偶爾見面</option>
+            <option value="weekly">每週約會</option>
+            <option value="flexible">看心情</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label">約會類型（可複選）</label>
+          <div class="chip-group">
+            <label
+              v-for="opt in DATING_TYPE_OPTIONS"
+              :key="opt.value"
+              class="chip"
+              :class="{ 'chip--active': form.datingType.includes(opt.value) }"
+            >
+              <input
+                type="checkbox"
+                class="chip__input"
+                :checked="form.datingType.includes(opt.value)"
+                @change="toggleInArray(form.datingType, opt.value); isDirty = true"
+              />
+              {{ opt.label }}
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label">關係期望</label>
+          <select v-model="form.relationshipGoal" class="field__input">
+            <option value="">不指定</option>
+            <option value="short_term">短期約會</option>
+            <option value="long_term">長期穩定</option>
+            <option value="open">開放探索</option>
+            <option value="undisclosed">不透露</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- 生活資訊（F27） -->
+      <section class="form-section">
+        <h3 class="section-label">生活資訊（選填）</h3>
+        <div class="field-row">
+          <div class="field field--half">
+            <label class="field__label">抽菸</label>
+            <select v-model="form.smoking" class="field__input">
+              <option value="">不指定</option>
+              <option value="never">從不</option>
+              <option value="sometimes">偶爾</option>
+              <option value="often">經常</option>
+            </select>
+          </div>
+          <div class="field field--half">
+            <label class="field__label">飲酒</label>
+            <select v-model="form.drinking" class="field__input">
+              <option value="">不指定</option>
+              <option value="never">從不</option>
+              <option value="social">社交場合</option>
+              <option value="often">經常</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="car-owner-row">
+            <div>
+              <span class="field__label">有自備車</span>
+              <span class="field__hint">選填，不指定時隱藏</span>
+            </div>
+            <button
+              type="button"
+              class="toggle-sm"
+              :class="{ 'toggle-sm--on': form.carOwner === true }"
+              @click="form.carOwner = form.carOwner === true ? null : true; isDirty = true"
+            >
+              <span class="toggle-sm__dot" />
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label">可約時段（可複選）</label>
+          <div class="chip-group">
+            <label
+              v-for="opt in AVAILABILITY_OPTIONS"
+              :key="opt.value"
+              class="chip"
+              :class="{ 'chip--active': form.availability.includes(opt.value) }"
+            >
+              <input
+                type="checkbox"
+                class="chip__input"
+                :checked="form.availability.includes(opt.value)"
+                @change="toggleInArray(form.availability, opt.value); isDirty = true"
+              />
+              {{ opt.label }}
+            </label>
+          </div>
+        </div>
+      </section>
+
       <!-- 隱私設定 -->
       <section class="privacy-section">
         <h3 class="section-label">隱私設定</h3>
@@ -530,6 +715,15 @@ const settingsLinks = [
 .save-btn { padding: 6px 16px; border-radius: 8px; border: none; background: #E5E7EB; color: #9CA3AF; font-size: 14px; font-weight: 600; cursor: not-allowed; }
 .save-btn--active { background: #F0294E; color: white; cursor: pointer; }
 .save-btn--active:hover { background: #D01A3C; }
+
+/* ── F27 Chip 多選（約會類型 / 可約時段） ── */
+.chip-group { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { display:inline-flex; align-items:center; justify-content:center; height:36px; padding:0 14px; border:1.5px solid #E5E7EB; border-radius:9999px; background:#F9FAFB; color:#374151; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; user-select:none; }
+.chip:hover { border-color:#D1D5DB; }
+.chip--active { border-color:#F0294E; background:#FFE4EA; color:#F0294E; }
+.chip__input { position:absolute; opacity:0; pointer-events:none; }
+
+.car-owner-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:#F9FAFB; border:1.5px solid #E5E7EB; border-radius:10px; }
 
 /* ── DND 免打擾時段 ── */
 .dnd-time-row { display:flex; gap:12px; padding:12px 16px; background:#F9FAFB; border-radius:10px; margin:4px 0 8px; }

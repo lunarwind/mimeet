@@ -72,6 +72,7 @@
 | ID | 功能 | 後端 | 前端 | 狀態 | 說明 |
 |----|------|------|------|------|------|
 | F26 | 基礎搜尋篩選 | ✅ UserController::search (年齡/地區/性別) | ✅ ExploreView.vue + useExplore | ✅ | 無限滾動 + 快速篩選 tags |
+| F27 | 進階綜合篩選 | ✅ UserController::search 新增 9 個篩選參數 + 資料完整度排序 | ✅ FilterBottomSheet「進階篩選」可收合區塊 + AccountView 9 個新欄位 | 🚀 Phase 2 超前 | 2026-04-20：身高/學歷/風格/約會預算/關係期望/抽菸/飲酒/自備車；未填欄位不排除 |
 
 ### 商業/金流
 

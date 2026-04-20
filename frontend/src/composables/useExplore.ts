@@ -21,7 +21,7 @@ export function useExplore(filters: Ref<ExploreFilter> | ComputedRef<ExploreFilt
   })
 
   // 將 ExploreFilter 轉為 API 查詢參數
-  function buildParams(page: number) {
+  function buildParams(page: number): Record<string, any> {
     const f = filters.value
     return {
       page,
@@ -36,6 +36,17 @@ export function useExplore(filters: Ref<ExploreFilter> | ComputedRef<ExploreFilt
       ...(f.cities?.length ? { location: f.cities[0] }   : {}),
       ...(f.creditScoreRange ? buildCreditParams(f.creditScoreRange) : {}),
       ...(f.lastOnline && f.lastOnline !== 'all' ? { last_online: f.lastOnline } : {}),
+
+      // F27 進階篩選
+      ...(f.minHeight        ? { min_height: f.minHeight } : {}),
+      ...(f.maxHeight        ? { max_height: f.maxHeight } : {}),
+      ...(f.education        ? { education: f.education } : {}),
+      ...(f.style            ? { style: f.style } : {}),
+      ...(f.datingBudget     ? { dating_budget: f.datingBudget } : {}),
+      ...(f.relationshipGoal ? { relationship_goal: f.relationshipGoal } : {}),
+      ...(f.smoking          ? { smoking: f.smoking } : {}),
+      ...(f.drinking         ? { drinking: f.drinking } : {}),
+      ...(f.carOwner === 'yes' ? { car_owner: 1 } : {}),
     }
   }
 

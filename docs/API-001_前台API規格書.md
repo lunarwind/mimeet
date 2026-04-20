@@ -755,21 +755,32 @@ Authorization: Bearer {access_token}
 
 **查詢參數：**
 ```
-gender: male|female
-age_min: 18
-age_max: 35
-location: 台北市
-education: bachelor,master,phd
-credit_score_min: 60
-verified_only: true|false
-vip_only: true|false
-online_only: true|false
-has_photos: true|false
-page: 1
-per_page: 20
-sort: credit_score|last_active|age|distance
-sort_direction: desc|asc
+# 基本
+gender:             male|female
+age_min / age_max:  18 ~ 99
+location:           台北市（LIKE 模糊）
+page / per_page:    分頁
+
+# F27 進階篩選（2026-04-20 補完）
+min_height / max_height:   身高範圍（cm）
+min_weight / max_weight:   體重範圍（kg）
+education:                 high_school|associate|bachelor|master|phd|other（精確）
+occupation:                職業（LIKE 模糊）
+style:                     fresh|sweet|sexy|intellectual|sporty
+dating_budget:             casual|moderate|generous|luxury|undisclosed
+dating_frequency:          occasional|weekly|flexible
+dating_type:               dining|travel|companion|mentorship|undisclosed（JSON_CONTAINS 單值）
+relationship_goal:         short_term|long_term|open|undisclosed
+smoking:                   never|sometimes|often
+drinking:                  never|social|often
+car_owner:                 boolean
+availability:              weekday_day|weekday_night|weekend|flexible（JSON_CONTAINS 單值）
+min_credit / max_credit:   誠信分數範圍（相容舊稱 credit_score_min/max）
 ```
+
+**未填欄位的使用者不會被排除：** 每個進階篩選都用 `WHERE (column = val OR column IS NULL)` 形式，避免把剛註冊、尚未完整填寫 profile 的用戶排除在外。
+
+**排序：** 資料完整度（height / dating_budget / style / bio 非空的加分）DESC → credit_score DESC → last_active_at DESC。
 
 **範例：**
 ```http

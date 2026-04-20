@@ -66,6 +66,18 @@ const LAST_ONLINE_OPTIONS: { value: LastOnline; label: string }[] = [
 ]
 const lastOnline = ref<LastOnline>((localFilters.value.lastOnline as LastOnline) ?? 'all')
 
+// ── F27 進階篩選 ─────────────────────────────────────────
+const advancedOpen = ref(false)
+const minHeight = ref<number | null>(localFilters.value.minHeight ?? null)
+const maxHeight = ref<number | null>(localFilters.value.maxHeight ?? null)
+const education = ref<string>(localFilters.value.education ?? '')
+const styleVal = ref<string>(localFilters.value.style ?? '')
+const datingBudget = ref<string>(localFilters.value.datingBudget ?? '')
+const relationshipGoal = ref<string>(localFilters.value.relationshipGoal ?? '')
+const smoking = ref<string>(localFilters.value.smoking ?? '')
+const drinking = ref<string>(localFilters.value.drinking ?? '')
+const carOwner = ref<'any' | 'yes'>((localFilters.value.carOwner as 'any' | 'yes') ?? 'any')
+
 // ── 套用條件數量（用於按鈕 label） ────────────────────────
 const activeCount = computed(() => {
   let count = 0
@@ -74,6 +86,14 @@ const activeCount = computed(() => {
   if (selectedCreditRange.value) count++
   if (selectedCities.value.length) count++
   if (lastOnline.value !== 'all') count++
+  if (minHeight.value || maxHeight.value) count++
+  if (education.value) count++
+  if (styleVal.value) count++
+  if (datingBudget.value) count++
+  if (relationshipGoal.value) count++
+  if (smoking.value) count++
+  if (drinking.value) count++
+  if (carOwner.value !== 'any') count++
   return count
 })
 
@@ -110,6 +130,16 @@ function applyFilters() {
   if (selectedCreditRange.value)     filters.creditScoreRange = selectedCreditRange.value
   if (selectedCities.value.length)   filters.cities = [...selectedCities.value]
   if (lastOnline.value !== 'all')    filters.lastOnline = lastOnline.value
+  // F27
+  if (minHeight.value) filters.minHeight = minHeight.value
+  if (maxHeight.value) filters.maxHeight = maxHeight.value
+  if (education.value) filters.education = education.value
+  if (styleVal.value) filters.style = styleVal.value
+  if (datingBudget.value) filters.datingBudget = datingBudget.value
+  if (relationshipGoal.value) filters.relationshipGoal = relationshipGoal.value
+  if (smoking.value) filters.smoking = smoking.value
+  if (drinking.value) filters.drinking = drinking.value
+  if (carOwner.value !== 'any') filters.carOwner = carOwner.value
   emit('apply', filters)
 }
 
@@ -120,6 +150,15 @@ function resetFilters() {
   selectedCreditRange.value = null
   selectedCities.value = []
   lastOnline.value = 'all'
+  minHeight.value = null
+  maxHeight.value = null
+  education.value = ''
+  styleVal.value = ''
+  datingBudget.value = ''
+  relationshipGoal.value = ''
+  smoking.value = ''
+  drinking.value = ''
+  carOwner.value = 'any'
   emit('reset')
 }
 </script>
@@ -272,6 +311,115 @@ function resetFilters() {
           </div>
         </section>
 
+        <div class="filter-divider" />
+
+        <!-- 6. 進階篩選（F27，可收合） -->
+        <section class="filter-section">
+          <button type="button" class="filter-advanced-toggle" @click="advancedOpen = !advancedOpen">
+            <span>進階篩選</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="{ transform: advancedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          <div v-if="advancedOpen" class="filter-advanced">
+            <!-- 身高範圍 -->
+            <div class="filter-adv-row">
+              <label class="filter-adv-label">身高範圍（cm）</label>
+              <div class="filter-adv-range">
+                <input v-model.number="minHeight" type="number" min="100" max="250" class="filter-adv-input" placeholder="最低" />
+                <span class="filter-adv-dash">—</span>
+                <input v-model.number="maxHeight" type="number" min="100" max="250" class="filter-adv-input" placeholder="最高" />
+              </div>
+            </div>
+
+            <!-- 學歷 -->
+            <div class="filter-adv-row">
+              <label class="filter-adv-label">學歷</label>
+              <select v-model="education" class="filter-adv-select">
+                <option value="">不限</option>
+                <option value="high_school">高中 / 高職</option>
+                <option value="associate">專科</option>
+                <option value="bachelor">大學</option>
+                <option value="master">碩士</option>
+                <option value="phd">博士</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+
+            <!-- 風格 -->
+            <div class="filter-adv-row">
+              <label class="filter-adv-label">自我風格</label>
+              <select v-model="styleVal" class="filter-adv-select">
+                <option value="">不限</option>
+                <option value="fresh">清新</option>
+                <option value="sweet">甜美</option>
+                <option value="sexy">性感</option>
+                <option value="intellectual">知性</option>
+                <option value="sporty">運動</option>
+              </select>
+            </div>
+
+            <!-- 約會預算 -->
+            <div class="filter-adv-row">
+              <label class="filter-adv-label">約會預算</label>
+              <select v-model="datingBudget" class="filter-adv-select">
+                <option value="">不限</option>
+                <option value="casual">輕鬆小聚</option>
+                <option value="moderate">質感約會</option>
+                <option value="generous">高品質體驗</option>
+                <option value="luxury">頂級享受</option>
+              </select>
+            </div>
+
+            <!-- 關係期望 -->
+            <div class="filter-adv-row">
+              <label class="filter-adv-label">關係期望</label>
+              <select v-model="relationshipGoal" class="filter-adv-select">
+                <option value="">不限</option>
+                <option value="short_term">短期約會</option>
+                <option value="long_term">長期穩定</option>
+                <option value="open">開放探索</option>
+              </select>
+            </div>
+
+            <!-- 抽菸 + 飲酒（並列） -->
+            <div class="filter-adv-row filter-adv-row--dual">
+              <div class="filter-adv-col">
+                <label class="filter-adv-label">抽菸</label>
+                <select v-model="smoking" class="filter-adv-select">
+                  <option value="">不限</option>
+                  <option value="never">從不</option>
+                  <option value="sometimes">偶爾</option>
+                  <option value="often">經常</option>
+                </select>
+              </div>
+              <div class="filter-adv-col">
+                <label class="filter-adv-label">飲酒</label>
+                <select v-model="drinking" class="filter-adv-select">
+                  <option value="">不限</option>
+                  <option value="never">從不</option>
+                  <option value="social">社交場合</option>
+                  <option value="often">經常</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 有自備車 -->
+            <div class="filter-adv-row">
+              <label class="filter-adv-label">自備車</label>
+              <div class="filter-radio-group">
+                <label class="filter-radio" :class="{ 'filter-radio--active': carOwner === 'any' }">
+                  <input v-model="carOwner" type="radio" value="any" class="sr-only" /> 不限
+                </label>
+                <label class="filter-radio" :class="{ 'filter-radio--active': carOwner === 'yes' }">
+                  <input v-model="carOwner" type="radio" value="yes" class="sr-only" /> 有車
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </div>
 
       <!-- 底部操作按鈕 -->
@@ -291,6 +439,20 @@ function resetFilters() {
 </template>
 
 <style scoped>
+/* ── F27 進階篩選 ─────────────────────────────────────── */
+.filter-advanced-toggle { display:flex; justify-content:space-between; align-items:center; width:100%; padding:12px 14px; background:#F9FAFB; border:1.5px solid #E5E7EB; border-radius:10px; font-size:14px; font-weight:600; color:#374151; cursor:pointer; }
+.filter-advanced-toggle:hover { background:#F3F4F6; }
+
+.filter-advanced { margin-top:12px; display:flex; flex-direction:column; gap:14px; }
+.filter-adv-row { display:flex; flex-direction:column; gap:6px; }
+.filter-adv-row--dual { flex-direction:row; gap:10px; }
+.filter-adv-col { flex:1; display:flex; flex-direction:column; gap:6px; }
+.filter-adv-label { font-size:13px; font-weight:500; color:#6B7280; }
+.filter-adv-range { display:flex; align-items:center; gap:8px; }
+.filter-adv-input,.filter-adv-select { flex:1; height:40px; border:1.5px solid #E5E7EB; border-radius:8px; padding:0 12px; font-size:14px; color:#111827; background:#fff; outline:none; font-family:inherit; }
+.filter-adv-input:focus,.filter-adv-select:focus { border-color:#F0294E; }
+.filter-adv-dash { color:#9CA3AF; font-size:14px; }
+
 /* ── Backdrop ─────────────────────────────────────────────── */
 .filter-backdrop {
   position: fixed;
