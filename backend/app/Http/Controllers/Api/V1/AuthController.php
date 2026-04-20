@@ -276,6 +276,29 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'code' => 'UNAUTHENTICATED', 'message' => '請先登入。'], 401);
         }
 
+        // F40 — 當前有效訂閱（如有）
+        $subscription = \App\Models\Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->orderByDesc('expires_at')
+            ->first();
+
+        $subscriptionData = null;
+        if ($subscription) {
+            $plan = \App\Models\SubscriptionPlan::find($subscription->plan_id);
+            $daysRemaining = $subscription->expires_at
+                ? max(0, (int) now()->startOfDay()->diffInDays($subscription->expires_at, false))
+                : null;
+            $subscriptionData = [
+                'plan_slug' => $plan?->slug,
+                'plan_name' => $plan?->name,
+                'status' => $subscription->status,
+                'started_at' => $subscription->started_at?->toISOString(),
+                'expires_at' => $subscription->expires_at?->toISOString(),
+                'auto_renew' => (bool) ($subscription->auto_renew ?? false),
+                'days_remaining' => $daysRemaining,
+            ];
+        }
+
         return response()->json([
             'success' => true, 'code' => 'USER_PROFILE', 'message' => 'OK',
             'data' => ['user' => [
@@ -290,6 +313,11 @@ class AuthController extends Controller
                 'email_verified' => (bool) $user->email_verified,
                 'phone_verified' => (bool) $user->phone_verified,
                 'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
+                // F40
+                'points_balance' => (int) ($user->points_balance ?? 0),
+                'stealth_until' => $user->stealth_until?->toISOString(),
+                'stealth_active' => $user->isStealthActive(),
+                'subscription' => $subscriptionData,
             ]],
         ]);
     }

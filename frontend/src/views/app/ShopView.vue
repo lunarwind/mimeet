@@ -3,10 +3,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { usePayment } from '@/composables/usePayment'
+import { usePoints } from '@/composables/usePoints'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import client from '@/api/client'
 import type { SubscriptionPlan } from '@/types/payment'
+import type { PointPackage } from '@/types/points'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -29,26 +31,82 @@ const autoRenewChecked = ref(true)
 const selectedPaymentMethod = ref<'credit_card' | 'atm' | 'cvs'>('credit_card')
 const isSubmitting = ref(false)
 
+// F40 — Tab + points
+const activeTab = ref<'subscription' | 'points'>('subscription')
+const {
+  packages: pointPackages,
+  balance: pointBalance,
+  history: pointHistory,
+  fetchPackages: fetchPointPackages,
+  fetchBalance: fetchPointBalance,
+  fetchHistory: fetchPointHistory,
+  purchasePackage: purchasePointPackage,
+} = usePoints()
+const showHistoryModal = ref(false)
+const selectedPointPackage = ref<PointPackage | null>(null)
+const showPointConfirm = ref(false)
+
+function openPointHistory() {
+  showHistoryModal.value = true
+  fetchPointHistory()
+}
+function selectPointPackage(p: PointPackage) {
+  selectedPointPackage.value = p
+  showPointConfirm.value = true
+}
+async function confirmPointPurchase() {
+  if (!selectedPointPackage.value || isSubmitting.value) return
+  isSubmitting.value = true
+  try {
+    const res = await purchasePointPackage(selectedPointPackage.value.slug)
+    showPointConfirm.value = false
+    window.location.href = res.paymentUrl
+  } catch (err: any) {
+    showPointConfirm.value = false
+    uiStore.showToast(err.response?.data?.error?.message ?? '建立點數訂單失敗', 'error')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+function formatTxnType(t: string): string {
+  const map: Record<string, string> = {
+    purchase: '購買', consume: '消費', refund: '退款',
+    admin_gift: '管理員贈送', admin_deduct: '管理員扣除',
+  }
+  return map[t] ?? t
+}
+function formatFeature(f: string | null): string {
+  if (!f) return ''
+  const map: Record<string, string> = {
+    stealth: '🕶 隱身', reverse_msg: '💬 突破訊息', super_like: '⭐ 超級讚', broadcast: '📢 廣播',
+  }
+  return map[f] ?? f
+}
+
 const PAYMENT_METHODS = [
   { value: 'credit_card' as const, label: '信用卡', icon: '💳', desc: '綠界金流（Visa / Master / JCB）' },
 ]
 
 onMounted(async () => {
-  await Promise.all([fetchPlans(), fetchCurrentSubscription()])
+  await Promise.all([fetchPlans(), fetchCurrentSubscription(), fetchPointPackages(), fetchPointBalance()])
 
   // Detect payment return (hash mode: params are after #/app/shop?)
   const hashParams = new URLSearchParams(window.location.hash.split('?')[1] ?? '')
   const paymentStatus = hashParams.get('payment')
+  const tabParam = hashParams.get('tab')
+  if (tabParam === 'points') activeTab.value = 'points'
 
   if (paymentStatus === 'success') {
-    uiStore.showToast('付款成功！訂閱已啟用', 'success')
-    // Re-fetch user to update membership_level
+    const msg = tabParam === 'points' ? '點數已入帳！' : '付款成功！訂閱已啟用'
+    uiStore.showToast(msg, 'success')
+    // Re-fetch user to update membership_level / points_balance
     try {
       const { getMe } = await import('@/api/auth')
       const data = await getMe()
       authStore.setUser(data.user)
     } catch { /* ignore */ }
-    await fetchCurrentSubscription()
+    await Promise.all([fetchCurrentSubscription(), fetchPointBalance()])
     window.history.replaceState({}, '', window.location.pathname + window.location.hash.split('?')[0])
   } else if (paymentStatus === 'complete') {
     uiStore.showToast('付款處理中，請稍候...', 'info')
@@ -129,6 +187,50 @@ const PAID_FEATURES = [
 <template>
   <AppLayout title="會員商城">
     <div class="shop-page">
+      <!-- Tab 切換 -->
+      <div class="shop-tabs">
+        <button class="shop-tab" :class="{ 'shop-tab--active': activeTab === 'subscription' }" @click="activeTab = 'subscription'">訂閱方案</button>
+        <button class="shop-tab" :class="{ 'shop-tab--active': activeTab === 'points' }" @click="activeTab = 'points'">點數商城</button>
+      </div>
+
+      <!-- ==== 點數商城 Tab ==================================================== -->
+      <template v-if="activeTab === 'points'">
+        <section class="points-balance-card">
+          <div>
+            <span class="points-balance-card__label">💎 我的點數</span>
+            <span class="points-balance-card__value">{{ pointBalance }} 點</span>
+          </div>
+          <button class="points-balance-card__history-btn" @click="openPointHistory">查看交易紀錄</button>
+        </section>
+
+        <section class="plans">
+          <h2 class="section-title">選購點數</h2>
+          <div class="points-grid">
+            <div
+              v-for="p in pointPackages"
+              :key="p.slug"
+              class="point-card"
+              :class="{ 'point-card--popular': p.slug === 'pack_150', 'point-card--best': p.slug === 'pack_1200' }"
+              @click="selectPointPackage(p)"
+            >
+              <span v-if="p.slug === 'pack_150'" class="point-card__tag">最受歡迎</span>
+              <span v-else-if="p.slug === 'pack_1200'" class="point-card__tag point-card__tag--best">最划算</span>
+              <div class="point-card__name">{{ p.name }}</div>
+              <div class="point-card__points">
+                <span class="point-card__base">{{ p.points }} 點</span>
+                <span v-if="p.bonusPoints > 0" class="point-card__bonus">+{{ p.bonusPoints }}</span>
+              </div>
+              <div class="point-card__price">NT${{ formatPrice(p.price) }}</div>
+              <div class="point-card__cost">$ {{ p.costPerPoint.toFixed(1) }} / 點</div>
+              <button class="point-card__btn">購買</button>
+            </div>
+          </div>
+          <p class="points-note">💡 點數可用於：隱身模式、超級讚、廣播訊息、突破訊息限制</p>
+        </section>
+      </template>
+
+      <!-- ==== 訂閱方案 Tab ==================================================== -->
+      <template v-else>
       <!-- 已付費會員區塊 -->
       <section v-if="isPaid && currentSubscription" class="my-member">
         <div class="my-member__header">
@@ -206,8 +308,58 @@ const PAID_FEATURES = [
           </div>
         </div>
       </section>
+      </template>
+      <!-- /訂閱方案 Tab -->
 
-      <!-- 確認 Modal -->
+      <!-- 點數購買確認 Modal -->
+      <div v-if="showPointConfirm" class="modal-overlay" @click="showPointConfirm = false">
+        <div class="modal-card" @click.stop>
+          <h3 class="modal-card__title">確認購買點數</h3>
+          <template v-if="selectedPointPackage">
+            <div class="modal-card__plan">{{ selectedPointPackage.name }}</div>
+            <div class="modal-card__amount">NT${{ formatPrice(selectedPointPackage.price) }}</div>
+            <div class="modal-card__meta">
+              {{ selectedPointPackage.points }} 點
+              <span v-if="selectedPointPackage.bonusPoints > 0">+ 贈送 {{ selectedPointPackage.bonusPoints }} 點</span>
+            </div>
+            <div class="modal-card__actions">
+              <button class="btn-secondary" @click="showPointConfirm = false">取消</button>
+              <button class="btn-primary" :disabled="isSubmitting" @click="confirmPointPurchase">
+                {{ isSubmitting ? '處理中...' : '前往付款' }}
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 點數交易紀錄 Modal -->
+      <div v-if="showHistoryModal" class="modal-overlay" @click="showHistoryModal = false">
+        <div class="modal-card modal-card--wide" @click.stop>
+          <h3 class="modal-card__title">點數交易紀錄</h3>
+          <div v-if="pointHistory.length === 0" class="point-history__empty">尚無交易紀錄</div>
+          <div v-else class="point-history">
+            <div v-for="t in pointHistory" :key="t.id" class="point-history__row">
+              <div class="point-history__left">
+                <span class="point-history__type">{{ formatTxnType(t.type) }}</span>
+                <span v-if="t.feature" class="point-history__feature">{{ formatFeature(t.feature) }}</span>
+                <span class="point-history__desc">{{ t.description ?? '' }}</span>
+              </div>
+              <div class="point-history__right">
+                <span :class="t.amount > 0 ? 'point-history__amount--plus' : 'point-history__amount--minus'">
+                  {{ t.amount > 0 ? '+' : '' }}{{ t.amount }}
+                </span>
+                <span class="point-history__balance">餘額 {{ t.balanceAfter }}</span>
+                <span class="point-history__time">{{ formatDate(t.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-card__actions">
+            <button class="btn-primary" @click="showHistoryModal = false">關閉</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 訂閱確認 Modal -->
       <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">
         <div class="modal-card" @click.stop>
           <h3 class="modal-card__title">確認購買</h3>
@@ -254,6 +406,50 @@ const PAID_FEATURES = [
 </template>
 
 <style>
+/* ── F40 Tab 切換 ──────────────────────────────────── */
+.shop-tabs { display:flex; gap:8px; margin-bottom:16px; padding:4px; background:#F1F5F9; border-radius:12px; }
+.shop-tab { flex:1; padding:10px; border:none; background:transparent; font-size:14px; font-weight:600; color:#6B7280; border-radius:8px; cursor:pointer; transition:all 0.15s; }
+.shop-tab--active { background:#fff; color:#F0294E; box-shadow:0 2px 4px rgba(17,24,39,0.06); }
+
+/* ── 點數餘額卡片 ──────────────────────────────────── */
+.points-balance-card { display:flex; justify-content:space-between; align-items:center; padding:16px; background:linear-gradient(135deg,#FFE4EA 0%,#FFF5F7 100%); border-radius:14px; margin-bottom:16px; }
+.points-balance-card__label { display:block; font-size:12px; color:#6B7280; margin-bottom:4px; }
+.points-balance-card__value { display:block; font-size:24px; font-weight:800; color:#F0294E; }
+.points-balance-card__history-btn { padding:8px 14px; border:1.5px solid #F0294E; background:#fff; color:#F0294E; border-radius:9999px; font-size:12px; font-weight:600; cursor:pointer; }
+
+/* ── 點數包 grid ───────────────────────────────────── */
+.points-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.point-card { position:relative; padding:16px 14px; background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; text-align:center; cursor:pointer; transition:all 0.15s; }
+.point-card:hover { border-color:#F0294E; transform:translateY(-2px); }
+.point-card--popular { border-color:#F0294E; background:linear-gradient(180deg,#FFF5F7 0%,#fff 60%); }
+.point-card--best { border-color:#F59E0B; background:linear-gradient(180deg,#FFFBEB 0%,#fff 60%); }
+.point-card__tag { position:absolute; top:-10px; left:50%; transform:translateX(-50%); padding:2px 10px; background:#F0294E; color:#fff; border-radius:9999px; font-size:11px; font-weight:700; white-space:nowrap; }
+.point-card__tag--best { background:#F59E0B; }
+.point-card__name { font-size:15px; font-weight:700; color:#111827; margin-bottom:8px; }
+.point-card__points { display:flex; align-items:baseline; justify-content:center; gap:4px; margin-bottom:4px; }
+.point-card__base { font-size:22px; font-weight:800; color:#F0294E; font-variant-numeric:tabular-nums; }
+.point-card__bonus { font-size:13px; color:#F59E0B; font-weight:700; }
+.point-card__price { font-size:14px; color:#111827; font-weight:600; margin:4px 0 2px; }
+.point-card__cost { font-size:11px; color:#9CA3AF; margin-bottom:10px; }
+.point-card__btn { width:100%; padding:8px; background:#F0294E; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+.points-note { font-size:12px; color:#6B7280; text-align:center; margin-top:16px; padding:10px; background:#F9FAFB; border-radius:8px; }
+
+/* ── 交易紀錄 ──────────────────────────────────────── */
+.modal-card--wide { max-width:520px; max-height:70dvh; overflow:hidden; display:flex; flex-direction:column; }
+.point-history { flex:1; overflow-y:auto; margin:8px 0; }
+.point-history__row { display:flex; justify-content:space-between; align-items:center; padding:10px 4px; border-bottom:1px solid #F3F4F6; }
+.point-history__left { display:flex; flex-direction:column; gap:2px; }
+.point-history__type { font-size:13px; font-weight:600; color:#111827; }
+.point-history__feature { font-size:11px; color:#6B7280; }
+.point-history__desc { font-size:11px; color:#9CA3AF; }
+.point-history__right { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.point-history__amount--plus { font-size:14px; font-weight:700; color:#10B981; font-variant-numeric:tabular-nums; }
+.point-history__amount--minus { font-size:14px; font-weight:700; color:#EF4444; font-variant-numeric:tabular-nums; }
+.point-history__balance { font-size:11px; color:#6B7280; }
+.point-history__time { font-size:10px; color:#9CA3AF; }
+.point-history__empty { padding:32px; text-align:center; color:#9CA3AF; font-size:13px; }
+.modal-card__meta { font-size:13px; color:#6B7280; margin:8px 0 16px; }
+
 .shop-page { padding: 16px; }
 
 /* ── 我的會員 ── */

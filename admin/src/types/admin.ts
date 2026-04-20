@@ -71,6 +71,23 @@ export interface MemberDetail extends MemberListItem {
   drinking?: string | null
   car_owner?: boolean | null
   availability?: string[] | null
+  // F40 points + subscription
+  points_balance?: number
+  stealth_until?: string | null
+  stealth_active?: boolean
+  subscription?: {
+    plan_slug?: string | null
+    plan_name?: string | null
+    status?: string
+    started_at?: string | null
+    expires_at?: string | null
+    days_remaining?: number | null
+  } | null
+  points_stats?: {
+    total_purchased: number
+    total_spent: number
+    purchase_amount_ntd: number
+  }
 }
 
 export interface ScoreRecord {

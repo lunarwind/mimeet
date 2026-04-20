@@ -67,6 +67,34 @@ const isSaving = ref(false)
 const introLength = computed(() => form.value.introduction.length)
 const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
 
+// F40 會員狀態卡片
+const subscriptionInfo = computed(() => {
+  const u = authStore.user as any
+  return u?.subscription ?? null
+})
+const stealthStatusLabel = computed(() => {
+  const u = authStore.user as any
+  if (!u?.stealth_until) return '未啟用'
+  const end = new Date(u.stealth_until).getTime()
+  const left = end - Date.now()
+  if (left <= 0) return '未啟用'
+  const h = Math.floor(left / 3600000)
+  const m = Math.floor((left % 3600000) / 60000)
+  return `剩餘 ${h}h ${m}m`
+})
+function daysColor(days: number | null): string {
+  if (days === null || days === undefined) return '#6B7280'
+  if (days <= 7) return '#F0294E'
+  if (days <= 30) return '#F59E0B'
+  return '#10B981'
+}
+function formatDateYMD(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
 // 隱私設定
 const stealthMode = ref(false)
 const hideLastActive = ref(false)
@@ -338,6 +366,46 @@ const settingsLinks = [
     </template>
 
     <div class="account-page">
+      <!-- F40：我的會員狀態卡片 -->
+      <section class="member-status">
+        <h3 class="section-label">👤 我的會員狀態</h3>
+        <div class="status-row">
+          <span class="status-row__label">會員等級</span>
+          <span class="status-row__value">
+            Lv{{ authStore.user?.membership_level ?? 0 }}
+            <span v-if="(authStore.user?.membership_level ?? 0) >= 3" class="member-tag member-tag--paid">付費會員 💎</span>
+            <span v-else-if="(authStore.user?.membership_level ?? 0) >= 2" class="member-tag member-tag--adv">進階驗證</span>
+            <span v-else-if="(authStore.user?.membership_level ?? 0) >= 1" class="member-tag">驗證會員</span>
+            <span v-else class="member-tag member-tag--basic">一般會員</span>
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="status-row__label">訂閱方案</span>
+          <span v-if="subscriptionInfo" class="status-row__value">
+            {{ subscriptionInfo.plan_name }}
+          </span>
+          <button v-else class="status-row__upgrade" @click="router.push('/app/shop')">尚未訂閱・升級 →</button>
+        </div>
+        <div v-if="subscriptionInfo" class="status-row">
+          <span class="status-row__label">到期時間</span>
+          <span class="status-row__value">
+            {{ formatDateYMD(subscriptionInfo.expires_at) }}
+            <span :style="{ color: daysColor(subscriptionInfo.days_remaining), fontWeight: 600 }">（剩餘 {{ subscriptionInfo.days_remaining }} 天）</span>
+          </span>
+        </div>
+        <div class="status-row status-row--divider">
+          <span class="status-row__label">💎 我的點數</span>
+          <span class="status-row__value">
+            {{ authStore.user?.points_balance ?? 0 }} 點
+            <button class="status-row__action" @click="router.push('/app/shop?tab=points')">儲值</button>
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="status-row__label">🕶 隱身模式</span>
+          <span class="status-row__value">{{ stealthStatusLabel }}</span>
+        </div>
+      </section>
+
       <!-- 頭像區塊 -->
       <section class="avatar-section">
         <div class="avatar-wrap" @click="triggerAvatarUpload">
@@ -709,6 +777,20 @@ const settingsLinks = [
 </template>
 
 <style>
+/* ── F40 我的會員狀態卡片 ──────────────────────────── */
+.member-status { background:#fff; border:1px solid #F1F5F9; border-radius:14px; padding:16px; margin-bottom:16px; }
+.member-status .section-label { font-size:14px; font-weight:700; color:#111827; margin:0 0 12px; }
+.status-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:13px; }
+.status-row--divider { border-top:1px solid #F3F4F6; margin-top:8px; padding-top:12px; }
+.status-row__label { color:#6B7280; }
+.status-row__value { color:#111827; font-weight:500; display:flex; align-items:center; gap:8px; }
+.status-row__upgrade { background:none; border:none; color:#F0294E; font-weight:600; cursor:pointer; font-size:13px; padding:0; }
+.status-row__action { padding:4px 10px; background:#F0294E; color:#fff; border:none; border-radius:9999px; font-size:11px; font-weight:600; cursor:pointer; margin-left:8px; }
+.member-tag { display:inline-flex; padding:2px 8px; border-radius:9999px; font-size:11px; font-weight:600; background:#F3F4F6; color:#6B7280; }
+.member-tag--paid { background:#FEF3C7; color:#92400E; }
+.member-tag--adv { background:#DBEAFE; color:#1E40AF; }
+.member-tag--basic { background:#F3F4F6; color:#6B7280; }
+
 .account-page { padding: 16px; padding-bottom: 100px; }
 
 /* ── Save Button ── */

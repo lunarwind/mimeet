@@ -13,6 +13,19 @@ export interface AuthUser {
   membership_level: number
   email_verified: boolean
   phone_verified: boolean
+  // F40
+  points_balance?: number
+  stealth_until?: string | null
+  stealth_active?: boolean
+  subscription?: {
+    plan_slug?: string | null
+    plan_name?: string | null
+    status?: string
+    started_at?: string | null
+    expires_at?: string | null
+    auto_renew?: boolean
+    days_remaining?: number | null
+  } | null
 }
 
 export const useAuthStore = defineStore('auth', () => {

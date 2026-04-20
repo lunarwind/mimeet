@@ -319,6 +319,62 @@ export default function MemberDetailPage() {
                       </Descriptions>
                     </Card>
 
+                    {/* F40: 會員狀態（訂閱 + 點數 + 隱身）*/}
+                    <Card title="💳 會員狀態" style={{ marginTop: 16 }}>
+                      <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="會員等級">
+                          Lv{member.membership_level ?? 0}
+                          {(member.membership_level ?? 0) >= 3
+                            ? <Tag color="gold" style={{ marginLeft: 8 }}>付費會員</Tag>
+                            : null}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="訂閱方案">
+                          {member.subscription?.plan_name ?? NA}
+                        </Descriptions.Item>
+                        {member.subscription && (
+                          <>
+                            <Descriptions.Item label="訂閱狀態">
+                              <Tag color={member.subscription.status === 'active' ? 'green' : 'default'}>
+                                {member.subscription.status === 'active' ? '啟用中' : member.subscription.status}
+                              </Tag>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="到期日期">
+                              {member.subscription.expires_at ? dayjs(member.subscription.expires_at).format('YYYY/MM/DD') : NA}
+                              {typeof member.subscription.days_remaining === 'number' && (
+                                <span style={{
+                                  marginLeft: 8,
+                                  color: (member.subscription.days_remaining <= 7 ? '#F0294E'
+                                    : member.subscription.days_remaining <= 30 ? '#F59E0B' : '#10B981'),
+                                  fontWeight: 600,
+                                }}>
+                                  剩餘 {member.subscription.days_remaining} 天
+                                </span>
+                              )}
+                            </Descriptions.Item>
+                          </>
+                        )}
+                        <Descriptions.Item label="💎 點數餘額">
+                          <Text strong>{member.points_balance ?? 0} 點</Text>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="累計購買">
+                          {member.points_stats?.total_purchased ?? 0} 點
+                          <Text type="secondary" style={{ marginLeft: 8 }}>
+                            (NT${member.points_stats?.purchase_amount_ntd ?? 0})
+                          </Text>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="累計消費">
+                          {member.points_stats?.total_spent ?? 0} 點
+                        </Descriptions.Item>
+                        <Descriptions.Item label="🕶 隱身狀態">
+                          {member.stealth_active ? (
+                            <Tag color="orange">
+                              啟用中 (至 {member.stealth_until ? dayjs(member.stealth_until).format('MM/DD HH:mm') : '?'})
+                            </Tag>
+                          ) : <Tag>未啟用</Tag>}
+                        </Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+
                     {/* F27: 生活資訊 */}
                     <Card title="生活資訊" style={{ marginTop: 16 }}>
                       <Descriptions column={2} bordered size="small">

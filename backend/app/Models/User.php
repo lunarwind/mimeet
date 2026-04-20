@@ -66,6 +66,9 @@ class User extends Authenticatable
         'drinking',
         'car_owner',
         'availability',
+        // F40 points
+        'points_balance',
+        'stealth_until',
     ];
 
     // Admin-only fields (credit_score, status, membership_level, suspended_at,
@@ -107,6 +110,8 @@ class User extends Authenticatable
         'dating_type' => 'array',
         'availability' => 'array',
         'car_owner' => 'boolean',
+        'points_balance' => 'integer',
+        'stealth_until' => 'datetime',
     ];
 
     public function getPrivacySettingsAttribute($value): array
@@ -126,6 +131,14 @@ class User extends Authenticatable
      * - 未啟用 / 時間未設定 → false
      * - start > end（如 22:00→08:00）視為跨午夜
      */
+    /**
+     * F42 隱身模式是否生效中（stealth_until 晚於現在）
+     */
+    public function isStealthActive(): bool
+    {
+        return $this->stealth_until && $this->stealth_until->isFuture();
+    }
+
     public function isInDndPeriod(): bool
     {
         if (!$this->dnd_enabled) return false;

@@ -127,9 +127,45 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此會員'], 404);
         }
 
+        // F40：訂閱 + 點數聚合
+        $subscription = \App\Models\Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->orderByDesc('expires_at')
+            ->first();
+
+        $subscriptionData = null;
+        if ($subscription) {
+            $plan = \App\Models\SubscriptionPlan::find($subscription->plan_id);
+            $daysRemaining = $subscription->expires_at
+                ? max(0, (int) now()->startOfDay()->diffInDays($subscription->expires_at, false))
+                : null;
+            $subscriptionData = [
+                'plan_slug' => $plan?->slug,
+                'plan_name' => $plan?->name,
+                'status' => $subscription->status,
+                'started_at' => $subscription->started_at?->toISOString(),
+                'expires_at' => $subscription->expires_at?->toISOString(),
+                'days_remaining' => $daysRemaining,
+            ];
+        }
+
+        $pointsStats = [
+            'total_purchased' => (int) \App\Models\PointTransaction::where('user_id', $user->id)
+                ->where('type', 'purchase')->sum('amount'),
+            'total_spent' => (int) abs(\App\Models\PointTransaction::where('user_id', $user->id)
+                ->where('type', 'consume')->sum('amount')),
+            'purchase_amount_ntd' => (int) \App\Models\PointOrder::where('user_id', $user->id)
+                ->where('status', 'paid')->sum('amount'),
+        ];
+
         return response()->json([
             'success' => true, 'code' => 'MEMBER_DETAIL', 'message' => 'OK',
             'data' => ['member' => [
+                'subscription' => $subscriptionData,
+                'points_balance' => (int) ($user->points_balance ?? 0),
+                'stealth_until' => $user->stealth_until?->toISOString(),
+                'stealth_active' => $user->isStealthActive(),
+                'points_stats' => $pointsStats,
                 'uid' => $user->id,
                 'id' => $user->id,
                 'email' => $user->email ?? '',

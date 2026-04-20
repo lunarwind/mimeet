@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
+use App\Http\Controllers\Api\V1\PointController;
 use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
@@ -143,7 +144,17 @@ Route::prefix('api/v1')->group(function () {
         // Mock endpoint — only available in non-production environments
         if (config('app.env') !== 'production') {
             Route::get('/mock', [PaymentCallbackController::class, 'mock']);
+            // F40 點數購買 mock（和訂閱 mock 分開，避免互相干擾）
+            Route::get('/point-mock', [PaymentCallbackController::class, 'pointMock']);
         }
+    });
+
+    // ─── F40 Points (authenticated) ────────────────────────────────
+    Route::prefix('points')->middleware('auth:sanctum')->group(function () {
+        Route::get('/packages', [PointController::class, 'packages']);
+        Route::post('/purchase', [PointController::class, 'purchase']);
+        Route::get('/balance', [PointController::class, 'balance']);
+        Route::get('/history', [PointController::class, 'history']);
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────
