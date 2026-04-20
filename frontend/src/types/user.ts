@@ -1,6 +1,6 @@
 export type Gender = 'male' | 'female'
 export type UserStatus = 'active' | 'suspended' | 'deleted'
-export type MembershipLevel = 1 | 2 | 3
+export type MembershipLevel = 0 | 1 | 1.5 | 2 | 3
 
 export interface User {
   id: number
