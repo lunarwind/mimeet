@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
   Space, Typography, Statistic, Row, Col, message, Image, Result, Select, Divider, Switch,
-  Drawer, Form, DatePicker, Checkbox, Progress,
+  Drawer, Form, DatePicker, Checkbox, Progress, Popconfirm,
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail } from '../../types/admin'
