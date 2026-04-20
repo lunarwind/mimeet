@@ -3521,6 +3521,92 @@ Authorization: Bearer {access_token}
 }
 ```
 
+### 11.4a 超級讚（F40-c）
+
+```http
+POST /api/v1/users/{id}/super-like
+Authorization: Bearer {access_token}
+```
+
+**規則：**
+- 不能對自己發送
+- 同一對象 24 小時內只能發送一次（以 `notifications.data.sender_id` + `created_at` 判斷）
+- 扣 `point_cost_super_like`（預設 3 點）— 所有會員等級一律扣點
+- 建立 `notifications` 紀錄（`type=super_like`）+ 發出 WebSocket 通知
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "points_deducted": 3,
+    "points_balance": 147,
+    "message": "已送出超級讚"
+  }
+}
+```
+
+**422 24 小時冷卻：**
+```json
+{
+  "success": false,
+  "code": 422,
+  "message": "24 小時內已對此用戶發送過超級讚",
+  "data": { "next_available_at": "2026-04-21T..." }
+}
+```
+
+**422 餘額不足：**
+```json
+{
+  "success": false,
+  "code": 422,
+  "message": "點數不足：需要 3 點，目前 1 點",
+  "data": { "required": 3, "current_balance": 1 }
+}
+```
+
+### 11.4b 逆區間訊息（F40-b）
+
+**端點：** `POST /api/v1/chats/{id}/messages`（沿用現有發訊端點），新增 `use_points` 欄位。
+
+**背景：** PRD §4.3.3 限制「低誠信分數用戶不可主動向高分用戶發訊」，F40-b 允許用點數突破此限制。
+
+**觸發條件（`membership_level < 3` 且 `sender.credit_score < receiver.credit_score`）：**
+- 不帶 `use_points` 或 `use_points=false` → 403 + 提示可用點數突破
+- `use_points=true` → 扣 `point_cost_reverse_msg`（預設 5 點）+ 訊息正常送出
+
+**403 回應（未帶 use_points）：**
+```json
+{
+  "success": false,
+  "code": 403,
+  "message": "誠信分數不足，無法向較高分數的用戶發送訊息",
+  "error": { "code": "2001", "message": "..." },
+  "data": {
+    "can_use_points": true,
+    "point_cost": 5,
+    "current_balance": 150,
+    "can_afford": true
+  }
+}
+```
+
+**成功回應 201（use_points=true 且扣點成功）：**
+```json
+{
+  "success": true,
+  "code": 201,
+  "message": "消息發送成功",
+  "data": {
+    "message": { "id": 1234, "sender_id": 42, ... },
+    "reverse_points_deducted": 5
+  }
+}
+```
+
+> `reverse_points_deducted` 為 0 時代表本來就符合發訊條件（Lv3 或分數足夠），沒實際扣點。
+
 ### 11.5 隱身模式（F42）
 
 > 設計原則：隱身是疊加層，與 `privacy_settings.show_in_search` 獨立。兩套機制 OR 連接 —— 任一為真即視為隱藏。

@@ -62,10 +62,11 @@ export async function fetchMessages(conversationId: number): Promise<Message[]> 
 }
 
 // ── 發送訊息（文字） ─────────────────────────────────────
-export async function sendMessage(conversationId: number, content: string): Promise<Message> {
+export async function sendMessage(conversationId: number, content: string, usePoints = false): Promise<Message> {
   const res = await client.post(`/chats/${conversationId}/messages`, {
     content,
     message_type: 'text',
+    use_points: usePoints,
   })
   const m = res.data?.data?.message ?? {}
   return mapMessage(conversationId, true)(m)

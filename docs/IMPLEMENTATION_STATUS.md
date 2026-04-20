@@ -78,6 +78,8 @@
 | F40 | 點數系統基礎建設 | ✅ 3 張表 + users.points_balance/stealth_until + PointService + PointController + 綠界 point-mock | ✅ ShopView 2 Tab + usePoints + 點數包卡片 + 交易紀錄 Modal + AccountView 會員狀態卡片 + MemberDetailPage 會員狀態 | 🚀 Phase 2 超前 | 2026-04-20：建地基（購買/餘額/紀錄） |
 | F40-a | 隱身模式（點數消費）| ✅ StealthController status/activate/deactivate；Lv3 免費、非 Lv3 扣點；搜尋 + 訪客過濾 | ✅ useStealth composable + AccountView 控制區塊 + ExploreView 提示條 + 確認/餘額不足 Modal | 🚀 Phase 2 超前 | 2026-04-20：疊加延長不重置；privacy_settings 與 stealth_until 獨立判斷 |
 | F42 | VIP 隱身模式 | ✅ Lv3 `membership_level >= 3` 免費路徑 | ✅ 同 F40-a UI，顯示「VIP 免費」 | 🚀 Phase 2 超前 | 共用 StealthController；不改訂閱權限、不改 privacy 功能 |
+| F40-c | 超級讚 | ✅ SuperLikeController POST /users/{id}/super-like；24h 冷卻、所有等級扣點（預設 3） | ✅ ProfileView 金色按鈕 + 確認/餘額不足 Modal + NotificationsView 特殊金色樣式 | 🚀 Phase 2 超前 | 2026-04-20：notifications ENUM 加 super_like |
+| F40-b | 逆區間訊息 | ✅ ChatService::sendMessage 加 $bypassScoreCheck；ChatController 接 use_points + 扣 5 點 | ✅ ChatView 分數不足 → 逆區間確認 Modal → 重送帶 use_points；餘額不足導向儲值 | 🚀 Phase 2 超前 | 只在「現有 CreditScoreRestrictionException 被擋」時啟動，不改其他邏輯 |
 
 ### 商業/金流
 
