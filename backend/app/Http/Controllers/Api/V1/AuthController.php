@@ -165,7 +165,7 @@ class AuthController extends Controller
                     'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
                 ],
                 'token' => $token,
-                '_debug' => $debugInfo, // ⚠️ DEBUG ONLY — 問題解決後整段刪除
+                ...(config('app.debug') ? ['_debug' => $debugInfo] : []),
             ],
         ], 201);
     }
