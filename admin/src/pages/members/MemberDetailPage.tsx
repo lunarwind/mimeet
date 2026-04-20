@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
   Space, Typography, Statistic, Row, Col, message, Image, Result, Select, Divider, Switch,
-  Drawer, Form, DatePicker, Checkbox,
+  Drawer, Form, DatePicker, Checkbox, Progress,
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail } from '../../types/admin'
@@ -412,6 +412,157 @@ export default function MemberDetailPage() {
                         <Button danger onClick={() => openPointModal('deduct')}>扣除點數</Button>
                       </Space>
                     </Card>
+
+                    {/* F40: 點數資訊詳情 */}
+                    {member.points_detail && (
+                      <Card
+                        title="💎 點數資訊"
+                        style={{ marginTop: 16 }}
+                        extra={
+                          <Button
+                            type="link"
+                            size="small"
+                            onClick={() => navigate(`/point-transactions?user_id=${uid}`)}
+                          >
+                            查看全部 →
+                          </Button>
+                        }
+                      >
+                        <Descriptions column={2} bordered size="small" style={{ marginBottom: 16 }}>
+                          <Descriptions.Item label="目前餘額">
+                            <Text strong style={{ fontSize: 16, color: '#F0294E' }}>
+                              {member.points_detail.balance} 點
+                            </Text>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="購買次數">
+                            {member.points_detail.purchase_count} 筆
+                          </Descriptions.Item>
+                          <Descriptions.Item label="累計購買">
+                            {member.points_detail.total_purchased} 點
+                            <Text type="secondary" style={{ marginLeft: 8 }}>
+                              (NT${member.points_detail.purchase_amount_ntd})
+                            </Text>
+                          </Descriptions.Item>
+                          <Descriptions.Item label="累計消費">
+                            {member.points_detail.total_spent} 點
+                          </Descriptions.Item>
+                        </Descriptions>
+
+                        {member.points_detail.total_spent > 0 && (
+                          <div style={{ marginBottom: 20 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                              消費分布（按功能）
+                            </Text>
+                            {Object.entries(member.points_detail.consumption_by_feature).map(([feature, amount]) => {
+                              const pct = Math.round(
+                                (amount / (member.points_detail?.total_spent || 1)) * 100
+                              )
+                              const featureLabel: Record<string, string> = {
+                                stealth: '🕶 隱身模式',
+                                reverse_msg: '✉ 逆區間訊息',
+                                super_like: '⭐ 超級讚',
+                                broadcast: '📢 廣播',
+                              }
+                              return (
+                                <div key={feature} style={{ marginBottom: 8 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                    <Text>{featureLabel[feature] ?? feature}</Text>
+                                    <Text type="secondary">{amount} 點 ({pct}%)</Text>
+                                  </div>
+                                  <Progress percent={pct} showInfo={false} strokeColor="#F0294E" size="small" />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {member.points_detail.recent_transactions.length > 0 && (
+                          <div style={{ marginBottom: 16 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                              最近交易（最新 10 筆）
+                            </Text>
+                            <Table
+                              size="small"
+                              pagination={false}
+                              rowKey="id"
+                              dataSource={member.points_detail.recent_transactions}
+                              columns={[
+                                {
+                                  title: '時間', dataIndex: 'created_at', width: 140,
+                                  render: (d: string) => dayjs(d).format('MM/DD HH:mm'),
+                                },
+                                {
+                                  title: '類型', dataIndex: 'type', width: 80,
+                                  render: (t: string) => {
+                                    const map: Record<string, { label: string; color: string }> = {
+                                      purchase: { label: '購買', color: 'green' },
+                                      consume: { label: '消費', color: 'red' },
+                                      admin_gift: { label: '贈送', color: 'blue' },
+                                      admin_deduct: { label: '扣除', color: 'orange' },
+                                      refund: { label: '退款', color: 'purple' },
+                                    }
+                                    const m = map[t] ?? { label: t, color: 'default' }
+                                    return <Tag color={m.color}>{m.label}</Tag>
+                                  },
+                                },
+                                {
+                                  title: '點數', dataIndex: 'amount', width: 80,
+                                  render: (a: number) => (
+                                    <Text style={{ color: a > 0 ? '#10B981' : '#EF4444', fontWeight: 600 }}>
+                                      {a > 0 ? `+${a}` : a}
+                                    </Text>
+                                  ),
+                                },
+                                { title: '餘額', dataIndex: 'balance_after', width: 70 },
+                                { title: '說明', dataIndex: 'description', ellipsis: true },
+                              ]}
+                            />
+                          </div>
+                        )}
+
+                        {member.points_detail.purchase_orders.length > 0 && (
+                          <div>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                              購買訂單（最新 5 筆）
+                            </Text>
+                            <Table
+                              size="small"
+                              pagination={false}
+                              rowKey="id"
+                              dataSource={member.points_detail.purchase_orders}
+                              columns={[
+                                {
+                                  title: '日期', dataIndex: 'created_at', width: 110,
+                                  render: (d: string) => dayjs(d).format('YYYY/MM/DD'),
+                                },
+                                { title: '方案', dataIndex: 'package_name', render: (n: string | null) => n ?? '-' },
+                                {
+                                  title: '點數', dataIndex: 'points', width: 80,
+                                  render: (p: number) => `${p} 點`,
+                                },
+                                {
+                                  title: '金額', dataIndex: 'amount', width: 100,
+                                  render: (a: number) => `NT$${a}`,
+                                },
+                                {
+                                  title: '狀態', dataIndex: 'status', width: 80,
+                                  render: (s: string) => {
+                                    const map: Record<string, { label: string; color: string }> = {
+                                      paid: { label: '已付款', color: 'green' },
+                                      pending: { label: '待付款', color: 'orange' },
+                                      failed: { label: '失敗', color: 'red' },
+                                      cancelled: { label: '取消', color: 'default' },
+                                    }
+                                    const m = map[s] ?? { label: s, color: 'default' }
+                                    return <Tag color={m.color}>{m.label}</Tag>
+                                  },
+                                },
+                              ]}
+                            />
+                          </div>
+                        )}
+                      </Card>
+                    )}
 
                     {/* F27: 生活資訊 */}
                     <Card title="生活資訊" style={{ marginTop: 16 }}>

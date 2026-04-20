@@ -158,6 +158,51 @@ class AdminController extends Controller
                 ->where('status', 'paid')->sum('amount'),
         ];
 
+        // F40 擴充：會員詳情用點數明細
+        $pointsDetail = [
+            'balance' => (int) ($user->points_balance ?? 0),
+            'total_purchased' => $pointsStats['total_purchased'],
+            'total_spent' => $pointsStats['total_spent'],
+            'purchase_amount_ntd' => $pointsStats['purchase_amount_ntd'],
+            'purchase_count' => (int) \App\Models\PointOrder::where('user_id', $user->id)
+                ->where('status', 'paid')->count(),
+            'consumption_by_feature' => \App\Models\PointTransaction::where('user_id', $user->id)
+                ->where('type', 'consume')
+                ->whereNotNull('feature')
+                ->selectRaw('feature, SUM(ABS(amount)) as total')
+                ->groupBy('feature')
+                ->pluck('total', 'feature')
+                ->map(fn ($v) => (int) $v),
+            'recent_transactions' => \App\Models\PointTransaction::where('user_id', $user->id)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get(['id', 'type', 'amount', 'balance_after', 'feature', 'description', 'created_at'])
+                ->map(fn ($t) => [
+                    'id' => $t->id,
+                    'type' => $t->type,
+                    'amount' => (int) $t->amount,
+                    'balance_after' => (int) $t->balance_after,
+                    'feature' => $t->feature,
+                    'description' => $t->description,
+                    'created_at' => $t->created_at?->toISOString(),
+                ]),
+            'purchase_orders' => \App\Models\PointOrder::where('user_id', $user->id)
+                ->with('package:id,name')
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get(['id', 'trade_no', 'package_id', 'points', 'amount', 'status', 'paid_at', 'created_at'])
+                ->map(fn ($o) => [
+                    'id' => $o->id,
+                    'trade_no' => $o->trade_no,
+                    'package_name' => $o->package?->name,
+                    'points' => (int) $o->points,
+                    'amount' => (int) $o->amount,
+                    'status' => $o->status,
+                    'paid_at' => $o->paid_at?->toISOString(),
+                    'created_at' => $o->created_at?->toISOString(),
+                ]),
+        ];
+
         return response()->json([
             'success' => true, 'code' => 'MEMBER_DETAIL', 'message' => 'OK',
             'data' => ['member' => [
@@ -166,6 +211,7 @@ class AdminController extends Controller
                 'stealth_until' => $user->stealth_until?->toISOString(),
                 'stealth_active' => $user->isStealthActive(),
                 'points_stats' => $pointsStats,
+                'points_detail' => $pointsDetail,
                 'uid' => $user->id,
                 'id' => $user->id,
                 'email' => $user->email ?? '',

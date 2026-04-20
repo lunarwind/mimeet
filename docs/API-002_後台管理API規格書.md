@@ -384,6 +384,23 @@ GET /api/v1/admin/members/{user_id}
 ```
 
 > **F27 (2026-04-20 補完)：** 回應 `data.member` 額外包含 9 個 profile 欄位 `style`、`dating_budget`、`dating_frequency`、`dating_type` (array)、`relationship_goal`、`smoking`、`drinking`、`car_owner` (boolean)、`availability` (array)。未填寫為 null。
+>
+> **F40 (2026-04-20 補完)：** `data.member.points_detail` 新增點數詳細資訊區塊：
+> ```
+> {
+>   "balance": 120,                                      // 當前餘額
+>   "total_purchased": 500,                              // 累計購買點數
+>   "total_spent": 380,                                  // 累計消費點數
+>   "purchase_amount_ntd": 1500,                         // 累計消費金額
+>   "purchase_count": 3,                                 // 購買次數
+>   "consumption_by_feature": {                          // 按功能分組的消費
+>     "stealth": 40, "reverse_msg": 20,
+>     "super_like": 6, "broadcast": 314
+>   },
+>   "recent_transactions": [ ... ],  // 最新 10 筆交易
+>   "purchase_orders": [ ... ]        // 最新 5 筆購買訂單
+> }
+> ```
 
 **成功回應 200：**
 ```json
