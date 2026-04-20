@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomNav from '@/components/layout/BottomNav.vue'
 import UserCard from '@/components/explore/UserCard.vue'
 import FilterBottomSheet from '@/components/explore/FilterBottomSheet.vue'
 import ExploreEmptyState from '@/components/explore/ExploreEmptyState.vue'
 import { useExplore } from '@/composables/useExplore'
+import { useStealth } from '@/composables/useStealth'
 import type { ExploreFilter } from '@/types/explore'
+
+const stealth = useStealth()
+onMounted(() => { stealth.fetchStatus() })
 
 const router = useRouter()
 
@@ -87,6 +91,15 @@ function clearSearch() {
 
 <template>
   <div class="explore-view">
+    <!-- F42 隱身狀態提示條 -->
+    <div v-if="stealth.status.value?.isActive" class="stealth-banner">
+      <span class="stealth-banner__icon">🕶</span>
+      <div class="stealth-banner__text">
+        <span class="stealth-banner__title">隱身模式啟用中（剩餘 {{ stealth.countdown.value || stealth.status.value.remainingDisplay }}）</span>
+        <span class="stealth-banner__desc">你目前不會出現在其他用戶的搜尋結果中</span>
+      </div>
+    </div>
+
     <!-- TopBar -->
     <header class="explore-topbar">
       <div class="explore-topbar__left">
@@ -211,6 +224,13 @@ function clearSearch() {
 </template>
 
 <style scoped>
+/* ── F42 隱身提示條 ─────────────────────────────── */
+.stealth-banner { display:flex; align-items:center; gap:10px; padding:8px 14px; background:linear-gradient(135deg,#EDE9FE 0%,#F3E8FF 100%); border-bottom:1px solid #DDD6FE; font-size:12px; color:#5B21B6; }
+.stealth-banner__icon { font-size:18px; flex-shrink:0; }
+.stealth-banner__text { display:flex; flex-direction:column; line-height:1.4; }
+.stealth-banner__title { font-weight:600; font-variant-numeric:tabular-nums; }
+.stealth-banner__desc { font-size:11px; color:#7C3AED; opacity:0.8; }
+
 /* ──────────────────────────────────────────────────────────
    Variables（繼承全域，這裡只補頁面局部的）
    ────────────────────────────────────────────────────────── */

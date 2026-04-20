@@ -3521,7 +3521,79 @@ Authorization: Bearer {access_token}
 }
 ```
 
-### 11.5 `/auth/me` 回傳擴充（F40）
+### 11.5 隱身模式（F42）
+
+> 設計原則：隱身是疊加層，與 `privacy_settings.show_in_search` 獨立。兩套機制 OR 連接 —— 任一為真即視為隱藏。
+
+#### 11.5.1 查詢狀態
+```http
+GET /api/v1/me/stealth
+Authorization: Bearer {access_token}
+```
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "is_active": true,
+    "stealth_until": "2026-04-21T22:00:00Z",
+    "remaining_seconds": 64800,
+    "remaining_display": "18:00:00",
+    "is_vip_free": false,
+    "cost": 10,
+    "duration_hours": 24,
+    "current_balance": 150
+  }
+}
+```
+
+#### 11.5.2 啟用隱身
+```http
+POST /api/v1/me/stealth
+Authorization: Bearer {access_token}
+```
+
+**規則：**
+- `membership_level >= 3` (Lv3 付費會員) → **免費**啟用，不扣點
+- 其他等級 → 扣 `point_cost_stealth` 點數（預設 10 點）
+- 已在隱身中 → **疊加延長**（從 `stealth_until` 再加 `duration_hours`，不重置）
+- 餘額不足 → 422 `INSUFFICIENT_POINTS`
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "message": "隱身模式已啟用",
+  "data": {
+    "is_active": true,
+    "stealth_until": "2026-04-21T22:00:00Z",
+    "points_deducted": 10,
+    "points_balance": 140,
+    "is_vip_free": false
+  }
+}
+```
+
+**餘額不足 422：**
+```json
+{
+  "success": false,
+  "code": "INSUFFICIENT_POINTS",
+  "message": "點數不足：需要 10 點，目前 3 點",
+  "data": { "required": 10, "current_balance": 3 }
+}
+```
+
+#### 11.5.3 提前關閉
+```http
+DELETE /api/v1/me/stealth
+Authorization: Bearer {access_token}
+```
+**規則：** 設 `stealth_until = null`，**不退點**（告知用戶）。
+
+---
+
+### 11.6 `/auth/me` 回傳擴充（F40）
 
 `GET /api/v1/auth/me` 現在額外包含：
 
