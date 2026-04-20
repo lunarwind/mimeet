@@ -73,6 +73,8 @@
 |----|------|------|------|------|------|
 | F26 | 基礎搜尋篩選 | ✅ UserController::search (年齡/地區/性別) | ✅ ExploreView.vue + useExplore | ✅ | 無限滾動 + 快速篩選 tags |
 | F27 | 進階綜合篩選 | ✅ UserController::search 新增 9 個篩選參數 + 資料完整度排序 | ✅ FilterBottomSheet「進階篩選」可收合區塊 + AccountView 9 個新欄位 | 🚀 Phase 2 超前 | 2026-04-20：身高/學歷/風格/約會預算/關係期望/抽菸/飲酒/自備車；未填欄位不排除 |
+| A03 | 會員列表（含 F27 篩選）| ✅ AdminController::members 加 dating_budget + style 精確篩選 | ✅ MembersPage 2 個快速篩選下拉 | ✅ 2026-04-20 補完 | 後台篩選走精確匹配（非寬鬆），與前台不同 |
+| A04 | 會員詳情（含 F27 欄位）| ✅ AdminController::memberDetail 回傳 9 個新欄位 | ✅ MemberDetailPage 3 組新 Descriptions + 編輯 Drawer 新增 9 欄 | ✅ 2026-04-20 補完 | labelMaps.ts 中英對照 |
 
 ### 商業/金流
 

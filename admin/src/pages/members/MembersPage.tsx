@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message, Modal, Form } from 'antd'
 import { SearchOutlined, ReloadOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
+import { DATING_BUDGET_LABELS, STYLE_LABELS } from '../../constants/labelMaps'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 
@@ -27,10 +28,12 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [datingBudgetFilter, setDatingBudgetFilter] = useState<string | undefined>()
+  const [styleFilter, setStyleFilter] = useState<string | undefined>()
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
 
-  useEffect(() => { fetchMembers() }, [page, statusFilter])
+  useEffect(() => { fetchMembers() }, [page, statusFilter, datingBudgetFilter, styleFilter])
 
   async function fetchMembers() {
     setLoading(true)
@@ -38,6 +41,8 @@ export default function MembersPage() {
       const params: Record<string, string | number> = { page, per_page: 20 }
       if (search) params.search = search
       if (statusFilter !== 'all') params.status = statusFilter
+      if (datingBudgetFilter) params.dating_budget = datingBudgetFilter
+      if (styleFilter) params.style = styleFilter
       const res = await apiClient.get('/admin/members', { params })
       setMembers(res.data?.data?.members ?? [])
       setTotal(res.data?.data?.pagination?.total ?? 0)
@@ -55,6 +60,8 @@ export default function MembersPage() {
   function resetFilters() {
     setSearch('')
     setStatusFilter('all')
+    setDatingBudgetFilter(undefined)
+    setStyleFilter(undefined)
     setPage(1)
     setTimeout(fetchMembers, 0)
   }
@@ -181,6 +188,24 @@ export default function MembersPage() {
           <Select.Option value="all">全部狀態</Select.Option>
           <Select.Option value="active">正常</Select.Option>
           <Select.Option value="suspended">停權</Select.Option>
+        </Select>
+        <Select
+          value={datingBudgetFilter}
+          onChange={(v) => { setDatingBudgetFilter(v); setPage(1) }}
+          placeholder="約會預算"
+          style={{ width: 140 }}
+          allowClear
+        >
+          {Object.entries(DATING_BUDGET_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+        </Select>
+        <Select
+          value={styleFilter}
+          onChange={(v) => { setStyleFilter(v); setPage(1) }}
+          placeholder="風格"
+          style={{ width: 110 }}
+          allowClear
+        >
+          {Object.entries(STYLE_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
         </Select>
         <Button onClick={handleSearch}>搜尋</Button>
         <Button icon={<ReloadOutlined />} onClick={resetFilters}>重設</Button>
