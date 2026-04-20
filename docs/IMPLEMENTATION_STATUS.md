@@ -10,7 +10,7 @@
 
 | 分類 | MVP 項目數 | ✅ 完成 | ⚠️ 部分 | ❌ 缺失 | 完成率 |
 |------|-----------|--------|---------|--------|--------|
-| 用戶系統 (F01-F11) | 10 | 6 | 3 | 1 | 65% |
+| 用戶系統 (F01-F11) | 10 | 10 | 0 | 0 | 100% |
 | 誠信分數 (F12-F15) | 2 (MVP) | 2 | 0 | 0 | 100% |
 | 即時聊天 (F16-F17, +F18-F21 超前) | 2 (MVP) + 4 (超前) | 6 | 0 | 0 | 100% |
 | QR 約會驗證 (F23-F25) | 3 | 3 | 0 | 0 | 100% |
@@ -18,7 +18,7 @@
 | 商業/金流 (F36-F39) | 4 | 4 | 0 | 0 | 100% |
 | 安全機制 (F43, F45) | 2 | 2 | 0 | 0 | 100% |
 | 後台管理 (A03-A21) | 11 | 11 | 0 | 0 | 100% |
-| **合計** | **35** | **31** | **3** | **1** | **90%** |
+| **合計** | **35** | **35** | **0** | **0** | **100%** |
 
 ---
 
@@ -30,13 +30,13 @@
 |----|------|------|------|------|------|
 | F01 | 註冊流程 | ✅ AuthController::register | ✅ RegisterView.vue (3 步驟) | ✅ | 完整：性別→帳號→Email 驗證 |
 | F02 | Email 驗證 | ✅ AuthController::verifyEmail | ✅ RegisterView Step 3 + EmailVerifyView | ✅ | OTP 6 碼，Redis 快取 |
-| F03 | SMS 手機驗證 | ⚠️ STUB (verifyPhoneSend/Confirm) | ✅ VerifyView.vue 有 UI | ⚠️ | **後端只 log OTP，未實際驗證** |
-| F04 | 忘記密碼 | ⚠️ STUB (forgotPassword/resetPassword) | ✅ ForgotPasswordView + ResetPasswordView | ⚠️ | **後端無 token 產生/驗證邏輯** |
+| F03 | SMS 手機驗證 | ✅ verifyPhoneSend/Confirm（Cache OTP 5min + 冷卻 60s + 失敗 5 次鎖）+ SmsService(testing log / mitake / twilio) | ✅ VerifyView.vue | ✅ | 2026-04-20 驗證：OTP 不外洩、confirm 有 Cache::get 比對 |
+| F04 | 忘記密碼 | ✅ forgotPassword（Str::random(64) + Hash::make → password_reset_tokens）+ resetPassword | ✅ ForgotPasswordView + ResetPasswordView | ✅ | 有 rate limit、email enumeration 防護 |
 | F05 | 女性進階驗證 | ✅ VerificationPhotoController | ✅ VerifyView.vue | ✅ | 隨機碼 + 自拍上傳 + 後台審核 |
 | F06 | 男性信用卡驗證 | ✅ PaymentService + ECPay | ✅ ShopView.vue | ✅ | 綠界 NT$100 授權 |
 | F07 | 個人資料管理 | ✅ UserController::update | ✅ AccountView.vue | ✅ | 頭像、照片、個人資訊 |
 | F08 | 隱私設定 | ✅ PrivacyController | ✅ AccountView.vue 隱私 toggles | ✅ | show_online/allow_visits 等 |
-| F09 | 封鎖用戶 | ❌ STUB (block/unblock/blockedUsers) | ✅ BlockedView.vue + ProfileView | ⚠️ | **前端完成，後端 STUB 無 DB 邏輯** |
+| F09 | 封鎖用戶 | ✅ UserBlock 模型：block/unblock/blockedUsers，搜尋+個資頁雙向排除被封鎖對象 | ✅ BlockedView.vue + ProfileView | ✅ | 2026-04-20 驗證：有自我防護 + 404 防護 + 雙向排除 |
 | F10 | 帳號刪除申請 | ✅ DeleteAccountController + GdprService | ✅ DeleteAccountView.vue | ✅ | 7 天冷靜期 + GDPR 合規 |
 | F11 | 靜態法規頁面 | N/A | ✅ PrivacyView + TermsView + AntiFraudView | ✅ | 隱私/條款為 placeholder 待法律文本 |
 
@@ -139,34 +139,26 @@
 
 ---
 
-## 四、需修正的 Top 3 缺失項目
+## 四、曾標記為 Top 3 缺失，2026-04-20 實作驗證後確認皆已完成
 
-### ❌ 1. 用戶封鎖功能 (F09) — 前端完成，後端 STUB
+### ✅ 1. 用戶封鎖功能 (F09)
 
-**嚴重度：高** — 這是安全機制的基本需求
+- `UserController::block()` / `unblock()` / `blockedUsers()` 使用 `UserBlock` 模型，自我防護 + 404 防護
+- 搜尋 + 個人資料頁雙向排除被封鎖對象（line 120-122, 254-256, 314）
+- 前端 `BlockedView.vue` 和 `ProfileView.vue` 已串接並正常運作
 
-- `UserController::block()` / `unblock()` / `blockedUsers()` 只回傳 hardcoded success，無 DB 操作
-- `user_blocks` 表已存在但未使用
-- 前端 `BlockedView.vue` 和 `ProfileView.vue` 已串接 API
-- **需要實作**：INSERT/DELETE `user_blocks` + 搜尋結果排除 + 聊天攔截
+### ✅ 2. SMS 手機驗證 (F03)
 
-### ⚠️ 2. SMS 手機驗證 (F03) — 前端完成，後端 STUB
+- `verifyPhoneSend()` 存 Cache 5 分鐘 + 60 秒冷卻 + 呼叫 SmsService
+- `verifyPhoneConfirm()` Cache::get 比對 + 失敗計數（5 次鎖）+ 更新 phone_verified
+- SmsService 支援 testing（log）/ mitake / twilio / disabled 四種 driver
+- OTP 不在 response 中外洩
 
-**嚴重度：高** — 影響 Lv1 升級流程
+### ✅ 3. 忘記密碼 (F04)
 
-- `verifyPhoneSend()` 只 log OTP 碼，未存入 Redis/DB
-- `verifyPhoneConfirm()` 未驗證 OTP，直接標記成功
-- SmsService 框架已完成（Twilio/Mitake/Every8d driver），只差接入
-- **需要實作**：OTP 存入 Cache + 驗證比對 + phone_verified 更新
-
-### ⚠️ 3. 忘記密碼 (F04) — 前端完成，後端 STUB
-
-**嚴重度：中** — 用戶忘記密碼無法自助恢復
-
-- `forgotPassword()` 未產生 reset token，也未發送 email
-- `resetPassword()` 未驗證 token，直接回成功
-- password_reset_tokens 表已存在
-- **需要實作**：token 產生 + email 發送 + token 驗證 + 密碼更新 + token 銷毀
+- `forgotPassword()` 生成 `Str::random(64)` → `Hash::make` 存 `password_reset_tokens` 表
+- Email enumeration 防護（找不到也回同樣訊息）+ 60 秒冷卻
+- `resetPassword()` token 驗證 + 密碼更新 + token 銷毀
 
 ---
 
@@ -176,8 +168,8 @@
 
 | 項目 | 問題 | 影響 | 建議 |
 |------|------|------|------|
-| UserController follow/unfollow | TODO STUB，回 success 但不寫 DB | 收藏功能無效 | 實作 user_follows INSERT/DELETE |
-| UserController visitors | TODO STUB，回空陣列 | 「誰來看我」功能無效 | 實作 user_profile_visits 記錄 |
+| ~~UserController follow/unfollow~~ | ✅ 2026-04-20 已驗證：UserFollow::firstOrCreate + 完整 following 列表 | — | — |
+| ~~UserController visitors~~ | ✅ 2026-04-20 已驗證：UserProfileVisit join users 分頁（90 天內） | — | — |
 | Broadcasting listeners | Event 已定義但未註冊 listener | WebSocket 訊息通知可能不即時 | 確認 Reverb/Pusher 已啟動且 channel auth 正確 |
 | User Model 缺 relationships | 無 Eloquent 關聯定義 | Controller 重複查詢 | 新增 conversations/follows/blocks 關聯 |
 
