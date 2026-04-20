@@ -2238,6 +2238,37 @@ Authorization: Bearer {access_token}
 
 ---
 
+## 8.5 公開站點設定（Site Config）
+
+### 8.5.1 取得追蹤碼等公開設定
+
+```http
+GET /api/v1/site-config
+```
+
+**認證：** 無需認證（公開端點）
+**Cache：** 伺服器端 60 秒，管理員更新追蹤碼時立即失效
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "tracking": {
+      "ga_measurement_id": "G-XXXXXXXXXX",
+      "fb_pixel_id": null,
+      "gtm_id": null
+    }
+  }
+}
+```
+
+**前端用途：** `frontend/src/utils/tracking.ts` 在 App 掛載時呼叫一次，依回傳值動態 append 追蹤 script 到 `<head>`。空值（null）代表未啟用，不載入對應 script。目前支援三種：Google Analytics 4、Facebook Pixel、Google Tag Manager。
+
+> **重要：** 此端點只回傳非敏感的公開設定。嚴禁暴露 mail/sms/ECPay 等敏感 `system_settings` 欄位。
+
+---
+
 ## 9. 系統公告API
 
 ### 9.1 公告查詢

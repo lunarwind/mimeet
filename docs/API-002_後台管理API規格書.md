@@ -1326,6 +1326,64 @@ PATCH /api/v1/admin/seo/meta/{id}
 
 ---
 
+### 9.6 追蹤碼管理（2026-04-20 新增）
+
+> 所需權限：`super_admin`；路由位於 `settings/tracking`
+
+#### 9.6.1 取得追蹤碼設定
+
+```
+GET /api/v1/admin/settings/tracking
+Authorization: Bearer {admin_token}
+```
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "ga_measurement_id": "G-XXXXXXXXXX",
+    "fb_pixel_id": "",
+    "gtm_id": ""
+  }
+}
+```
+
+#### 9.6.2 更新追蹤碼設定
+
+```
+PATCH /api/v1/admin/settings/tracking
+Authorization: Bearer {admin_token}
+```
+
+**請求參數（可部分更新）：**
+```json
+{
+  "ga_measurement_id": "G-ABC12DEF34",
+  "fb_pixel_id": "",
+  "gtm_id": ""
+}
+```
+
+| 欄位 | 格式正則 | 空字串代表 |
+|------|----------|-----------|
+| `ga_measurement_id` | `^(G-[A-Z0-9]{4,20})?$` | 停用 GA4 |
+| `fb_pixel_id` | `^\d{10,20}?$\|^$` | 停用 FB Pixel |
+| `gtm_id` | `^(GTM-[A-Z0-9]{4,20})?$` | 停用 GTM |
+
+**行為：** 寫入 `system_settings` 的 `tracking_*` key，並清除公開端點 `/api/v1/site-config` 的 60 秒 Cache。下一個訪客載入時即取得新值並動態插入 `<script>`。
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "code": "TRACKING_UPDATED",
+  "message": "追蹤碼已更新（最多 60 秒內生效）。"
+}
+```
+
+---
+
 ## 10. 系統設定 API
 
 ### 10.1 取得訂閱方案設定

@@ -12,6 +12,7 @@ use App\Services\Sms\TwilioDriver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -543,5 +544,55 @@ class SystemControlController extends Controller
         Log::info('[Admin] Subscription plan updated', ['admin_id' => $request->user()->id, 'plan_id' => $id, 'changes' => $data]);
 
         return response()->json(['success' => true, 'data' => DB::table('subscription_plans')->where('id', $id)->first()]);
+    }
+
+    /**
+     * GET /api/v1/admin/settings/tracking — 取得追蹤碼設定
+     */
+    public function getTracking(): JsonResponse
+    {
+        return response()->json(['success' => true, 'data' => [
+            'ga_measurement_id' => SystemSetting::get('tracking_ga_measurement_id', ''),
+            'fb_pixel_id' => SystemSetting::get('tracking_fb_pixel_id', ''),
+            'gtm_id' => SystemSetting::get('tracking_gtm_id', ''),
+        ]]);
+    }
+
+    /**
+     * PATCH /api/v1/admin/settings/tracking — 更新追蹤碼設定
+     *
+     * 空字串 = 清除該追蹤碼（前端不會載入對應 script）。
+     * 更新成功後清除公開端點 site_config 的 60 秒快取，讓下一個訪客立即拿到新值。
+     */
+    public function updateTracking(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ga_measurement_id' => ['nullable', 'string', 'max:50', 'regex:/^(G-[A-Z0-9]{4,20})?$/'],
+            'fb_pixel_id' => ['nullable', 'string', 'max:30', 'regex:/^\d{10,20}?$|^$/'],
+            'gtm_id' => ['nullable', 'string', 'max:30', 'regex:/^(GTM-[A-Z0-9]{4,20})?$/'],
+        ], [
+            'ga_measurement_id.regex' => 'GA4 Measurement ID 格式應為 G-XXXXXXXXXX',
+            'fb_pixel_id.regex' => 'Facebook Pixel ID 應為 10-20 位純數字',
+            'gtm_id.regex' => 'GTM ID 格式應為 GTM-XXXXXXX',
+        ]);
+
+        $admin = $request->user();
+        $map = [
+            'ga_measurement_id' => 'tracking_ga_measurement_id',
+            'fb_pixel_id' => 'tracking_fb_pixel_id',
+            'gtm_id' => 'tracking_gtm_id',
+        ];
+
+        foreach ($map as $input => $key) {
+            if ($request->has($input)) {
+                SystemSetting::set($key, (string) $request->input($input, ''), $admin?->id);
+            }
+        }
+
+        Cache::forget(\App\Http\Controllers\Api\V1\SiteConfigController::CACHE_KEY);
+
+        Log::info('[Admin] Tracking settings updated', ['admin_id' => $admin?->id, 'keys' => array_keys($request->only(array_keys($map)))]);
+
+        return response()->json(['success' => true, 'code' => 'TRACKING_UPDATED', 'message' => '追蹤碼已更新（最多 60 秒內生效）。']);
     }
 }
