@@ -31,6 +31,41 @@ services:
     networks:
       - mimeet
 
+  reverb:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mimeet-reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_HOST=mysql
+      - DB_DATABASE=${DB_DATABASE:-mimeet}
+      - DB_USERNAME=${DB_USERNAME:-mimeet_user}
+      - DB_PASSWORD=${DB_PASSWORD:-mimeet_secret_2024}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secret_2024}
+      - BROADCAST_DRIVER=reverb
+      - REVERB_APP_ID=${REVERB_APP_ID:-mimeet-app}
+      - REVERB_APP_KEY=${REVERB_APP_KEY:-mimeet-key-2026}
+      - REVERB_APP_SECRET=${REVERB_APP_SECRET:-mimeet-secret-2026}
+      - REVERB_HOST=0.0.0.0
+      - REVERB_PORT=8080
+      - REVERB_SCHEME=http
+    networks:
+      - mimeet
+
   nginx:
     image: nginx:1.25-alpine
     container_name: mimeet-nginx

@@ -1348,76 +1348,104 @@ Authorization: Bearer {access_token}
 { "success": true, "data": { "is_muted": true } }
 ```
 
-### 4.2 WebSocket實時通訊
+### 4.2 WebSocket 實時通訊（Laravel Reverb）
 
-#### 4.2.1 連接建立
-```javascript
-// WebSocket連接
-const ws = new WebSocket('wss://api.example.com/ws/chat');
+> **實作（2026-04-20）：** 後端 Laravel Reverb + 前端 `laravel-echo` + `pusher-js`（Reverb 採 Pusher 協定）。
 
-// 認證
-ws.onopen = function() {
-    ws.send(JSON.stringify({
-        type: 'auth',
-        token: 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...'
-    }));
-};
+#### 4.2.1 連線端點
+
+```
+wss://api.mimeet.online/app/{REVERB_APP_KEY}
 ```
 
-#### 4.2.2 消息格式
+- TLS 由 Nginx 終止（port 443），Nginx 將 `/app`、`/apps` 升級 proxy 到 container 的 `127.0.0.1:8080`。
+- `REVERB_APP_KEY` 由 backend/.env 配置，前端從 `VITE_REVERB_APP_KEY` 讀取。
 
-**發送消息：**
+#### 4.2.2 頻道授權端點
+
+```
+POST https://api.mimeet.online/api/v1/broadcasting/auth
+Authorization: Bearer {access_token}
+```
+
+- 由 Sanctum 認證，`routes/channels.php` 授權個別頻道訂閱。
+- Echo 初始化時自動攜帶 token 並呼叫此端點。
+
+#### 4.2.3 頻道清單
+
+| 頻道 | 型別 | 誰可訂閱 | 事件 |
+|------|------|----------|------|
+| `chat.{conversationId}` | private | conversation 兩位參與者 | `MessageSent` / `MessageRead` / `MessageRecalled` |
+| `user.{userId}` | private | 僅該用戶本人 | `NotificationReceived` |
+| `presence.chat.{conversationId}` | presence | conversation 兩位參與者 | 線上狀態（保留，Phase 2）|
+
+#### 4.2.4 事件格式
+
+**MessageSent**（`chat.{id}` 廣播）：
 ```json
 {
-  "type": "message",
-  "data": {
-    "chat_id": 123,
-    "content": "實時消息內容",
-    "message_type": "text",
-    "temp_id": "temp_1234567890"
-  }
+  "id": 792,
+  "uuid": "a1b2...",
+  "conversation_id": 123,
+  "sender_id": 456,
+  "type": "text",
+  "content": "實時消息內容",
+  "image_url": null,
+  "is_read": false,
+  "sent_at": "2026-04-20T10:30:00Z"
 }
 ```
 
-**接收消息：**
+**MessageRead**（`chat.{id}` 廣播）：
 ```json
 {
-  "type": "message",
-  "data": {
-    "message": {
-      "id": 792,
-      "chat_id": 123,
-      "sender_id": 456,
-      "content": "收到的實時消息",
-      "message_type": "text",
-      "sent_at": "2024-12-20T10:30:00Z"
-    }
-  }
+  "conversation_id": 123,
+  "reader_id": 456,
+  "read_at": "2026-04-20T10:31:00Z"
 }
 ```
 
-**打字狀態：**
+**MessageRecalled**（`chat.{id}` 廣播）：
 ```json
 {
-  "type": "typing",
-  "data": {
-    "chat_id": 123,
-    "is_typing": true,
-    "user_id": 456
-  }
+  "message_id": 792,
+  "conversation_id": 123,
+  "recalled_at": "2026-04-20T10:32:00Z"
 }
 ```
 
-**在線狀態：**
+**NotificationReceived**（`user.{id}` 廣播）：
 ```json
 {
-  "type": "online_status",
-  "data": {
-    "user_id": 456,
-    "status": "online|offline|away",
-    "last_seen_at": "2024-12-20T10:30:00Z"
-  }
+  "type": "new_message | new_visitor | ...",
+  "title": "...",
+  "body": "...",
+  "conversation_id": 123,
+  "action_url": "/app/messages/123"
 }
+```
+
+#### 4.2.5 前端最小接線範例
+
+```typescript
+import Echo from 'laravel-echo'
+import Pusher from 'pusher-js'
+;(window as any).Pusher = Pusher
+
+const echo = new Echo({
+  broadcaster: 'reverb',
+  key: import.meta.env.VITE_REVERB_APP_KEY,
+  wsHost: import.meta.env.VITE_REVERB_HOST,
+  wsPort: Number(import.meta.env.VITE_REVERB_PORT),
+  forceTLS: import.meta.env.VITE_REVERB_SCHEME === 'https',
+  authEndpoint: `${import.meta.env.VITE_API_BASE_URL}/broadcasting/auth`,
+  auth: { headers: { Authorization: `Bearer ${token}` } },
+})
+
+echo.private(`chat.${conversationId}`)
+  .listen('.MessageSent', (payload) => { /* push 到本地訊息列表 */ })
+  .listen('.MessageRead', (payload) => { /* 標記已讀 */ })
+  .listen('.MessageRecalled', (payload) => { /* 設 isRecalled */ })
 ```
 
 ---

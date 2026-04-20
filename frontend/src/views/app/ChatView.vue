@@ -21,7 +21,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
-const { connect, disconnect, onMessage } = useChat()
+const { connect, disconnect, onMessage, onRead, onRecall } = useChat()
 
 const conversationId = computed(() => Number(route.params.id))
 const isLoading = ref(true)
@@ -119,6 +119,27 @@ onMounted(async () => {
   onMessage((msg) => {
     localMessages.value.push(msg)
     scrollToBottom()
+    markConversationRead(conversationId.value)
+  })
+  onRead((payload) => {
+    const meId = authStore.user?.id ?? 0
+    localMessages.value.forEach(m => {
+      if (m.senderId === meId && !m.isRead) {
+        m.isRead = true
+        m.status = 'read'
+      }
+    })
+  })
+  onRecall((payload) => {
+    const idx = localMessages.value.findIndex(m => m.id === payload.message_id)
+    if (idx !== -1) {
+      const target = localMessages.value[idx]
+      if (target) {
+        target.isRecalled = true
+        target.content = ''
+        target.status = 'recalled'
+      }
+    }
   })
 })
 
