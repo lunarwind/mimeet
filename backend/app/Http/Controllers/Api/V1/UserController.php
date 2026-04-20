@@ -108,6 +108,12 @@ class UserController extends Controller
               ->orWhereRaw("JSON_EXTRACT(privacy_settings, '$.show_in_search') != 'false'");
         });
 
+        // F42 隱身模式：stealth_until 未來時間的用戶不顯示（獨立於 privacy_settings）
+        $query->where(function ($q) {
+            $q->whereNull('stealth_until')
+              ->orWhere('stealth_until', '<=', now());
+        });
+
         // Exclude blocked users (both directions)
         if ($request->user()) {
             $myId = $request->user()->id;
@@ -262,8 +268,10 @@ class UserController extends Controller
         if ($request->user() && $request->user()->id !== $id) {
             $privacy = $request->user()->privacy_settings;
             $stealthMode = is_array($privacy) && ($privacy['stealth_mode'] ?? false);
+            // F42 隱身模式：瀏覽者處於隱身狀態時不留訪客記錄
+            $isStealthActive = $request->user()->isStealthActive();
 
-            if (!$stealthMode) {
+            if (!$stealthMode && !$isStealthActive) {
                 UserProfileVisit::updateOrCreate(
                     ['visitor_id' => $request->user()->id, 'visited_user_id' => $id],
                     ['created_at' => now()],

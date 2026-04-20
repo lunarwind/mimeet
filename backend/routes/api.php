@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\PointController;
+use App\Http\Controllers\Api\V1\StealthController;
 use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
@@ -155,6 +156,13 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/purchase', [PointController::class, 'purchase']);
         Route::get('/balance', [PointController::class, 'balance']);
         Route::get('/history', [PointController::class, 'history']);
+    });
+
+    // ─── F42 Stealth Mode (authenticated) ─────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('me/stealth', [StealthController::class, 'status']);
+        Route::post('me/stealth', [StealthController::class, 'activate']);
+        Route::delete('me/stealth', [StealthController::class, 'deactivate']);
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────

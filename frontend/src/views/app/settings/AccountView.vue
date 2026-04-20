@@ -104,6 +104,50 @@ const readReceipt = ref(true)
 const dnd = ref({ dndEnabled: false, dndStart: '22:00', dndEnd: '08:00' })
 const isDndSaving = ref(false)
 
+// F42 隱身模式
+import { useStealth } from '@/composables/useStealth'
+const stealth = useStealth()
+const showStealthConfirm = ref(false)
+const showInsufficientModal = ref(false)
+const insufficientInfo = ref<{ required: number; current: number } | null>(null)
+
+async function handleStealthToggle() {
+  if (stealth.status.value?.isActive) {
+    // 已啟用 → 關閉
+    try {
+      await stealth.deactivate()
+      uiStore.showToast('已關閉隱身', 'success')
+    } catch { uiStore.showToast('關閉失敗', 'error') }
+    return
+  }
+
+  // VIP 直接啟用、非 VIP 先確認
+  if (stealth.status.value?.isVipFree) {
+    const res = await stealth.activate()
+    if (res.ok) uiStore.showToast('VIP 免費啟用隱身', 'success')
+    return
+  }
+  showStealthConfirm.value = true
+}
+
+async function confirmStealthActivate() {
+  showStealthConfirm.value = false
+  const res = await stealth.activate()
+  if (res.ok) {
+    uiStore.showToast(`已啟用隱身，扣除 ${res.pointsDeducted} 點`, 'success')
+  } else if (res.reason === 'insufficient_points') {
+    insufficientInfo.value = { required: res.required, current: res.current }
+    showInsufficientModal.value = true
+  } else {
+    uiStore.showToast(res.message, 'error')
+  }
+}
+
+function goTopUp() {
+  showInsufficientModal.value = false
+  router.push('/app/shop?tab=points')
+}
+
 const CITIES = [
   '台北市', '新北市', '桃園市', '台中市', '台南市', '高雄市',
   '基隆市', '新竹市', '嘉義市', '新竹縣', '苗栗縣', '彰化縣',
@@ -115,6 +159,7 @@ onMounted(async () => {
   await loadProfile()
   await loadAvatarSlots()
   await loadDnd()
+  await stealth.fetchStatus()
 })
 
 async function loadDnd() {
@@ -405,6 +450,95 @@ const settingsLinks = [
           <span class="status-row__value">{{ stealthStatusLabel }}</span>
         </div>
       </section>
+
+      <!-- F42 隱身模式控制 -->
+      <section class="stealth-section">
+        <div class="stealth-head">
+          <h3 class="section-label">🕶 隱身模式</h3>
+          <span v-if="stealth.status.value?.isActive" class="stealth-active-dot">● 啟用中</span>
+        </div>
+
+        <p class="stealth-desc">
+          啟用後：<br>
+          • 不出現在其他用戶的搜尋結果<br>
+          • 瀏覽他人資料不留訪客紀錄
+        </p>
+
+        <!-- 已啟用 -->
+        <template v-if="stealth.status.value?.isActive">
+          <div class="stealth-countdown">
+            <span class="stealth-countdown__label">到期：</span>
+            <span class="stealth-countdown__value">{{ formatDateYMD(stealth.status.value.stealthUntil) }} {{ new Date(stealth.status.value.stealthUntil!).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}) }}</span>
+          </div>
+          <div class="stealth-countdown">
+            <span class="stealth-countdown__label">倒數：</span>
+            <span class="stealth-countdown__value stealth-countdown__timer">{{ stealth.countdown.value }}</span>
+          </div>
+          <div class="stealth-actions">
+            <button class="stealth-btn stealth-btn--extend" @click="handleStealthToggle">
+              {{ stealth.status.value.isVipFree ? `延長 ${stealth.status.value.durationHours}h（VIP 免費）` : `延長 ${stealth.status.value.durationHours}h（${stealth.status.value.cost} 點）` }}
+            </button>
+            <button class="stealth-btn stealth-btn--close" @click="stealth.deactivate(); uiStore.showToast('已關閉隱身','success')">
+              提前關閉
+            </button>
+          </div>
+        </template>
+
+        <!-- 未啟用 -->
+        <template v-else-if="stealth.status.value">
+          <div v-if="stealth.status.value.isVipFree" class="stealth-vip-row">
+            <button class="stealth-btn stealth-btn--primary" @click="handleStealthToggle">
+              啟用隱身 {{ stealth.status.value.durationHours }}h
+            </button>
+            <span class="stealth-vip-tag">VIP 免費 💎</span>
+          </div>
+          <template v-else>
+            <button class="stealth-btn stealth-btn--primary" @click="handleStealthToggle">
+              啟用隱身 {{ stealth.status.value.durationHours }}h（{{ stealth.status.value.cost }} 點）
+            </button>
+            <p class="stealth-balance">目前餘額：{{ stealth.status.value.currentBalance }} 點</p>
+            <p class="stealth-upsell">
+              或 <a @click="router.push('/app/shop')">升級 VIP 享免費隱身 →</a>
+            </p>
+          </template>
+        </template>
+      </section>
+
+      <!-- 隱身確認 Modal -->
+      <div v-if="showStealthConfirm" class="modal-overlay" @click="showStealthConfirm = false">
+        <div class="modal-card" @click.stop>
+          <h3 class="modal-card__title">啟用隱身模式</h3>
+          <div class="modal-card__meta">
+            <div>消費：<strong>{{ stealth.status.value?.cost }} 點</strong></div>
+            <div>持續：<strong>{{ stealth.status.value?.durationHours }} 小時</strong></div>
+            <div>目前餘額：{{ stealth.status.value?.currentBalance }} 點</div>
+            <div>啟用後餘額：{{ (stealth.status.value?.currentBalance ?? 0) - (stealth.status.value?.cost ?? 0) }} 點</div>
+          </div>
+          <p class="modal-card__note">
+            效果：不出現在搜尋結果、瀏覽他人不留訪客紀錄<br>
+            <span style="color:#EF4444;">提前關閉不退點</span>
+          </p>
+          <div class="modal-card__actions">
+            <button class="btn-secondary" @click="showStealthConfirm = false">取消</button>
+            <button class="btn-primary" @click="confirmStealthActivate">確認啟用</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 餘額不足 Modal -->
+      <div v-if="showInsufficientModal" class="modal-overlay" @click="showInsufficientModal = false">
+        <div class="modal-card" @click.stop>
+          <h3 class="modal-card__title">點數不足</h3>
+          <div class="modal-card__meta">
+            <div>需要：<strong>{{ insufficientInfo?.required }} 點</strong></div>
+            <div>目前：<strong>{{ insufficientInfo?.current }} 點</strong></div>
+          </div>
+          <div class="modal-card__actions">
+            <button class="btn-secondary" @click="showInsufficientModal = false">取消</button>
+            <button class="btn-primary" @click="goTopUp">前往儲值</button>
+          </div>
+        </div>
+      </div>
 
       <!-- 頭像區塊 -->
       <section class="avatar-section">
@@ -777,6 +911,42 @@ const settingsLinks = [
 </template>
 
 <style>
+/* ── 共用 Modal（F42 隱身 + 餘額不足）────────────── */
+.modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; animation:fade-in 0.15s ease; }
+.modal-card { width:100%; max-width:380px; background:#fff; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.15); }
+.modal-card__title { font-size:17px; font-weight:700; color:#111827; margin:0 0 12px; }
+.modal-card__meta { font-size:14px; color:#374151; line-height:1.9; margin-bottom:12px; padding:12px; background:#F9FAFB; border-radius:10px; }
+.modal-card__meta strong { color:#F0294E; }
+.modal-card__note { font-size:12px; color:#6B7280; line-height:1.6; margin:0 0 16px; }
+.modal-card__actions { display:flex; gap:10px; }
+.modal-card__actions .btn-secondary,.modal-card__actions .btn-primary { flex:1; height:44px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+.modal-card__actions .btn-secondary { background:#F3F4F6; color:#6B7280; border:1px solid #E5E7EB; }
+.modal-card__actions .btn-primary { background:#F0294E; color:#fff; }
+.modal-card__actions .btn-primary:hover { background:#D01A3C; }
+@keyframes fade-in { from { opacity:0; } to { opacity:1; } }
+
+/* ── F42 隱身模式區塊 ──────────────────────────── */
+.stealth-section { background:#fff; border:1px solid #F1F5F9; border-radius:14px; padding:16px; margin-bottom:16px; }
+.stealth-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.stealth-head .section-label { margin:0; font-size:14px; font-weight:700; color:#111827; }
+.stealth-active-dot { font-size:12px; color:#F0294E; font-weight:600; }
+.stealth-desc { font-size:12px; color:#6B7280; line-height:1.6; margin:8px 0 14px; padding:10px; background:#F9FAFB; border-radius:8px; }
+.stealth-countdown { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; }
+.stealth-countdown__label { color:#6B7280; }
+.stealth-countdown__value { color:#111827; font-weight:500; }
+.stealth-countdown__timer { font-variant-numeric:tabular-nums; color:#F0294E; font-weight:700; font-size:15px; }
+.stealth-actions { display:flex; gap:8px; margin-top:12px; }
+.stealth-btn { flex:1; height:44px; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.stealth-btn--primary { background:#F0294E; color:#fff; width:100%; }
+.stealth-btn--primary:hover { background:#D01A3C; }
+.stealth-btn--extend { background:#F0294E; color:#fff; }
+.stealth-btn--close { background:#F3F4F6; color:#6B7280; border:1px solid #E5E7EB; }
+.stealth-vip-row { display:flex; align-items:center; gap:12px; }
+.stealth-vip-tag { flex-shrink:0; padding:4px 12px; background:#FEF3C7; color:#92400E; border-radius:9999px; font-size:12px; font-weight:600; }
+.stealth-balance { font-size:12px; color:#9CA3AF; margin-top:8px; text-align:center; }
+.stealth-upsell { font-size:12px; color:#6B7280; margin-top:4px; text-align:center; }
+.stealth-upsell a { color:#F0294E; cursor:pointer; font-weight:500; }
+
 /* ── F40 我的會員狀態卡片 ──────────────────────────── */
 .member-status { background:#fff; border:1px solid #F1F5F9; border-radius:14px; padding:16px; margin-bottom:16px; }
 .member-status .section-label { font-size:14px; font-weight:700; color:#111827; margin:0 0 12px; }
