@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\ChatService;
+use App\Services\PointService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,7 @@ class ChatController extends Controller
 {
     public function __construct(
         private readonly ChatService $chatService,
+        private readonly PointService $pointService,
     ) {}
 
     /**
@@ -245,14 +247,31 @@ class ChatController extends Controller
             $content = $content !== '' ? $content : $imageUrl;
         }
 
+        // F40-b：是否用點數突破分數限制
+        $usePoints = $request->boolean('use_points', false);
+        $reverseCost = $this->pointService->getFeatureCost('reverse_msg');
+        if ($reverseCost <= 0) $reverseCost = 5;
+
         try {
-            $message = $this->chatService->sendMessage($id, $userId, $content, $type, $imageUrl);
+            $message = $this->chatService->sendMessage(
+                $id, $userId, $content, $type, $imageUrl,
+                $usePoints,  // bypassScoreCheck：呼叫端已同意扣點後才傳 true
+            );
         } catch (CreditScoreRestrictionException $e) {
+            // 未帶 use_points 時，回 403 + 可否用點數突破的資訊
             return response()->json([
                 'success' => false,
+                'code' => 403,
+                'message' => $e->getMessage(),
                 'error' => [
                     'code' => '2001',
                     'message' => $e->getMessage(),
+                ],
+                'data' => [
+                    'can_use_points' => true,
+                    'point_cost' => $reverseCost,
+                    'current_balance' => (int) $request->user()->points_balance,
+                    'can_afford' => $request->user()->points_balance >= $reverseCost,
                 ],
             ], 403);
         } catch (DailyLimitException $e) {
@@ -263,6 +282,37 @@ class ChatController extends Controller
                     'message' => $e->getMessage(),
                 ],
             ], 429);
+        }
+
+        // 若走 use_points 路徑，訊息送出成功後扣點
+        $reversePointsDeducted = 0;
+        if ($usePoints) {
+            // 先判斷是否「本來就不需要扣點」（分數足夠 / Lv3 免擋）→ 不扣
+            $user = $request->user();
+            $conversation = Conversation::find($id);
+            $otherId = $conversation->user_a_id === $user->id ? $conversation->user_b_id : $conversation->user_a_id;
+            $other = User::find($otherId);
+            $needsBreakthrough = $user->membership_level < 3
+                && $other
+                && $user->credit_score < $other->credit_score;
+
+            if ($needsBreakthrough) {
+                if (!$this->pointService->canAfford($user, $reverseCost)) {
+                    // 理論上前端不應讓 use_points=true 送到這，但保險回 422
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'INSUFFICIENT_POINTS',
+                        'message' => "點數不足：需要 {$reverseCost} 點，目前 " . (int) $user->points_balance . ' 點',
+                        'data' => ['required' => $reverseCost, 'current_balance' => (int) $user->points_balance],
+                    ], 422);
+                }
+                $this->pointService->consume(
+                    $user, $reverseCost, 'reverse_msg',
+                    "突破分數限制向 {$other->nickname} 發訊",
+                    $message->id,
+                );
+                $reversePointsDeducted = $reverseCost;
+            }
         }
 
         return response()->json([
@@ -281,6 +331,7 @@ class ChatController extends Controller
                     'is_read' => false,
                     'is_recalled' => false,
                 ],
+                'reverse_points_deducted' => $reversePointsDeducted,
             ],
         ], 201);
     }

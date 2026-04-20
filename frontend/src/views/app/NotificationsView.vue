@@ -42,6 +42,7 @@ const ICON_MAP: Record<string, string> = {
   verification_result: '🔒',
   ticket_replied: '📋',
   system: '📢',
+  super_like: '⭐',
 }
 
 onMounted(async () => {
@@ -103,7 +104,7 @@ function markAllRead() {
           v-for="notif in notifications"
           :key="notif.id"
           class="notif-item"
-          :class="{ 'notif-item--unread': !notif.isRead }"
+          :class="{ 'notif-item--unread': !notif.isRead, 'notif-item--super-like': notif.type === 'super_like' }"
           @click="handleClick(notif)"
         >
           <div v-if="!notif.isRead" class="notif-item__indicator" />
@@ -137,6 +138,7 @@ function markAllRead() {
 
 .notif-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 0.5px solid #F1F5F9; cursor: pointer; position: relative; transition: background 0.15s; }
 .notif-item:active { background: #F9FAFB; }
+.notif-item--super-like { background: linear-gradient(135deg, #FFF8E1 0%, #FFF3E0 100%); border-left: 3px solid #FFD700; }
 .notif-item--unread { background: #FFFBFE; }
 .notif-item__indicator { position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; background: #F0294E; border-radius: 0 2px 2px 0; }
 .notif-item__icon { font-size: 24px; flex-shrink: 0; width: 36px; text-align: center; }

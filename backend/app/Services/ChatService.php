@@ -115,6 +115,7 @@ class ChatService
         string $content,
         string $type = 'text',
         ?string $imageUrl = null,
+        bool $bypassScoreCheck = false,  // F40-b：已扣點買通可跳過分數檢查
     ): Message {
         $user = User::findOrFail($senderId);
         $this->checkDailyLimit($user);
@@ -124,7 +125,8 @@ class ChatService
         // Credit score check (PRD §4.3.3):
         // - Lv3 paid members bypass this check (reverse-tier messaging privilege)
         // - Others: can only message users with equal or lower credit_score
-        if ($user->membership_level < 3) {
+        // - F40-b: $bypassScoreCheck=true 時跳過（呼叫端已用 point_cost_reverse_msg 扣點）
+        if (!$bypassScoreCheck && $user->membership_level < 3) {
             $receiverId = $conversation->user_a_id === $senderId
                 ? $conversation->user_b_id
                 : $conversation->user_a_id;

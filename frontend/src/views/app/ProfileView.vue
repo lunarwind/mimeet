@@ -130,6 +130,65 @@ async function toggleBlock() {
 function goBack() {
   router.back()
 }
+
+// ── F40-c 超級讚 ──────────────────────────────────────────
+import client from '@/api/client'
+const superLikeLoading = ref(false)
+const superLikeSent = ref(false)
+const superLikeCost = ref(3)
+const showSuperLikeConfirm = ref(false)
+const showInsufficientModal = ref(false)
+const insufficientInfo = ref<{ required: number; current: number } | null>(null)
+
+function handleSuperLikeClick() {
+  if (superLikeSent.value || superLikeLoading.value) return
+  showSuperLikeConfirm.value = true
+}
+
+async function confirmSuperLike() {
+  if (!profile.value) return
+  showSuperLikeConfirm.value = false
+  superLikeLoading.value = true
+  try {
+    const res = await client.post(`/users/${profile.value.id}/super-like`)
+    const d = res.data?.data ?? {}
+    superLikeSent.value = true
+    // 更新 auth store 點數
+    if (authStore.user) (authStore.user as any).points_balance = d.points_balance
+    const { useUiStore } = await import('@/stores/ui')
+    useUiStore().showToast('⭐ 超級讚已送出', 'success')
+  } catch (err: any) {
+    const resp = err.response?.data
+    const status = err.response?.status
+    const { useUiStore } = await import('@/stores/ui')
+    if (status === 422 && resp?.message?.includes('24 小時')) {
+      superLikeSent.value = true // 視為已發過
+      useUiStore().showToast('24 小時內已對此用戶發送過超級讚', 'info')
+    } else if (status === 422 && resp?.data?.required !== undefined) {
+      insufficientInfo.value = { required: resp.data.required, current: resp.data.current_balance }
+      showInsufficientModal.value = true
+    } else {
+      useUiStore().showToast(resp?.message ?? '超級讚發送失敗', 'error')
+    }
+  } finally {
+    superLikeLoading.value = false
+  }
+}
+
+function goTopUp() {
+  showInsufficientModal.value = false
+  router.push('/app/shop?tab=points')
+}
+
+// 進入頁面時讀取當前成本
+onMounted(async () => {
+  try {
+    const res = await client.get('/points/balance')
+    // balance API 不回 cost；直接寫死 3（跟 system_settings 同步）
+    // 更好：查 settings 的 API，但暫時 hardcode 避免新 endpoint
+    superLikeCost.value = 3
+  } catch { /* ignore */ }
+})
 </script>
 
 <template>
@@ -297,7 +356,53 @@ function goBack() {
           </svg>
           {{ profile.is_favorited ? '已收藏' : '收藏' }}
         </button>
+
+        <!-- F40-c 超級讚 -->
+        <button
+          class="profile-actions__btn super-like-btn"
+          :class="{ 'super-like-btn--sent': superLikeSent }"
+          :disabled="superLikeLoading || superLikeSent"
+          @click="handleSuperLikeClick"
+        >
+          <span class="super-like-btn__icon">⭐</span>
+          {{ superLikeSent ? '已送出' : '超級讚' }}
+          <span v-if="!superLikeSent" class="super-like-btn__cost">{{ superLikeCost }}點</span>
+        </button>
       </section>
+
+      <!-- F40-c 超級讚確認 Modal -->
+      <div v-if="showSuperLikeConfirm" class="sl-modal-overlay" @click="showSuperLikeConfirm = false">
+        <div class="sl-modal-card" @click.stop>
+          <h3 class="sl-modal-card__title">⭐ 發送超級讚</h3>
+          <p class="sl-modal-card__desc">讓 {{ profile?.nickname }} 收到特別的通知，提高印象度。</p>
+          <div class="sl-modal-card__meta">
+            <div>消費：<strong>{{ superLikeCost }} 點</strong></div>
+            <div>目前餘額：{{ (authStore.user as any)?.points_balance ?? 0 }} 點</div>
+            <div class="sl-modal-card__note">24 小時內同一對象只能發送一次</div>
+          </div>
+          <div class="sl-modal-card__actions">
+            <button class="sl-btn sl-btn--secondary" @click="showSuperLikeConfirm = false">取消</button>
+            <button class="sl-btn sl-btn--primary" :disabled="superLikeLoading" @click="confirmSuperLike">
+              {{ superLikeLoading ? '送出中...' : '確認發送' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- F40-c 餘額不足 Modal -->
+      <div v-if="showInsufficientModal" class="sl-modal-overlay" @click="showInsufficientModal = false">
+        <div class="sl-modal-card" @click.stop>
+          <h3 class="sl-modal-card__title">點數不足</h3>
+          <div class="sl-modal-card__meta">
+            <div>需要：<strong>{{ insufficientInfo?.required }} 點</strong></div>
+            <div>目前：<strong>{{ insufficientInfo?.current }} 點</strong></div>
+          </div>
+          <div class="sl-modal-card__actions">
+            <button class="sl-btn sl-btn--secondary" @click="showInsufficientModal = false">取消</button>
+            <button class="sl-btn sl-btn--primary" @click="goTopUp">前往儲值</button>
+          </div>
+        </div>
+      </div>
 
       <!-- 個人簡介（可摺疊） -->
       <section v-if="profile.introduction" class="profile-bio">
@@ -347,6 +452,29 @@ function goBack() {
 </template>
 
 <style scoped>
+/* ── F40-c 超級讚按鈕 ─────────────────────────── */
+.super-like-btn { background:linear-gradient(135deg,#FFD700,#FFA500); color:#fff; border:none; position:relative; font-weight:600; }
+.super-like-btn:hover { background:linear-gradient(135deg,#FFC700,#FF9500); }
+.super-like-btn:disabled { opacity:0.6; cursor:not-allowed; background:linear-gradient(135deg,#D1D5DB,#9CA3AF); }
+.super-like-btn--sent { background:#E5E7EB !important; color:#9CA3AF !important; }
+.super-like-btn__icon { font-size:16px; margin-right:4px; }
+.super-like-btn__cost { display:inline-block; margin-left:6px; padding:1px 6px; background:rgba(255,255,255,0.35); border-radius:9999px; font-size:11px; font-weight:700; }
+
+/* ── F40-c Modal（共用）─────────────────────── */
+.sl-modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+.sl-modal-card { width:100%; max-width:380px; background:#fff; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.15); }
+.sl-modal-card__title { font-size:17px; font-weight:700; color:#111827; margin:0 0 8px; }
+.sl-modal-card__desc { font-size:13px; color:#6B7280; line-height:1.6; margin:0 0 14px; }
+.sl-modal-card__meta { font-size:14px; color:#374151; line-height:1.9; margin-bottom:16px; padding:12px; background:#F9FAFB; border-radius:10px; }
+.sl-modal-card__meta strong { color:#F0294E; }
+.sl-modal-card__note { font-size:11px; color:#9CA3AF; margin-top:6px; }
+.sl-modal-card__actions { display:flex; gap:10px; }
+.sl-btn { flex:1; height:44px; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; }
+.sl-btn--secondary { background:#F3F4F6; color:#6B7280; border:1px solid #E5E7EB; }
+.sl-btn--primary { background:#F0294E; color:#fff; }
+.sl-btn--primary:hover { background:#D01A3C; }
+.sl-btn--primary:disabled { opacity:0.6; cursor:not-allowed; }
+
 .profile-view {
   background: #F9F9FB;
   min-height: 100dvh;

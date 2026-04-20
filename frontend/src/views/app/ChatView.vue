@@ -127,41 +127,120 @@ onUnmounted(() => disconnect())
 // ── 文字發送 ──────────────────────────────────────────────
 const isSending = ref(false)
 
-async function handleSend(content: string) {
+// F40-b 逆區間訊息
+const showReverseModal = ref(false)
+const showPointsInsufficientModal = ref(false)
+const reverseInfo = ref<{ pointCost: number; currentBalance: number; canAfford: boolean } | null>(null)
+const pendingContent = ref('')
+const pendingTempId = ref<number | null>(null)
+
+async function handleSend(content: string, usePoints = false) {
   if (isSending.value) return
   isSending.value = true
 
-  const tempId = Date.now()
-  const tempMsg: ChatMessage = {
-    id: tempId,
-    conversationId: conversationId.value,
-    senderId: authStore.user?.id ?? 0,
-    type: 'text',
-    content,
-    status: 'sending',
-    createdAt: new Date().toISOString(),
-    isOwn: true,
+  // 若不是補送（usePoints 模式），push optimistic 訊息；否則沿用之前的 tempId
+  let tempId: number
+  if (!usePoints) {
+    tempId = Date.now()
+    const tempMsg: ChatMessage = {
+      id: tempId,
+      conversationId: conversationId.value,
+      senderId: authStore.user?.id ?? 0,
+      type: 'text',
+      content,
+      status: 'sending',
+      createdAt: new Date().toISOString(),
+      isOwn: true,
+    }
+    localMessages.value.push(tempMsg)
+    scrollToBottom()
+  } else {
+    tempId = pendingTempId.value ?? Date.now()
   }
-  localMessages.value.push(tempMsg)
-  scrollToBottom()
 
   try {
-    const sent = await apiSendMessage(conversationId.value, content)
+    const sent = await apiSendMessage(conversationId.value, content, usePoints)
     const idx = localMessages.value.findIndex(m => m.id === tempId)
     if (idx !== -1) {
       localMessages.value[idx] = { ...sent, isOwn: true, status: 'sent' }
     }
     chatStore.updateLastMessage(conversationId.value, content)
+    pendingContent.value = ''
+    pendingTempId.value = null
   } catch (err: any) {
+    const resp = err.response?.data
+    const status = err.response?.status
+
+    // F40-b：分數不足，可用點數突破
+    if (status === 403 && resp?.data?.can_use_points) {
+      pendingContent.value = content
+      pendingTempId.value = tempId
+      reverseInfo.value = {
+        pointCost: resp.data.point_cost,
+        currentBalance: resp.data.current_balance,
+        canAfford: resp.data.can_afford,
+      }
+      // 把 optimistic 訊息暫標 failed 以便辨識
+      const idx = localMessages.value.findIndex(m => m.id === tempId)
+      const t1 = idx !== -1 ? localMessages.value[idx] : undefined
+      if (t1) t1.status = 'failed'
+      showReverseModal.value = true
+      return
+    }
+
+    // F40-b：use_points=true 送出時餘額不足
+    if (status === 422 && resp?.code === 'INSUFFICIENT_POINTS') {
+      const idx = localMessages.value.findIndex(m => m.id === tempId)
+      const t2 = idx !== -1 ? localMessages.value[idx] : undefined
+      if (t2) t2.status = 'failed'
+      reverseInfo.value = {
+        pointCost: resp.data?.required ?? 0,
+        currentBalance: resp.data?.current_balance ?? 0,
+        canAfford: false,
+      }
+      showPointsInsufficientModal.value = true
+      return
+    }
+
     const idx = localMessages.value.findIndex(m => m.id === tempId)
     const target = idx !== -1 ? localMessages.value[idx] : undefined
     if (target) target.status = 'failed'
-    const msg = err.response?.data?.error?.message ?? err.response?.data?.message ?? '發送失敗'
+    const msg = resp?.error?.message ?? resp?.message ?? '發送失敗'
     const { useUiStore } = await import('@/stores/ui')
     useUiStore().showToast(msg, 'error')
   } finally {
     isSending.value = false
   }
+}
+
+async function confirmReverseMessage() {
+  if (!reverseInfo.value?.canAfford) {
+    showReverseModal.value = false
+    showPointsInsufficientModal.value = true
+    return
+  }
+  showReverseModal.value = false
+  await handleSend(pendingContent.value, true)
+}
+
+function cancelReverseMessage() {
+  showReverseModal.value = false
+  // 移除 failed 訊息
+  if (pendingTempId.value !== null) {
+    localMessages.value = localMessages.value.filter(m => m.id !== pendingTempId.value)
+    pendingTempId.value = null
+  }
+  pendingContent.value = ''
+}
+
+function goTopUpFromChat() {
+  showPointsInsufficientModal.value = false
+  showReverseModal.value = false
+  if (pendingTempId.value !== null) {
+    localMessages.value = localMessages.value.filter(m => m.id !== pendingTempId.value)
+    pendingTempId.value = null
+  }
+  router.push('/app/shop?tab=points')
 }
 
 // ── 圖片發送 ──────────────────────────────────────────────
@@ -315,6 +394,44 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
       <img :src="previewImageUrl" class="img-preview__img" alt="" />
       <button class="img-preview__close" aria-label="關閉">✕</button>
     </div>
+
+    <!-- F40-b 逆區間訊息確認 Modal -->
+    <div v-if="showReverseModal" class="rv-modal-overlay" @click="cancelReverseMessage">
+      <div class="rv-modal-card" @click.stop>
+        <h3 class="rv-modal-card__title">💬 誠信分數不足</h3>
+        <p class="rv-modal-card__desc">
+          對方的誠信等級較高，你目前無法直接發訊。<br>
+          花點數可以突破限制，將這則訊息送出。
+        </p>
+        <div class="rv-modal-card__meta">
+          <div>消費：<strong>{{ reverseInfo?.pointCost }} 點</strong></div>
+          <div>目前餘額：{{ reverseInfo?.currentBalance }} 點</div>
+          <div v-if="reverseInfo?.canAfford">消費後餘額：{{ (reverseInfo.currentBalance - reverseInfo.pointCost) }} 點</div>
+          <div v-else style="color:#EF4444;">⚠️ 餘額不足</div>
+        </div>
+        <div class="rv-modal-card__actions">
+          <button class="rv-btn rv-btn--secondary" @click="cancelReverseMessage">取消</button>
+          <button class="rv-btn rv-btn--primary" :disabled="!reverseInfo?.canAfford" @click="confirmReverseMessage">
+            確認發送（{{ reverseInfo?.pointCost }} 點）
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- F40-b 點數不足 Modal -->
+    <div v-if="showPointsInsufficientModal" class="rv-modal-overlay" @click="showPointsInsufficientModal = false">
+      <div class="rv-modal-card" @click.stop>
+        <h3 class="rv-modal-card__title">點數不足</h3>
+        <div class="rv-modal-card__meta">
+          <div>需要：<strong>{{ reverseInfo?.pointCost }} 點</strong></div>
+          <div>目前：<strong>{{ reverseInfo?.currentBalance }} 點</strong></div>
+        </div>
+        <div class="rv-modal-card__actions">
+          <button class="rv-btn rv-btn--secondary" @click="showPointsInsufficientModal = false; cancelReverseMessage()">取消</button>
+          <button class="rv-btn rv-btn--primary" @click="goTopUpFromChat">前往儲值</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -355,6 +472,19 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 
 .date-sep { display:flex; justify-content:center; padding:12px 0 8px; }
 .date-sep span { font-size:11px; color:#9CA3AF; background:#F1F5F9; padding:2px 10px; border-radius:9999px; }
+
+/* ── F40-b 逆區間訊息 Modal ────────────────────── */
+.rv-modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:400; display:flex; align-items:center; justify-content:center; padding:20px; }
+.rv-modal-card { width:100%; max-width:380px; background:#fff; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.15); }
+.rv-modal-card__title { font-size:17px; font-weight:700; color:#111827; margin:0 0 8px; }
+.rv-modal-card__desc { font-size:13px; color:#6B7280; line-height:1.6; margin:0 0 14px; }
+.rv-modal-card__meta { font-size:14px; color:#374151; line-height:1.9; margin-bottom:16px; padding:12px; background:#F9FAFB; border-radius:10px; }
+.rv-modal-card__meta strong { color:#F0294E; }
+.rv-modal-card__actions { display:flex; gap:10px; }
+.rv-btn { flex:1; height:44px; border:none; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; }
+.rv-btn--secondary { background:#F3F4F6; color:#6B7280; border:1px solid #E5E7EB; }
+.rv-btn--primary { background:#F0294E; color:#fff; }
+.rv-btn--primary:disabled { opacity:0.5; cursor:not-allowed; }
 
 .img-preview { position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9999; display:flex; align-items:center; justify-content:center; cursor:zoom-out; padding:16px; }
 .img-preview__img { max-width:100%; max-height:100%; border-radius:8px; }
