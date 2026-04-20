@@ -94,7 +94,7 @@ class User extends Authenticatable
         'birth_date' => 'date',
         'email_verified' => 'boolean',
         'phone_verified' => 'boolean',
-        'membership_level' => 'integer',
+        'membership_level' => 'decimal:1',
         'credit_score' => 'integer',
         'height' => 'integer',
         'interests' => 'array',
