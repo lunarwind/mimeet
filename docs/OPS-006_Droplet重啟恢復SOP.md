@@ -44,7 +44,7 @@ cd /var/www/mimeet
 docker compose -f docker-compose.staging.yml up -d
 ```
 
-等待 MySQL 初始化（約 30 秒），確認三個容器都是 Up 狀態：
+等待 MySQL 初始化（約 30 秒），確認六個容器都是 Up 狀態：
 
 ```bash
 docker compose -f docker-compose.staging.yml ps
@@ -57,6 +57,9 @@ docker compose -f docker-compose.staging.yml ps
 | mimeet-app | Up |
 | mimeet-db | Up (healthy) |
 | mimeet-redis | Up (healthy) |
+| mimeet-reverb | Up |
+| mimeet-worker | Up |
+| mimeet-scheduler | Up |
 
 如果 db 顯示 `(health: starting)`，等待 30 秒後再次查看。
 
@@ -200,7 +203,7 @@ mimeet-update
 
 ```
 [ ] SSH 連線成功
-[ ] docker compose ps — 3 個容器都 Up
+[ ] docker compose ps — 6 個容器都 Up（app / db / redis / reverb / worker / scheduler）
 [ ] nginx -t — syntax ok
 [ ] curl API login — success: true
 [ ] 瀏覽器 mimeet.online — 正常
