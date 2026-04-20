@@ -31,18 +31,35 @@ class UserController extends Controller
 
         $request->validate([
             'nickname' => 'sometimes|string|max:20',
-            'bio' => 'sometimes|string|max:500',
-            'avatar_url' => 'sometimes|string',
-            'height' => 'sometimes|integer|min:100|max:250',
+            'bio' => 'sometimes|nullable|string|max:500',
+            'avatar_url' => 'sometimes|nullable|string',
+            'height' => 'sometimes|nullable|integer|min:100|max:250',
             'weight' => 'sometimes|nullable|integer|min:30|max:200',
-            'location' => 'sometimes|string|max:50',
-            'occupation' => 'sometimes|string|max:50',
+            'location' => 'sometimes|nullable|string|max:50',
+            'occupation' => 'sometimes|nullable|string|max:50',
             'education' => 'sometimes|nullable|string|in:high_school,associate,bachelor,master,phd,other',
-            'interests' => 'sometimes|array',
+            'interests' => 'sometimes|nullable|array',
+
+            // F27 新增的 9 個 profile 欄位 — 全部選填
+            'style'             => 'sometimes|nullable|string|in:fresh,sweet,sexy,intellectual,sporty',
+            'dating_budget'     => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
+            'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
+            'dating_type'       => 'sometimes|nullable|array',
+            'dating_type.*'     => 'string|in:dining,travel,companion,mentorship,undisclosed',
+            'relationship_goal' => 'sometimes|nullable|string|in:short_term,long_term,open,undisclosed',
+            'smoking'           => 'sometimes|nullable|string|in:never,sometimes,often',
+            'drinking'          => 'sometimes|nullable|string|in:never,social,often',
+            'car_owner'         => 'sometimes|nullable|boolean',
+            'availability'      => 'sometimes|nullable|array',
+            'availability.*'    => 'string|in:weekday_day,weekday_night,weekend,flexible',
         ]);
 
         $user = $request->user();
-        $fields = $request->only(['nickname', 'bio', 'avatar_url', 'height', 'weight', 'location', 'occupation', 'education', 'interests']);
+        $fields = $request->only([
+            'nickname', 'bio', 'avatar_url', 'height', 'weight', 'location', 'occupation', 'education', 'interests',
+            'style', 'dating_budget', 'dating_frequency', 'dating_type', 'relationship_goal',
+            'smoking', 'drinking', 'car_owner', 'availability',
+        ]);
         $user->update($fields);
 
         UserActivityLogService::logProfileUpdate($user->id, array_keys($fields), $request);
@@ -56,11 +73,30 @@ class UserController extends Controller
     public function search(Request $request): JsonResponse
     {
         $request->validate([
-            'gender' => 'sometimes|in:male,female',
-            'age_min' => 'sometimes|integer|min:18',
-            'age_max' => 'sometimes|integer|max:99',
-            'location' => 'sometimes|string',
-            'per_page' => 'sometimes|integer|min:1|max:50',
+            'gender'           => 'sometimes|in:male,female',
+            'age_min'          => 'sometimes|integer|min:18',
+            'age_max'          => 'sometimes|integer|max:99',
+            'location'         => 'sometimes|string',
+            'min_height'       => 'sometimes|integer|min:100',
+            'max_height'       => 'sometimes|integer|max:250',
+            'min_weight'       => 'sometimes|integer|min:30',
+            'max_weight'       => 'sometimes|integer|max:200',
+            'education'        => 'sometimes|string',
+            'occupation'       => 'sometimes|string',
+            'style'            => 'sometimes|string',
+            'dating_budget'    => 'sometimes|string',
+            'dating_frequency' => 'sometimes|string',
+            'dating_type'      => 'sometimes|string',
+            'relationship_goal' => 'sometimes|string',
+            'smoking'          => 'sometimes|string',
+            'drinking'         => 'sometimes|string',
+            'car_owner'        => 'sometimes|boolean',
+            'availability'     => 'sometimes|string',
+            'min_credit'       => 'sometimes|integer|min:0',
+            'max_credit'       => 'sometimes|integer|max:100',
+            'credit_score_min' => 'sometimes|integer|min:0',  // legacy alias
+            'credit_score_max' => 'sometimes|integer|max:100', // legacy alias
+            'per_page'         => 'sometimes|integer|min:1|max:50',
         ]);
 
         $query = User::where('status', 'active')
@@ -83,11 +119,93 @@ class UserController extends Controller
             }
         }
 
+        // ── 性別（精確）──
         if ($request->filled('gender')) $query->where('gender', $request->gender);
-        if ($request->filled('location')) $query->where('location', 'like', "%{$request->location}%");
+
+        // ── 年齡：基於 birth_date 計算，未填生日者 nullable 放過 ──
+        if ($request->filled('age_min')) {
+            $maxDate = now()->subYears((int) $request->age_min)->toDateString();
+            $query->where(function ($q) use ($maxDate) {
+                $q->where('birth_date', '<=', $maxDate)->orWhereNull('birth_date');
+            });
+        }
+        if ($request->filled('age_max')) {
+            $minDate = now()->subYears(((int) $request->age_max) + 1)->toDateString();
+            $query->where(function ($q) use ($minDate) {
+                $q->where('birth_date', '>=', $minDate)->orWhereNull('birth_date');
+            });
+        }
+
+        // ── 數值範圍：未填寫（NULL）不排除 ──
+        // credit_score_min/max 舊稱同時支援（相容現有前端）
+        $minCredit = $request->input('min_credit', $request->input('credit_score_min'));
+        $maxCredit = $request->input('max_credit', $request->input('credit_score_max'));
+
+        foreach ([
+            ['min_height', 'max_height', 'height', $request->input('min_height'), $request->input('max_height')],
+            ['min_weight', 'max_weight', 'weight', $request->input('min_weight'), $request->input('max_weight')],
+            ['min_credit', 'max_credit', 'credit_score', $minCredit, $maxCredit],
+        ] as [$minKey, $maxKey, $column, $minVal, $maxVal]) {
+            if ($minVal !== null || $maxVal !== null) {
+                $query->where(function ($q) use ($column, $minVal, $maxVal) {
+                    $q->where(function ($inner) use ($column, $minVal, $maxVal) {
+                        if ($minVal !== null) $inner->where($column, '>=', (int) $minVal);
+                        if ($maxVal !== null) $inner->where($column, '<=', (int) $maxVal);
+                    })->orWhereNull($column);
+                });
+            }
+        }
+
+        // ── 精確比對（未填寫不排除）──
+        foreach (['education', 'style', 'dating_budget', 'dating_frequency', 'relationship_goal', 'smoking', 'drinking'] as $field) {
+            if ($request->filled($field)) {
+                $val = $request->input($field);
+                $query->where(function ($q) use ($field, $val) {
+                    $q->where($field, $val)->orWhereNull($field);
+                });
+            }
+        }
+
+        // ── Boolean（car_owner）──
+        if ($request->has('car_owner')) {
+            $val = $request->boolean('car_owner');
+            $query->where(function ($q) use ($val) {
+                $q->where('car_owner', $val)->orWhereNull('car_owner');
+            });
+        }
+
+        // ── JSON 複選（dating_type / availability）──
+        foreach (['dating_type', 'availability'] as $jsonField) {
+            if ($request->filled($jsonField)) {
+                $value = $request->input($jsonField);
+                $query->where(function ($q) use ($jsonField, $value) {
+                    $q->whereRaw("JSON_CONTAINS({$jsonField}, ?)", [json_encode($value)])
+                      ->orWhereNull($jsonField);
+                });
+            }
+        }
+
+        // ── 文字模糊（occupation / location）──
+        foreach (['occupation', 'location'] as $field) {
+            if ($request->filled($field)) {
+                $val = $request->input($field);
+                $query->where(function ($q) use ($field, $val) {
+                    $q->where($field, 'LIKE', "%{$val}%")->orWhereNull($field);
+                });
+            }
+        }
+
+        // ── 排序：資料完整度優先、誠信分數、最後上線 ──
+        $query->orderByRaw('(
+            CASE WHEN height IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN dating_budget IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN style IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN bio IS NOT NULL AND bio != "" THEN 1 ELSE 0 END
+        ) DESC');
+        $query->orderByDesc('credit_score')->orderByDesc('last_active_at');
 
         $perPage = (int) $request->input('per_page', 20);
-        $users = $query->orderByDesc('last_active_at')->paginate($perPage);
+        $users = $query->paginate($perPage);
 
         return response()->json([
             'success' => true, 'code' => 'SEARCH_RESULTS', 'message' => 'OK',
@@ -164,8 +282,19 @@ class UserController extends Controller
                 'introduction' => $user->bio,
                 'location' => $user->location,
                 'height' => $user->height,
+                'weight' => $user->weight,
                 'job' => $user->occupation,
                 'education' => $user->education,
+                // F27 profile fields
+                'style' => $user->style,
+                'dating_budget' => $user->dating_budget,
+                'dating_frequency' => $user->dating_frequency,
+                'dating_type' => $user->dating_type,
+                'relationship_goal' => $user->relationship_goal,
+                'smoking' => $user->smoking,
+                'drinking' => $user->drinking,
+                'car_owner' => $user->car_owner,
+                'availability' => $user->availability,
                 'membership_level' => $user->membership_level,
                 'credit_score' => $user->credit_score,
                 'email_verified' => (bool) $user->email_verified,
@@ -328,6 +457,16 @@ class UserController extends Controller
                     'job' => $user->occupation ?? '',
                     'education' => $user->education ?? '',
                     'introduction' => $user->bio ?? '',
+                    // F27 profile fields
+                    'style' => $user->style,
+                    'dating_budget' => $user->dating_budget,
+                    'dating_frequency' => $user->dating_frequency,
+                    'dating_type' => $user->dating_type ?? [],
+                    'relationship_goal' => $user->relationship_goal,
+                    'smoking' => $user->smoking,
+                    'drinking' => $user->drinking,
+                    'car_owner' => $user->car_owner,
+                    'availability' => $user->availability ?? [],
                 ],
                 'account' => [
                     'email' => $user->email,

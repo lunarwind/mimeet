@@ -56,6 +56,16 @@ class User extends Authenticatable
         'dnd_enabled',
         'dnd_start',
         'dnd_end',
+        // F27 profile fields
+        'style',
+        'dating_budget',
+        'dating_frequency',
+        'dating_type',
+        'relationship_goal',
+        'smoking',
+        'drinking',
+        'car_owner',
+        'availability',
     ];
 
     // Admin-only fields (credit_score, status, membership_level, suspended_at,
@@ -94,6 +104,9 @@ class User extends Authenticatable
         'password' => 'hashed',
         'phone' => 'encrypted',
         'dnd_enabled' => 'boolean',
+        'dating_type' => 'array',
+        'availability' => 'array',
+        'car_owner' => 'boolean',
     ];
 
     public function getPrivacySettingsAttribute($value): array

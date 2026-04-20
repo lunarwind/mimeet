@@ -41,6 +41,17 @@ export interface ExploreFilter {
   cities?: string[]      // 進階篩選地區（多選）
   creditScoreRange?: string // '0-30' | '31-60' | '61-90' | '91-120'
   lastOnline?: string    // 'today' | '3days' | '7days' | 'all'
+
+  // F27 進階篩選
+  minHeight?: number
+  maxHeight?: number
+  education?: string          // high_school/associate/bachelor/master/phd/other
+  style?: string              // fresh/sweet/sexy/intellectual/sporty
+  datingBudget?: string       // casual/moderate/generous/luxury/undisclosed
+  relationshipGoal?: string   // short_term/long_term/open/undisclosed
+  smoking?: string            // never/sometimes/often
+  drinking?: string           // never/social/often
+  carOwner?: 'any' | 'yes'    // 前端選項：任何 / 有車
 }
 
 /** API 分頁資訊 */
