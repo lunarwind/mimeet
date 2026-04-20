@@ -30,14 +30,14 @@ class RequireMembership
             ], 401);
         }
 
-        if ((int) $user->membership_level < $level) {
+        if ((float) $user->membership_level < $level) {
             return response()->json([
                 'success' => false,
                 'code' => 'MEMBERSHIP_REQUIRED',
                 'message' => '此功能需要升級會員方案。',
                 'data' => [
                     'required_level' => $level,
-                    'current_level' => (int) $user->membership_level,
+                    'current_level' => (float) $user->membership_level,
                 ],
             ], 403);
         }
