@@ -7,15 +7,32 @@ export const useChatStore = defineStore('chat', () => {
   const totalUnread = computed(() => conversations.value.reduce((sum, c) => sum + c.unreadCount, 0))
   const unreadBadge = computed(() => totalUnread.value > 99 ? '99+' : totalUnread.value > 0 ? String(totalUnread.value) : '')
 
-  function setConversations(list: Conversation[]) {
-    conversations.value = list
+  function sortByLastMessage() {
+    conversations.value.sort((a, b) => {
+      const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
+      const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
+      return tb - ta
+    })
   }
 
-  /** 從 API 初始化（載入聊天列表時呼叫） */
+  function setConversations(list: Conversation[]) {
+    conversations.value = list
+    sortByLastMessage()
+  }
+
   async function initFromApi() {
     const { fetchConversations } = await import('@/api/chat')
     const data = await fetchConversations()
-    conversations.value = data
+    setConversations(data)
+  }
+
+  function removeConversation(conversationId: number) {
+    conversations.value = conversations.value.filter((c) => c.id !== conversationId)
+  }
+
+  function setMuted(conversationId: number, isMuted: boolean) {
+    const conv = conversations.value.find((c) => c.id === conversationId)
+    if (conv) conv.isMuted = isMuted
   }
 
   function markAsRead(conversationId: number) {
@@ -29,7 +46,11 @@ export const useChatStore = defineStore('chat', () => {
 
   function incrementUnread(conversationId: number) {
     const conv = conversations.value.find((c) => c.id === conversationId)
-    if (conv) conv.unreadCount++
+    if (conv) {
+      conv.unreadCount++
+      conv.lastMessageAt = new Date().toISOString()
+      sortByLastMessage()
+    }
   }
 
   function updateLastMessage(conversationId: number, content: string) {
@@ -37,6 +58,7 @@ export const useChatStore = defineStore('chat', () => {
     if (conv) {
       conv.lastMessage = content
       conv.lastMessageAt = new Date().toISOString()
+      sortByLastMessage()
     }
   }
 
@@ -46,6 +68,8 @@ export const useChatStore = defineStore('chat', () => {
     unreadBadge,
     setConversations,
     initFromApi,
+    removeConversation,
+    setMuted,
     markAsRead,
     markAllAsRead,
     incrementUnread,
