@@ -87,81 +87,22 @@ mkdir -p /var/www/mimeet && cd /var/www/mimeet
 git clone https://github.com/lunarwind/mimeet.git .
 ```
 
-### 建立 docker-compose.staging.yml
+### docker-compose.staging.yml
 
-```bash
-cat > docker-compose.staging.yml << 'EOF'
-services:
-  app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    container_name: mimeet-app
-    restart: unless-stopped
-    working_dir: /var/www/html
-    volumes:
-      - ./backend:/var/www/html
-      - /var/www/html/vendor
-    ports:
-      - "9000:9000"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - APP_ENV=staging
-      - APP_DEBUG=true
-      - DB_HOST=db
-      - DB_DATABASE=mimeet
-      - DB_USERNAME=mimeet_user
-      - DB_PASSWORD=${DB_PASSWORD:-mimeet_staging_2026}
-      - REDIS_HOST=redis
-      - CACHE_DRIVER=redis
-      - SESSION_DRIVER=redis
-      - QUEUE_CONNECTION=redis
-    networks:
-      - mimeet
+專案 git repo 根目錄已包含 `docker-compose.staging.yml`，clone 後直接使用，不需手動建立。
 
-  db:
-    image: mysql:8.0
-    container_name: mimeet-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_staging_2026}
-      MYSQL_DATABASE: mimeet
-      MYSQL_USER: mimeet_user
-      MYSQL_PASSWORD: ${DB_PASSWORD:-mimeet_staging_2026}
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_staging_2026}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - mimeet
+完整的 6 個 service：
 
-  redis:
-    image: redis:7-alpine
-    container_name: mimeet-redis
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - mimeet
+| service | container_name | 用途 |
+|---------|---------------|------|
+| `app` | mimeet-app | PHP-FPM（對 host port 9000）|
+| `db` | mimeet-db | MySQL 8.0 |
+| `redis` | mimeet-redis | Redis 7（cache/queue/session）|
+| `reverb` | mimeet-reverb | WebSocket broadcasting server（host port 8080）|
+| `worker` | mimeet-worker | Laravel queue worker（消費 redis queue）|
+| `scheduler` | mimeet-scheduler | Laravel `schedule:run`（每 60 秒 tick）|
 
-volumes:
-  db_data:
-
-networks:
-  mimeet:
-    driver: bridge
-EOF
-```
+如需修改，請編輯 `docker-compose.staging.yml` 後 commit 到 repo。
 
 ### 建立後端 .env
 

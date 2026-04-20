@@ -61,6 +61,99 @@ services:
     networks:
       - mimeet
 
+  reverb:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mimeet-reverb
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "8080:8080"
+    depends_on:
+      app:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=staging
+      - APP_DEBUG=false
+      - DB_HOST=db
+      - DB_DATABASE=mimeet
+      - DB_USERNAME=mimeet_user
+      - DB_PASSWORD=${DB_PASSWORD:-mimeet_staging_2026}
+      - REDIS_HOST=redis
+      - CACHE_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    networks:
+      - mimeet
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mimeet-worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=staging
+      - APP_DEBUG=false
+      - DB_HOST=db
+      - DB_DATABASE=mimeet
+      - DB_USERNAME=mimeet_user
+      - DB_PASSWORD=${DB_PASSWORD:-mimeet_staging_2026}
+      - REDIS_HOST=redis
+      - CACHE_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    networks:
+      - mimeet
+
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mimeet-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_ENV=staging
+      - APP_DEBUG=false
+      - DB_HOST=db
+      - DB_DATABASE=mimeet
+      - DB_USERNAME=mimeet_user
+      - DB_PASSWORD=${DB_PASSWORD:-mimeet_staging_2026}
+      - REDIS_HOST=redis
+      - CACHE_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    networks:
+      - mimeet
+
 volumes:
   db_data:
 

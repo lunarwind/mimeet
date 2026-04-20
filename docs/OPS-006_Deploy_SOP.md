@@ -34,8 +34,9 @@ cd /var/www/mimeet/frontend && npm run build
 # Admin (must rebuild every time)
 cd /var/www/mimeet/admin && npm run build
 
-# Restart workers (pick up new code)
-supervisorctl restart mimeet-worker:*
+# Restart workers/reverb (pick up new code)
+docker compose -f docker-compose.staging.yml restart worker reverb scheduler
+docker compose -f docker-compose.staging.yml ps
 '
 ```
 
