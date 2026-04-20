@@ -201,7 +201,7 @@ class SystemControlController extends Controller
             'debug_log' => $debug,
             'debug_text' => implode("\n", $debug),
             'error_detail' => $errorDetail,
-        ], $success ? 200 : 422);
+        ], 200);
     }
 
     public function updateSms(Request $request): JsonResponse

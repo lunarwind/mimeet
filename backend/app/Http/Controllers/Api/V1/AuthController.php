@@ -92,58 +92,46 @@ class AuthController extends Controller
         }
 
         // ── 4. 建立用戶 ──────────────────────────────────────────
-        $user = User::create([
-            'email' => $input['email'],
-            'password' => Hash::make($input['password']),
-            'nickname' => $input['nickname'],
-            'gender' => $input['gender'],
-            'birth_date' => $input['birth_date'],
-            'phone' => $input['phone'] ?? null,
-            'membership_level' => 0,
-            'credit_score' => 60,
-            'status' => 'active',
-        ]);
-
-        $token = $user->createToken('register')->plainTextToken;
-
-        // ── Debug：收集 mail 診斷資訊 ⚠️ DEBUG ONLY — 問題解決後整段刪除 ──
-        $debugInfo = [
-            'mailer'       => config('mail.default'),
-            'host'         => config('mail.mailers.' . config('mail.default') . '.host', 'N/A'),
-            'port'         => config('mail.mailers.' . config('mail.default') . '.port', 'N/A'),
-            'from_address' => config('mail.from.address'),
-            'from_name'    => config('mail.from.name'),
-            'otp_code'     => null,
-            'otp_cached'   => false,
-            'mail_sent'    => false,
-            'mail_error'   => null,
-            'timestamp'    => now()->toISOString(),
-        ];
-
-        // Generate 6-digit verification code and cache it
-        $verifyCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $cacheKey = "email_verification:{$user->email}";
-
         try {
-            Cache::put($cacheKey, $verifyCode, 600);
-            $debugInfo['otp_code']   = $verifyCode; // ⚠️ DEBUG ONLY
-            $debugInfo['otp_cached'] = true;
-        } catch (\Throwable $cacheEx) {
-            $debugInfo['mail_error'] = 'Cache failed: ' . $cacheEx->getMessage();
+            $user = User::create([
+                'email' => $input['email'],
+                'password' => Hash::make($input['password']),
+                'nickname' => $input['nickname'],
+                'gender' => $input['gender'],
+                'birth_date' => $input['birth_date'],
+                'phone' => $input['phone'] ?? null,
+                'membership_level' => 0,
+                'credit_score' => 60,
+                'status' => 'active',
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return response()->json([
+                    'success' => false,
+                    'code'    => 400,
+                    'message' => '註冊失敗，此帳號資料可能已被使用。',
+                    'error'   => ['type' => 'constraint_error', 'details' => []],
+                ], 422);
+            }
+            throw $e;
         }
 
-        // Attempt to send verification email
-        if ($debugInfo['otp_cached']) {
+        $user->refresh();
+        $token = $user->createToken('register')->plainTextToken;
+
+        $verifyCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        try {
+            Cache::put("email_verification:{$user->email}", $verifyCode, 600);
             try {
                 Mail::to($user->email)->send(new EmailVerificationMail($user->nickname, $verifyCode));
-                $debugInfo['mail_sent'] = true;
             } catch (\Throwable $e) {
-                $debugInfo['mail_error'] = $e->getMessage();
                 Log::error('[Register] Email send failed', [
                     'email' => $user->email,
                     'error' => $e->getMessage(),
                 ]);
             }
+        } catch (\Throwable $cacheEx) {
+            Log::error('[Register] Cache OTP failed', ['error' => $cacheEx->getMessage()]);
         }
 
         return response()->json([
@@ -165,7 +153,6 @@ class AuthController extends Controller
                     'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
                 ],
                 'token' => $token,
-                ...(config('app.debug') ? ['_debug' => $debugInfo] : []),
             ],
         ], 201);
     }
