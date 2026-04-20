@@ -80,6 +80,9 @@
 | F42 | VIP 隱身模式 | ✅ Lv3 `membership_level >= 3` 免費路徑 | ✅ 同 F40-a UI，顯示「VIP 免費」 | 🚀 Phase 2 超前 | 共用 StealthController；不改訂閱權限、不改 privacy 功能 |
 | F40-c | 超級讚 | ✅ SuperLikeController POST /users/{id}/super-like；24h 冷卻、所有等級扣點（預設 3） | ✅ ProfileView 金色按鈕 + 確認/餘額不足 Modal + NotificationsView 特殊金色樣式 | 🚀 Phase 2 超前 | 2026-04-20：notifications ENUM 加 super_like |
 | F40-b | 逆區間訊息 | ✅ ChatService::sendMessage 加 $bypassScoreCheck；ChatController 接 use_points + 扣 5 點 | ✅ ChatView 分數不足 → 逆區間確認 Modal → 重送帶 use_points；餘額不足導向儲值 | 🚀 Phase 2 超前 | 只在「現有 CreditScoreRestrictionException 被擋」時啟動，不改其他邏輯 |
+| F41 | 用戶廣播 | ✅ user_broadcasts 表 + UserBroadcastController (preview/send/history) + ProcessUserBroadcast Job | ✅ ExploreView 📢 入口 + BroadcastModal 3 步驟 | 🚀 Phase 2 超前 | 以 sender 本人名義發私訊；每日 1 次 / 最多 50 人 / 2 點/人（system_settings 可調）|
+| A01 | 儀表板 API | ✅ StatsController GET /admin/stats/summary（members + revenue + points + pending）| ✅ DashboardPage 改用 stats API + 第二排 KPI + 點數消費分布 Pie | ✅ 2026-04-20 補完 | 原聚合邏輯保留當 fallback |
+| - | 後台點數管理 | ✅ AdminPointController：packages/updatePackage/adjustPoints/transactions | ✅ PointTransactionsPage 篩選+分頁 + MemberDetailPage 贈送/扣除 Modal + sidebar 💎 點數交易 | ✅ 2026-04-20 | 操作寫入 admin_operation_logs |
 
 ### 商業/金流
 
