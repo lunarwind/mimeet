@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '@/stores/chat'
 import { fetchConversations, markAllConversationsRead, toggleConversationMute } from '@/api/chat'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import type { Conversation } from '@/types/chat'
 
 const router = useRouter()
 const chatStore = useChatStore()
+const { conversations } = storeToRefs(chatStore)
 
-const conversations = ref<Conversation[]>([])
 const isLoading = ref(true)
 const searchQuery = ref('')
 
@@ -37,7 +37,6 @@ const filteredConversations = computed(() => {
 // ── 載入資料 ──────────────────────────────────────────────
 onMounted(async () => {
   const data = await fetchConversations()
-  conversations.value = data
   chatStore.setConversations(data)
   isLoading.value = false
 })
@@ -48,12 +47,12 @@ function goToChat(id: number) {
 }
 
 function handleBlock(id: number) {
-  conversations.value = conversations.value.filter(c => c.id !== id)
+  chatStore.removeConversation(id)
   swipedId.value = null
 }
 
 function handleDelete(id: number) {
-  conversations.value = conversations.value.filter(c => c.id !== id)
+  chatStore.removeConversation(id)
   swipedId.value = null
 }
 
@@ -61,8 +60,7 @@ async function handleToggleMute(id: number) {
   swipedId.value = null
   try {
     const isMuted = await toggleConversationMute(id)
-    const conv = conversations.value.find(c => c.id === id)
-    if (conv) conv.isMuted = isMuted
+    chatStore.setMuted(id, isMuted)
   } catch { /* ignore */ }
 }
 
@@ -70,7 +68,6 @@ async function handleMarkAllRead() {
   try {
     await markAllConversationsRead()
     chatStore.markAllAsRead()
-    conversations.value.forEach(c => { c.unreadCount = 0 })
   } catch { /* ignore */ }
 }
 

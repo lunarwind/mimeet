@@ -1,6 +1,6 @@
 # MiMeet Phase 1 (MVP) 實作狀態盤點報告
 
-**盤點日期：** 2026-04-16
+**盤點日期：** 2026-04-20
 **基準文件：** MiMeet_功能清單_MVP_vs_Phase2.md、DEV-010_Phase1實作規劃.md、SDD-001_系統設計規格書.md
 **掃描範圍：** backend/、frontend/、admin/
 
@@ -51,7 +51,7 @@
 
 | ID | 功能 | 後端 | 前端 | 狀態 | 說明 |
 |----|------|------|------|------|------|
-| F16 | 即時聊天 | ✅ ChatService + ChatMessageSent event | ✅ ChatView.vue + useChat composable | ✅ | Socket.IO / Reverb 雙通道；支援文字/圖片兩種 message_type |
+| F16 | 即時聊天 | ✅ ChatService + ChatMessageSent event + Reverb 廣播 | ✅ ChatView.vue + useChat (laravel-echo) | ✅ | Reverb 單通道（Pusher 協定）；文字/圖片 message_type；即時 MessageSent/Read/Recalled |
 | F17 | 未讀 Badge | ✅ 後端追蹤 is_read | ✅ BottomNav.vue badge | ✅ | Pinia chat store 管理 |
 | F18 | 已讀狀態 | ✅ markAsRead 廣播 MessageRead | ✅ MessageBubble 付費會員顯示「已讀」 | 🚀 Phase 2 超前 | 2026-04-19 補完 |
 | F19 | 訊息回收 | ✅ DELETE /chats/{id}/messages/{messageId} + MessageRecalled event | ✅ MessageBubble 長按選單「收回」 | 🚀 Phase 2 超前 | sender + 5 分鐘內 + 未讀 + Lv3 付費 |
