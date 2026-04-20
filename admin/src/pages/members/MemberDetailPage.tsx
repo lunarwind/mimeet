@@ -118,6 +118,17 @@ export default function MemberDetailPage() {
 
   const creditLevel = getCreditLevel(member.credit_score)
 
+  async function runVerifyAction(action: 'verify_phone' | 'unverify_phone' | 'verify_advanced' | 'unverify_advanced') {
+    try {
+      const res = await apiClient.patch(`/admin/members/${uid}/actions`, { action })
+      message.success(res.data?.message ?? '操作完成')
+      reloadMember()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      message.error(e?.response?.data?.message ?? '操作失敗')
+    }
+  }
+
   const handleAdjustScore = async () => {
     try {
       await apiClient.patch(`/admin/members/${uid}/actions`, {
@@ -579,18 +590,71 @@ export default function MemberDetailPage() {
                         </Descriptions.Item>
                       </Descriptions>
                     </Card>
-                    <Card title="驗證狀態" style={{ marginTop: 16 }}>
-                      <Space size={16}>
-                        <Tag icon={member.email_verified ? <CheckCircleOutlined /> : <CloseCircleOutlined />} color={member.email_verified ? 'blue' : 'default'}>
-                          Email {member.email_verified ? '已驗證' : '未驗證'}
-                        </Tag>
-                        <Tag icon={member.phone_verified ? <CheckCircleOutlined /> : <CloseCircleOutlined />} color={member.phone_verified ? 'green' : 'default'}>
-                          手機 {member.phone_verified ? '已驗證' : '未驗證'}
-                        </Tag>
-                        <Tag icon={member.advanced_verified ? <CheckCircleOutlined /> : <CloseCircleOutlined />} color={member.advanced_verified ? 'orange' : 'default'}>
-                          進階 {member.advanced_verified ? '已驗證' : '未驗證'}
-                        </Tag>
+                    <Card title="🔐 驗證管理" style={{ marginTop: 16 }}>
+                      <Descriptions column={2} bordered size="small" style={{ marginBottom: 12 }}>
+                        <Descriptions.Item label="Email 驗證">
+                          {member.email_verified
+                            ? <Tag icon={<CheckCircleOutlined />} color="green">已驗證</Tag>
+                            : <Tag icon={<CloseCircleOutlined />} color="red">未驗證</Tag>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="手機驗證">
+                          {member.phone_verified
+                            ? <Tag icon={<CheckCircleOutlined />} color="green">已驗證</Tag>
+                            : <Tag icon={<CloseCircleOutlined />} color="red">未驗證</Tag>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="進階驗證">
+                          {Number(member.membership_level) >= 1.5
+                            ? <Tag color="green">Lv{member.membership_level}</Tag>
+                            : <Tag color="orange">未完成</Tag>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="會員等級">
+                          <Tag color="blue">Lv{member.membership_level}</Tag>
+                        </Descriptions.Item>
+                      </Descriptions>
+
+                      <Space wrap>
+                        {!member.phone_verified && (
+                          <Popconfirm
+                            title="確定要手動通過此用戶的手機驗證？"
+                            description="若 Lv0 會同時升級為 Lv1"
+                            onConfirm={() => runVerifyAction('verify_phone')}
+                          >
+                            <Button type="primary" ghost>✅ 手動通過手機驗證</Button>
+                          </Popconfirm>
+                        )}
+                        {member.phone_verified && (
+                          <Popconfirm
+                            title="確定要撤銷此用戶的手機驗證？"
+                            description="若 Lv1 會同時降回 Lv0"
+                            onConfirm={() => runVerifyAction('unverify_phone')}
+                          >
+                            <Button danger ghost>❌ 撤銷手機驗證</Button>
+                          </Popconfirm>
+                        )}
+
+                        {Number(member.membership_level) < 1.5 && (
+                          <Popconfirm
+                            title="確定要手動通過此用戶的進階驗證？"
+                            description={`升級為 Lv${member.gender === 'female' ? '1.5' : '2'}（依性別）`}
+                            onConfirm={() => runVerifyAction('verify_advanced')}
+                          >
+                            <Button type="primary" ghost>✅ 手動通過進階驗證</Button>
+                          </Popconfirm>
+                        )}
+                        {Number(member.membership_level) >= 1.5 && Number(member.membership_level) < 3 && (
+                          <Popconfirm
+                            title="確定要撤銷此用戶的進階驗證？"
+                            description="會降回 Lv1"
+                            onConfirm={() => runVerifyAction('unverify_advanced')}
+                          >
+                            <Button danger ghost>❌ 撤銷進階驗證</Button>
+                          </Popconfirm>
+                        )}
                       </Space>
+
+                      <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
+                        💡 手動驗證供 SMS 未串接或特殊情況使用；操作寫入 admin_operation_logs
+                      </div>
                     </Card>
                     {(member.photos?.length ?? 0) > 0 && (
                       <Card title="照片" style={{ marginTop: 16 }}>

@@ -256,7 +256,7 @@ class AdminController extends Controller
     public function memberAction(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'action' => 'required|string|in:adjust_score,suspend,unsuspend',
+            'action' => 'required|string|in:adjust_score,suspend,unsuspend,verify_phone,unverify_phone,verify_advanced,unverify_advanced',
             'score_delta' => 'required_if:action,adjust_score|integer|min:-50|max:50',
             'reason' => 'sometimes|string|max:500',
         ]);
@@ -273,14 +273,47 @@ class AdminController extends Controller
             $user->forceFill(['status' => 'suspended', 'suspended_at' => now()])->save();
         } elseif ($action === 'unsuspend') {
             $user->forceFill(['status' => 'active'])->save();
+        } elseif ($action === 'verify_phone') {
+            $user->forceFill(['phone_verified' => true])->save();
+            if ((float) $user->membership_level < 1) {
+                $user->forceFill(['membership_level' => 1])->save();
+            }
+        } elseif ($action === 'unverify_phone') {
+            $user->forceFill(['phone_verified' => false])->save();
+            if ((float) $user->membership_level === 1.0) {
+                $user->forceFill(['membership_level' => 0])->save();
+            }
+        } elseif ($action === 'verify_advanced') {
+            $target = $user->gender === 'female' ? 1.5 : 2;
+            if ((float) $user->membership_level < $target) {
+                $user->forceFill(['membership_level' => $target])->save();
+            }
+        } elseif ($action === 'unverify_advanced') {
+            $current = (float) $user->membership_level;
+            if ($current === 1.5 || $current === 2.0) {
+                $user->forceFill(['membership_level' => 1])->save();
+            }
         }
 
-        $messages = ['adjust_score' => '信用分數已調整。', 'suspend' => '會員已停權。', 'unsuspend' => '會員已恢復。'];
+        $messages = [
+            'adjust_score' => '信用分數已調整。',
+            'suspend' => '會員已停權。',
+            'unsuspend' => '會員已恢復。',
+            'verify_phone' => '已手動通過手機驗證。',
+            'unverify_phone' => '已撤銷手機驗證。',
+            'verify_advanced' => '已手動通過進階驗證。',
+            'unverify_advanced' => '已撤銷進階驗證。',
+        ];
 
         return response()->json([
             'success' => true,
             'code' => 'MEMBER_ACTION_' . strtoupper($action),
             'message' => $messages[$action] ?? '操作完成。',
+            'data' => [
+                'phone_verified' => (bool) $user->phone_verified,
+                'email_verified' => (bool) $user->email_verified,
+                'membership_level' => (float) $user->membership_level,
+            ],
         ]);
     }
 
