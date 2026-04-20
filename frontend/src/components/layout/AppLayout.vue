@@ -36,12 +36,29 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useUserChannel } from '@/composables/useChat'
+import { destroyEcho } from '@/utils/echo'
 import BottomNav from './BottomNav.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+const { subscribe: subscribeUserChannel, unsubscribe: unsubscribeUserChannel } = useUserChannel()
+
+watch(
+  () => auth.isLoggedIn,
+  (loggedIn) => {
+    if (loggedIn) {
+      subscribeUserChannel()
+    } else {
+      unsubscribeUserChannel()
+      destroyEcho()
+    }
+  },
+  { immediate: true },
+)
 
 const props = withDefaults(
   defineProps<{

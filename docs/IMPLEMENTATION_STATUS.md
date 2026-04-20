@@ -170,7 +170,7 @@
 |------|------|------|------|
 | ~~UserController follow/unfollow~~ | ✅ 2026-04-20 已驗證：UserFollow::firstOrCreate + 完整 following 列表 | — | — |
 | ~~UserController visitors~~ | ✅ 2026-04-20 已驗證：UserProfileVisit join users 分頁（90 天內） | — | — |
-| Broadcasting listeners | Event 已定義但未註冊 listener | WebSocket 訊息通知可能不即時 | 確認 Reverb/Pusher 已啟動且 channel auth 正確 |
+| ~~Broadcasting listeners~~ | ✅ 2026-04-20：Reverb container（port 8080）+ Nginx /app proxy + Echo + useChat 重寫，chat.{id} / user.{id} 即時連通 | — | — |
 | User Model 缺 relationships | 無 Eloquent 關聯定義 | Controller 重複查詢 | 新增 conversations/follows/blocks 關聯 |
 
 ---
