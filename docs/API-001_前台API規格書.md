@@ -3442,7 +3442,99 @@ Content-Type: application/json
 
 ---
 
-## 11. 前台公開 SEO 跳轉路由
+## 11. 點數系統（F40）
+
+> **實作日期：** 2026-04-20  
+> **資料表：** `point_packages` / `point_orders` / `point_transactions` + `users.points_balance` + `users.stealth_until`  
+> **綠界付款：** trade_no 以 `PTS_` 前綴與訂閱（`SUB_`）區分。Sandbox/Staging 走 `/payments/ecpay/point-mock`。
+
+### 11.1 取得點數方案
+```http
+GET /api/v1/points/packages
+Authorization: Bearer {access_token}
+```
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": [
+    { "id": 1, "slug": "pack_50", "name": "輕量包", "points": 50, "bonus_points": 0, "total_points": 50, "price": 150, "cost_per_point": 3.0, "description": "小額嘗鮮", "sort_order": 1 }
+  ]
+}
+```
+
+### 11.2 購買點數（產生訂單 + 跳轉付款）
+```http
+POST /api/v1/points/purchase
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+**請求：**
+```json
+{ "package_slug": "pack_150", "payment_method": "credit_card" }
+```
+**成功回應 201：**
+```json
+{
+  "success": true,
+  "data": {
+    "order": { "id": 42, "trade_no": "PTS_...", "points": 160, "amount": 390, "status": "pending" },
+    "payment_url": "https://api.mimeet.online/api/v1/payments/ecpay/point-mock?trade_no=PTS_..."
+  }
+}
+```
+前端收到 `payment_url` 用 `window.location.href` 跳轉（非 Vue Router，因為是跨域）。
+
+### 11.3 餘額
+```http
+GET /api/v1/points/balance
+Authorization: Bearer {access_token}
+```
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "points_balance": 160,
+    "stealth_until": null,
+    "stealth_active": false
+  }
+}
+```
+
+### 11.4 交易紀錄（分頁）
+```http
+GET /api/v1/points/history?page=1&per_page=20
+Authorization: Bearer {access_token}
+```
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "transactions": [
+      { "id": 1, "type": "purchase", "amount": 160, "balance_after": 160, "feature": null,
+        "description": "購買點數...", "reference_id": 42, "created_at": "2026-04-20T..." }
+    ]
+  },
+  "meta": { "page": 1, "per_page": 20, "total": 1, "last_page": 1 }
+}
+```
+
+### 11.5 `/auth/me` 回傳擴充（F40）
+
+`GET /api/v1/auth/me` 現在額外包含：
+
+| 欄位 | 說明 |
+|------|------|
+| `points_balance` | 目前點數餘額 |
+| `stealth_until` | F42 隱身到期時間（ISO 8601）|
+| `stealth_active` | 是否目前為隱身狀態 |
+| `subscription` | 當前有效訂閱（含 `plan_name` / `expires_at` / `days_remaining` / `auto_renew`），無則為 null |
+
+---
+
+## 12. 前台公開 SEO 跳轉路由
 
 ```http
 # 廣告跳轉連結（無需登入）
