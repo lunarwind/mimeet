@@ -44,6 +44,12 @@ interface DashboardStats {
   level_distribution: { value: number; name: string; itemStyle: { color: string } }[]
   recent_tickets: { id: string; type: string; time: string }[]
   recent_payments: { user: string; plan: string; amount: number; time: string }[]
+  // F40 第二排 KPI
+  points_sales_month: number
+  points_circulating: number
+  points_consumed_today: number
+  pending_verifications: number
+  consumption_by_feature: { name: string; value: number }[]
 }
 
 export default function DashboardPage() {
@@ -51,6 +57,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     total_members: 0, month_revenue: 0, paid_members: 0, pending_tickets: 0,
     level_distribution: [], recent_tickets: [], recent_payments: [],
+    points_sales_month: 0, points_circulating: 0, points_consumed_today: 0,
+    pending_verifications: 0, consumption_by_feature: [],
   })
 
   useEffect(() => {
@@ -58,6 +66,33 @@ export default function DashboardPage() {
   }, [])
 
   async function loadDashboardData() {
+    // F40 優先嘗試 stats/summary API（補完 A01）
+    try {
+      const res = await apiClient.get('/admin/stats/summary')
+      const d = res.data?.data
+      if (d) {
+        const cbf = d.points?.consumption_by_feature ?? {}
+        const featureNames: Record<string, string> = {
+          stealth: '🕶 隱身', super_like: '⭐ 超級讚', reverse_msg: '💬 突破訊息', broadcast: '📢 廣播',
+        }
+        const consumption = Object.entries(cbf).map(([k, v]) => ({ name: featureNames[k] ?? k, value: Number(v) }))
+        setStats(prev => ({
+          ...prev,
+          total_members: d.members?.total ?? 0,
+          month_revenue: d.revenue?.subscription_month ?? 0,
+          paid_members: d.members?.paid ?? 0,
+          pending_tickets: d.pending_tickets ?? 0,
+          points_sales_month: d.revenue?.points_month ?? 0,
+          points_circulating: d.points?.circulating ?? 0,
+          points_consumed_today: d.points?.consumed_today ?? 0,
+          pending_verifications: d.pending_verifications ?? 0,
+          consumption_by_feature: consumption,
+        }))
+      }
+    } catch {
+      // fallback 下面的聚合
+    }
+
     try {
       // Fetch real data from multiple endpoints
       const [membersRes, ticketsRes, paymentsRes] = await Promise.allSettled([
@@ -85,7 +120,8 @@ export default function DashboardPage() {
         })
       }
 
-      setStats({
+      setStats(prev => ({
+        ...prev,
         total_members: Array.isArray(members) ? members.length : 0,
         month_revenue: monthRevenue,
         paid_members: paidCount,
@@ -103,7 +139,7 @@ export default function DashboardPage() {
           user: p.user?.nickname || '—', plan: p.plan_name || '—', amount: p.amount,
           time: p.paid_at ? new Date(p.paid_at).toLocaleString('zh-TW') : '',
         })) : [],
-      })
+      }))
     } catch {
       // API unavailable — show zeros
     }
@@ -179,6 +215,55 @@ export default function DashboardPage() {
                 ) : null
               }
             />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* F40 第二排 KPI 卡片 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={6}>
+          <Card>
+            <Statistic title="💎 本月點數銷售" value={`NT$ ${stats.points_sales_month.toLocaleString()}`} />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic title="全站流通點數" value={stats.points_circulating} suffix="點" />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic title="今日消費量" value={stats.points_consumed_today} suffix="點" />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic title="待處理驗證" value={stats.pending_verifications}
+              valueStyle={stats.pending_verifications > 5 ? { color: '#F59E0B' } : undefined} />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 點數消費分布 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <Card title="💎 本月點數消費分布">
+            {stats.consumption_by_feature.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#9CA3AF' }}>目前無消費資料</div>
+            ) : (
+              <EChart
+                style={{ height: 260 }}
+                option={{
+                  tooltip: { trigger: 'item', formatter: '{b}: {c} 點 ({d}%)' },
+                  legend: { orient: 'horizontal', bottom: 0 },
+                  series: [{
+                    name: '點數消費', type: 'pie', radius: ['40%', '70%'],
+                    data: stats.consumption_by_feature,
+                    label: { formatter: '{b}\n{d}%' },
+                  }],
+                }}
+              />
+            )}
           </Card>
         </Col>
       </Row>

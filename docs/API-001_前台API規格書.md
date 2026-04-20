@@ -3679,6 +3679,89 @@ Authorization: Bearer {access_token}
 
 ---
 
+### 11.8 用戶廣播（F41）
+
+> 設計：以發送者**本人名義**發送私訊給符合條件的對象（非系統通知）。跟後台 A14 廣播（/admin/broadcasts）完全獨立，表 `user_broadcasts`、Job `ProcessUserBroadcast`。
+>
+> **需要：** `membership:2+`（需 Lv2 驗證會員以上）
+
+#### 11.8.1 預覽
+```http
+POST /api/v1/broadcasts/preview
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+**請求：**
+```json
+{
+  "content": "週末想找人一起去米其林餐廳...",
+  "filters": {
+    "gender": "female",
+    "age_min": 20,
+    "age_max": 35,
+    "location": "台北",
+    "dating_budget": "generous",
+    "style": "sweet"
+  }
+}
+```
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "recipient_count": 32,
+    "cost_per_user": 2,
+    "total_cost": 64,
+    "current_balance": 150,
+    "can_afford": true,
+    "balance_after": 86,
+    "max_recipients": 50,
+    "daily_limit": 1,
+    "daily_used": 0,
+    "daily_remaining": 1
+  }
+}
+```
+
+#### 11.8.2 確認發送
+```http
+POST /api/v1/broadcasts/send
+```
+參數同 §11.8.1。
+
+**業務規則：**
+- 排除：自己 / 雙向封鎖 / 隱身中 / `show_in_search=false`
+- 最多 `broadcast_user_max_recipients` 人（預設 50）
+- 每日 `broadcast_user_daily_limit` 次（預設 1）
+- 費用 = 實際收件人數 × `point_cost_broadcast_per_user`（預設 2）
+- 扣點成功 → Dispatch `ProcessUserBroadcast` Job → 每人建 conversation + 發 text message
+
+**成功回應 200：**
+```json
+{
+  "success": true,
+  "data": {
+    "broadcast_id": 1,
+    "recipient_count": 32,
+    "points_spent": 64,
+    "points_balance": 86,
+    "message": "廣播已送出，正在發送中..."
+  }
+}
+```
+
+**422 錯誤：** `DAILY_LIMIT_EXCEEDED` / `NO_RECIPIENTS` / `INSUFFICIENT_POINTS`
+
+#### 11.8.3 我的廣播歷史
+```http
+GET /api/v1/broadcasts/my
+```
+回傳最近 20 筆，含 `content` / `filters` / `recipient_count` / `points_spent` / `status` / `sent_at`。
+
+---
+
 ### 11.6 `/auth/me` 回傳擴充（F40）
 
 `GET /api/v1/auth/me` 現在額外包含：

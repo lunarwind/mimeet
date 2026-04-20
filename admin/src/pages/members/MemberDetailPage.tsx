@@ -52,6 +52,40 @@ export default function MemberDetailPage() {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
   const [editForm] = Form.useForm()
+
+  // F40 管理員贈扣點 modal
+  const [pointModalOpen, setPointModalOpen] = useState(false)
+  const [pointAction, setPointAction] = useState<'gift' | 'deduct'>('gift')
+  const [pointAmount, setPointAmount] = useState<number>(50)
+  const [pointReason, setPointReason] = useState('')
+  const [pointSaving, setPointSaving] = useState(false)
+
+  function openPointModal(action: 'gift' | 'deduct') {
+    setPointAction(action)
+    setPointAmount(action === 'gift' ? 50 : 10)
+    setPointReason('')
+    setPointModalOpen(true)
+  }
+
+  async function submitPointAdjust() {
+    if (!pointReason.trim()) { message.error('請填寫原因'); return }
+    if (pointAmount <= 0) { message.error('點數需大於 0'); return }
+    setPointSaving(true)
+    try {
+      await apiClient.post(`/admin/members/${uid}/points`, {
+        type: pointAction,
+        amount: pointAmount,
+        reason: pointReason.trim(),
+      })
+      message.success(pointAction === 'gift' ? `已贈送 ${pointAmount} 點` : `已扣除 ${pointAmount} 點`)
+      setPointModalOpen(false)
+      reloadMember()
+    } catch (err: any) {
+      message.error(err?.response?.data?.message ?? '操作失敗')
+    } finally {
+      setPointSaving(false)
+    }
+  }
   const isSuperAdmin = useAuthStore.getState().user?.role === 'super_admin'
 
   function reloadMember() {
@@ -373,6 +407,10 @@ export default function MemberDetailPage() {
                           ) : <Tag>未啟用</Tag>}
                         </Descriptions.Item>
                       </Descriptions>
+                      <Space style={{ marginTop: 16 }}>
+                        <Button type="primary" ghost onClick={() => openPointModal('gift')}>贈送點數</Button>
+                        <Button danger onClick={() => openPointModal('deduct')}>扣除點數</Button>
+                      </Space>
                     </Card>
 
                     {/* F27: 生活資訊 */}
@@ -549,6 +587,30 @@ export default function MemberDetailPage() {
             style={{ marginTop: 4 }}
             placeholder="選填，會記錄在操作日誌中"
           />
+        </div>
+      </Modal>
+
+      {/* F40 贈送/扣除點數 Modal */}
+      <Modal
+        title={`${pointAction === 'gift' ? '贈送' : '扣除'}點數：${member?.nickname ?? member?.email}`}
+        open={pointModalOpen}
+        onOk={submitPointAdjust}
+        onCancel={() => setPointModalOpen(false)}
+        okText="確認"
+        cancelText="取消"
+        confirmLoading={pointSaving}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <Text strong>目前餘額：</Text>
+          <Text>{member?.points_balance ?? 0} 點</Text>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <Text strong>{pointAction === 'gift' ? '贈送' : '扣除'}點數</Text>
+          <InputNumber min={1} max={10000} value={pointAmount} onChange={(v) => setPointAmount(Number(v) || 0)} style={{ width: '100%', marginTop: 4 }} />
+        </div>
+        <div>
+          <Text strong>原因（必填）</Text>
+          <Input.TextArea rows={2} value={pointReason} onChange={(e) => setPointReason(e.target.value)} placeholder="例：客訴補償 / 濫用廣播扣除" style={{ marginTop: 4 }} />
         </div>
       </Modal>
 

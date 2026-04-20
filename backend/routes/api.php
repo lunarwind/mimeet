@@ -15,6 +15,9 @@ use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\PointController;
 use App\Http\Controllers\Api\V1\StealthController;
 use App\Http\Controllers\Api\V1\SuperLikeController;
+use App\Http\Controllers\Api\V1\UserBroadcastController;
+use App\Http\Controllers\Api\V1\Admin\AdminPointController;
+use App\Http\Controllers\Api\V1\Admin\StatsController;
 use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
@@ -171,6 +174,13 @@ Route::prefix('api/v1')->group(function () {
         Route::post('users/{id}/super-like', [SuperLikeController::class, 'store']);
     });
 
+    // ─── F41 User Broadcasts (authenticated, membership:2+) ───────
+    Route::prefix('broadcasts')->middleware(['auth:sanctum', 'membership:2'])->group(function () {
+        Route::post('/preview', [UserBroadcastController::class, 'preview']);
+        Route::post('/send', [UserBroadcastController::class, 'send']);
+        Route::get('/my', [UserBroadcastController::class, 'history']);
+    });
+
     // ─── Reports (authenticated) ─────────────────────────────────────
     Route::prefix('reports')->middleware('auth:sanctum')->group(function () {
         Route::post('/', [ReportController::class, 'store']);
@@ -268,6 +278,13 @@ Route::prefix('api/v1')->group(function () {
 
             // User activity logs (super_admin only)
             Route::get('/user-activity-logs', [UserActivityLogController::class, 'index']);
+
+            // F40 點數管理（後台）— 補完 A01 儀表板
+            Route::get('/stats/summary', [StatsController::class, 'summary']);
+            Route::get('/point-packages', [AdminPointController::class, 'packages']);
+            Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
+            Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints']);
+            Route::get('/point-transactions', [AdminPointController::class, 'transactions']);
 
             // System Control (super_admin only)
             Route::middleware('check.super_admin')->prefix('settings')->group(function () {

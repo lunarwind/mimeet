@@ -7,10 +7,14 @@ import FilterBottomSheet from '@/components/explore/FilterBottomSheet.vue'
 import ExploreEmptyState from '@/components/explore/ExploreEmptyState.vue'
 import { useExplore } from '@/composables/useExplore'
 import { useStealth } from '@/composables/useStealth'
+import BroadcastModal from '@/components/broadcast/BroadcastModal.vue'
 import type { ExploreFilter } from '@/types/explore'
 
 const stealth = useStealth()
 onMounted(() => { stealth.fetchStatus() })
+
+// F41 用戶廣播
+const showBroadcast = ref(false)
 
 const router = useRouter()
 
@@ -106,6 +110,10 @@ function clearSearch() {
         <span class="explore-topbar__logo"><span class="explore-topbar__logo-mi">Mi</span><span class="explore-topbar__logo-meet">Meet</span></span>
         <h1 class="explore-topbar__title">探索</h1>
       </div>
+      <button class="explore-topbar__filter-btn" title="廣播訊息"
+        style="margin-right:8px; font-size:18px; line-height:1;"
+        @click="showBroadcast = true"
+        aria-label="廣播訊息">📢</button>
       <button
         class="explore-topbar__filter-btn"
         :class="{ 'explore-topbar__filter-btn--active': hasActiveFilters }"
@@ -218,6 +226,9 @@ function clearSearch() {
       @reset="onResetFilter"
       @close="showFilterSheet = false"
     />
+
+    <!-- F41 廣播 Modal -->
+    <BroadcastModal v-if="showBroadcast" @close="showBroadcast = false" @sent="showBroadcast = false" />
 
     <BottomNav />
   </div>
