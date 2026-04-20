@@ -88,6 +88,33 @@ export interface MemberDetail extends MemberListItem {
     total_spent: number
     purchase_amount_ntd: number
   }
+  points_detail?: {
+    balance: number
+    total_purchased: number
+    total_spent: number
+    purchase_amount_ntd: number
+    purchase_count: number
+    consumption_by_feature: Record<string, number>
+    recent_transactions: Array<{
+      id: number
+      type: string
+      amount: number
+      balance_after: number
+      feature: string | null
+      description: string | null
+      created_at: string
+    }>
+    purchase_orders: Array<{
+      id: number
+      trade_no: string
+      package_name: string | null
+      points: number
+      amount: number
+      status: string
+      paid_at: string | null
+      created_at: string
+    }>
+  }
 }
 
 export interface ScoreRecord {

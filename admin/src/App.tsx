@@ -16,6 +16,7 @@ import BroadcastsPage from './pages/broadcasts/BroadcastsPage'
 import SeoPage from './pages/seo/SeoPage'
 import AnnouncementsPage from './pages/announcements/AnnouncementsPage'
 import PointTransactionsPage from './pages/points/PointTransactionsPage'
+import PlanSettingsPage from './pages/plans/PlanSettingsPage'
 import { useAuthStore } from './stores/authStore'
 import { useIdleTimeout } from './hooks/useIdleTimeout'
 
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="seo" element={<SeoPage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
         <Route path="point-transactions" element={<PointTransactionsPage />} />
+        <Route path="plans" element={<PlanSettingsPage />} />
         <Route path="logs" element={<ActivityLogsPage />} />
         <Route path="user-activity-logs" element={<UserActivityLogsPage />} />
       </Route>

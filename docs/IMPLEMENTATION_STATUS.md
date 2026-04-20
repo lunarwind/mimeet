@@ -83,6 +83,7 @@
 | F41 | 用戶廣播 | ✅ user_broadcasts 表 + UserBroadcastController (preview/send/history) + ProcessUserBroadcast Job | ✅ ExploreView 📢 入口 + BroadcastModal 3 步驟 | 🚀 Phase 2 超前 | 以 sender 本人名義發私訊；每日 1 次 / 最多 50 人 / 2 點/人（system_settings 可調）|
 | A01 | 儀表板 API | ✅ StatsController GET /admin/stats/summary（members + revenue + points + pending）| ✅ DashboardPage 改用 stats API + 第二排 KPI + 點數消費分布 Pie | ✅ 2026-04-20 補完 | 原聚合邏輯保留當 fallback |
 | - | 後台點數管理 | ✅ AdminPointController：packages/updatePackage/adjustPoints/transactions | ✅ PointTransactionsPage 篩選+分頁 + MemberDetailPage 贈送/扣除 Modal + sidebar 💎 點數交易 | ✅ 2026-04-20 | 操作寫入 admin_operation_logs |
+| - | 💰 方案設定獨立頁 | ✅ AdminController::memberDetail 擴充 points_detail（balance/purchase_count/consumption_by_feature/recent_transactions/purchase_orders）| ✅ PlanSettingsPage 2 Tab（訂閱方案 + 點數方案）+ SystemParamsTab 💎 點數消費設定（7 項 InputNumber，debounce 300ms）+ MemberDetailPage 💎 點數資訊 Card（Progress bars + 最近 10 筆交易 + 最新 5 筆訂單 + 查看全部連結）| ✅ 2026-04-20 | 搬移 PricingTab + 新增點數方案 CRUD + sidebar `💰 方案設定`（super_admin）|
 
 ### 商業/金流
 
