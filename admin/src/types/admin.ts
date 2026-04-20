@@ -61,6 +61,16 @@ export interface MemberDetail extends MemberListItem {
     verified: boolean
     credit_card_verified: boolean
   }
+  // F27 profile fields
+  style?: string | null
+  dating_budget?: string | null
+  dating_frequency?: string | null
+  dating_type?: string[] | null
+  relationship_goal?: string | null
+  smoking?: string | null
+  drinking?: string | null
+  car_owner?: boolean | null
+  availability?: string[] | null
 }
 
 export interface ScoreRecord {

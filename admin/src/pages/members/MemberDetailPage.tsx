@@ -3,13 +3,20 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
   Space, Typography, Statistic, Row, Col, message, Image, Result, Select, Divider, Switch,
-  Drawer, Form, DatePicker,
+  Drawer, Form, DatePicker, Checkbox,
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail } from '../../types/admin'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
+import {
+  STYLE_LABELS, DATING_BUDGET_LABELS, DATING_FREQUENCY_LABELS, DATING_TYPE_LABELS,
+  RELATIONSHIP_GOAL_LABELS, SMOKING_LABELS, DRINKING_LABELS, AVAILABILITY_LABELS,
+  formatLabel,
+} from '../../constants/labelMaps'
+
+const NA = <span style={{ color: '#999' }}>未填寫</span>
 
 const { Title, Text } = Typography
 
@@ -158,6 +165,16 @@ export default function MemberDetailPage() {
       occupation: member.job,
       education: member.education,
       bio: member.introduction,
+      // F27 profile fields
+      style: member.style ?? undefined,
+      dating_budget: member.dating_budget ?? undefined,
+      dating_frequency: member.dating_frequency ?? undefined,
+      dating_type: Array.isArray(member.dating_type) ? member.dating_type : [],
+      relationship_goal: member.relationship_goal ?? undefined,
+      smoking: member.smoking ?? undefined,
+      drinking: member.drinking ?? undefined,
+      car_owner: member.car_owner === true,
+      availability: Array.isArray(member.availability) ? member.availability : [],
     })
     setEditDrawerOpen(true)
   }
@@ -177,6 +194,16 @@ export default function MemberDetailPage() {
       if (values.occupation !== undefined) payload.occupation = values.occupation || null
       if (values.education !== undefined) payload.education = values.education || null
       if (values.bio !== undefined) payload.bio = values.bio || null
+      // F27
+      payload.style = values.style || null
+      payload.dating_budget = values.dating_budget || null
+      payload.dating_frequency = values.dating_frequency || null
+      payload.dating_type = Array.isArray(values.dating_type) && values.dating_type.length > 0 ? values.dating_type : null
+      payload.relationship_goal = values.relationship_goal || null
+      payload.smoking = values.smoking || null
+      payload.drinking = values.drinking || null
+      payload.car_owner = typeof values.car_owner === 'boolean' ? values.car_owner : null
+      payload.availability = Array.isArray(values.availability) && values.availability.length > 0 ? values.availability : null
 
       await apiClient.patch(`/admin/members/${uid}/profile`, payload)
       message.success('會員資料已更新')
@@ -259,13 +286,52 @@ export default function MemberDetailPage() {
                         <Descriptions.Item label="性別">{member.gender === 'male' ? '男' : '女'}</Descriptions.Item>
                         <Descriptions.Item label="年齡">{member.age}</Descriptions.Item>
                         <Descriptions.Item label="生日">{member.birth_date}</Descriptions.Item>
-                        <Descriptions.Item label="地區">{member.location || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="身高">{member.height ? `${member.height} cm` : '—'}</Descriptions.Item>
-                        <Descriptions.Item label="體重">{member.weight ? `${member.weight} kg` : '—'}</Descriptions.Item>
-                        <Descriptions.Item label="職業">{member.job || '—'}</Descriptions.Item>
-                        <Descriptions.Item label="學歷">{member.education || '—'}</Descriptions.Item>
+                        <Descriptions.Item label="地區">{member.location || NA}</Descriptions.Item>
+                        <Descriptions.Item label="身高">{member.height ? `${member.height} cm` : NA}</Descriptions.Item>
+                        <Descriptions.Item label="體重">{member.weight ? `${member.weight} kg` : NA}</Descriptions.Item>
+                        <Descriptions.Item label="職業">{member.job || NA}</Descriptions.Item>
+                        <Descriptions.Item label="學歷">{member.education || NA}</Descriptions.Item>
                         <Descriptions.Item label="Email" span={2}>{member.email}</Descriptions.Item>
-                        <Descriptions.Item label="簡介" span={2}>{member.introduction}</Descriptions.Item>
+                        <Descriptions.Item label="簡介" span={2}>{member.introduction || NA}</Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+
+                    {/* F27: 外貌風格 */}
+                    <Card title="外貌風格" style={{ marginTop: 16 }}>
+                      <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="自我風格">{member.style ? formatLabel(member.style, STYLE_LABELS) : NA}</Descriptions.Item>
+                        <Descriptions.Item label="身高">{member.height ? `${member.height} cm` : NA}</Descriptions.Item>
+                        <Descriptions.Item label="體重" span={2}>{member.weight ? `${member.weight} kg` : NA}</Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+
+                    {/* F27: 約會偏好 */}
+                    <Card title="約會偏好" style={{ marginTop: 16 }}>
+                      <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="約會預算">{member.dating_budget ? formatLabel(member.dating_budget, DATING_BUDGET_LABELS) : NA}</Descriptions.Item>
+                        <Descriptions.Item label="見面頻率">{member.dating_frequency ? formatLabel(member.dating_frequency, DATING_FREQUENCY_LABELS) : NA}</Descriptions.Item>
+                        <Descriptions.Item label="約會類型" span={2}>
+                          {Array.isArray(member.dating_type) && member.dating_type.length > 0
+                            ? member.dating_type.map(t => <Tag key={t} color="blue">{formatLabel(t, DATING_TYPE_LABELS)}</Tag>)
+                            : NA}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="關係期望" span={2}>{member.relationship_goal ? formatLabel(member.relationship_goal, RELATIONSHIP_GOAL_LABELS) : NA}</Descriptions.Item>
+                      </Descriptions>
+                    </Card>
+
+                    {/* F27: 生活資訊 */}
+                    <Card title="生活資訊" style={{ marginTop: 16 }}>
+                      <Descriptions column={2} bordered size="small">
+                        <Descriptions.Item label="抽菸">{member.smoking ? formatLabel(member.smoking, SMOKING_LABELS) : NA}</Descriptions.Item>
+                        <Descriptions.Item label="飲酒">{member.drinking ? formatLabel(member.drinking, DRINKING_LABELS) : NA}</Descriptions.Item>
+                        <Descriptions.Item label="自備車">
+                          {member.car_owner === true ? '有' : member.car_owner === false ? '無' : NA}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="可約時段">
+                          {Array.isArray(member.availability) && member.availability.length > 0
+                            ? member.availability.map(t => <Tag key={t} color="green">{formatLabel(t, AVAILABILITY_LABELS)}</Tag>)
+                            : NA}
+                        </Descriptions.Item>
                       </Descriptions>
                     </Card>
                     <Card title="驗證狀態" style={{ marginTop: 16 }}>
@@ -498,6 +564,66 @@ export default function MemberDetailPage() {
           </Row>
           <Form.Item name="bio" label="自我介紹">
             <Input.TextArea rows={4} maxLength={500} showCount />
+          </Form.Item>
+
+          {/* F27 profile fields */}
+          <Divider>進階資料</Divider>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="style" label="自我風格">
+                <Select allowClear placeholder="不指定">
+                  {Object.entries(STYLE_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="dating_budget" label="約會預算">
+                <Select allowClear placeholder="不指定">
+                  {Object.entries(DATING_BUDGET_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="dating_frequency" label="見面頻率">
+                <Select allowClear placeholder="不指定">
+                  {Object.entries(DATING_FREQUENCY_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="relationship_goal" label="關係期望">
+                <Select allowClear placeholder="不指定">
+                  {Object.entries(RELATIONSHIP_GOAL_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="dating_type" label="約會類型（可複選）">
+            <Checkbox.Group options={Object.entries(DATING_TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))} />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="smoking" label="抽菸">
+                <Select allowClear placeholder="不指定">
+                  {Object.entries(SMOKING_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="drinking" label="飲酒">
+                <Select allowClear placeholder="不指定">
+                  {Object.entries(DRINKING_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="car_owner" label="自備車" valuePropName="checked">
+            <Switch checkedChildren="有" unCheckedChildren="無" />
+          </Form.Item>
+          <Form.Item name="availability" label="可約時段（可複選）">
+            <Checkbox.Group options={Object.entries(AVAILABILITY_LABELS).map(([k, v]) => ({ label: v, value: k }))} />
           </Form.Item>
         </Form>
       </Drawer>

@@ -334,6 +334,10 @@ GET /api/v1/admin/members
 | `recent` | bool | 否 | `true` = 僅顯示 7 天內新註冊（預設 false） |
 | `sort_by` | string | 否 | `created_at`（預設）/ `credit_score` / `last_login_at` |
 | `sort_dir` | string | 否 | `desc`（預設）/ `asc` |
+| `dating_budget` | string | 否 | F27 快速篩選：`casual`/`moderate`/`generous`/`luxury`/`undisclosed`（精確匹配，NULL 會被排除）|
+| `style` | string | 否 | F27 快速篩選：`fresh`/`sweet`/`sexy`/`intellectual`/`sporty`（精確匹配）|
+
+> **注意：** 後台 F27 篩選為**精確匹配**（未填欄位會被排除），與前台搜尋的「寬鬆篩選（OR NULL）」行為不同，因後台是管理用途需要精準定位。
 
 **成功回應 200：**
 ```json
@@ -378,6 +382,8 @@ GET /api/v1/admin/members
 ```
 GET /api/v1/admin/members/{user_id}
 ```
+
+> **F27 (2026-04-20 補完)：** 回應 `data.member` 額外包含 9 個 profile 欄位 `style`、`dating_budget`、`dating_frequency`、`dating_type` (array)、`relationship_goal`、`smoking`、`drinking`、`car_owner` (boolean)、`availability` (array)。未填寫為 null。
 
 **成功回應 200：**
 ```json
@@ -478,6 +484,47 @@ PATCH /api/v1/admin/members/{user_id}/actions
   }
 }
 ```
+
+---
+
+### 4.3.0 編輯會員個人資料（super_admin only）
+
+```
+PATCH /api/v1/admin/members/{user_id}/profile
+```
+
+> 所需權限：**super_admin**（比一般 `members.edit` 高一級，因可修改 `birth_date`、`gender`）
+
+**請求參數（全部選填，`sometimes|nullable`）：**
+```json
+{
+  "nickname": "新暱稱",
+  "birth_date": "2000-01-01",
+  "avatar_url": "https://...",
+  "gender": "male",
+  "height": 175,
+  "weight": 68,
+  "location": "台北市",
+  "occupation": "工程師",
+  "education": "bachelor",
+  "bio": "...",
+
+  "style": "intellectual",
+  "dating_budget": "moderate",
+  "dating_frequency": "flexible",
+  "dating_type": ["dining", "travel"],
+  "relationship_goal": "long_term",
+  "smoking": "never",
+  "drinking": "social",
+  "car_owner": true,
+  "availability": ["weekend", "flexible"]
+}
+```
+
+**業務規則：**
+- 只有 super_admin 可呼叫
+- 自動偵測實際有變更的欄位（array/boolean/日期的 before/after 比對），寫入 `admin_operation_logs.request_summary`
+- 若無任何欄位變動，回 200 + `code: NO_CHANGES`
 
 ---
 

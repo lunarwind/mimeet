@@ -70,6 +70,9 @@ class AdminController extends Controller
             'per_page' => 'sometimes|integer|min:1|max:1000',
             'status' => 'sometimes|string|in:active,suspended,all',
             'search' => 'sometimes|string',
+            // F27 精確篩選（後台管理用途，不走「OR NULL」寬鬆邏輯）
+            'dating_budget' => 'sometimes|string|in:casual,moderate,generous,luxury,undisclosed',
+            'style' => 'sometimes|string|in:fresh,sweet,sexy,intellectual,sporty',
         ]);
 
         $query = User::query();
@@ -79,6 +82,13 @@ class AdminController extends Controller
         }
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $query->where('status', $request->input('status'));
+        }
+        // F27：後台精確篩選
+        if ($request->filled('dating_budget')) {
+            $query->where('dating_budget', $request->input('dating_budget'));
+        }
+        if ($request->filled('style')) {
+            $query->where('style', $request->input('style'));
         }
         $perPage = (int) $request->input('per_page', 20);
         $members = $query->orderByDesc('created_at')->paginate($perPage);
@@ -134,6 +144,16 @@ class AdminController extends Controller
                 'weight' => $user->weight,
                 'job' => $user->occupation,
                 'education' => $user->education,
+                // F27 profile fields
+                'style' => $user->style,
+                'dating_budget' => $user->dating_budget,
+                'dating_frequency' => $user->dating_frequency,
+                'dating_type' => $user->dating_type,
+                'relationship_goal' => $user->relationship_goal,
+                'smoking' => $user->smoking,
+                'drinking' => $user->drinking,
+                'car_owner' => $user->car_owner,
+                'availability' => $user->availability,
                 'level' => $user->membership_level ?? 0,
                 'membership_level' => $user->membership_level ?? 0,
                 'credit_score' => $user->credit_score ?? 60,
@@ -337,25 +357,47 @@ class AdminController extends Controller
             'avatar_url' => 'sometimes|nullable|string|max:500',
             'gender' => 'sometimes|string|in:male,female',
             'height' => 'sometimes|nullable|integer|min:100|max:250',
+            'weight' => 'sometimes|nullable|integer|min:30|max:200',
             'location' => 'sometimes|nullable|string|max:50',
             'occupation' => 'sometimes|nullable|string|max:50',
             'education' => 'sometimes|nullable|string|max:50',
             'bio' => 'sometimes|nullable|string|max:500',
+            // F27 profile fields
+            'style'             => 'sometimes|nullable|string|in:fresh,sweet,sexy,intellectual,sporty',
+            'dating_budget'     => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
+            'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
+            'dating_type'       => 'sometimes|nullable|array',
+            'dating_type.*'     => 'string|in:dining,travel,companion,mentorship,undisclosed',
+            'relationship_goal' => 'sometimes|nullable|string|in:short_term,long_term,open,undisclosed',
+            'smoking'           => 'sometimes|nullable|string|in:never,sometimes,often',
+            'drinking'          => 'sometimes|nullable|string|in:never,social,often',
+            'car_owner'         => 'sometimes|nullable|boolean',
+            'availability'      => 'sometimes|nullable|array',
+            'availability.*'    => 'string|in:weekday_day,weekday_night,weekend,flexible',
         ]);
 
         $user = User::findOrFail($id);
 
-        $allowedFields = ['nickname', 'birth_date', 'avatar_url', 'gender', 'height', 'location', 'occupation', 'education', 'bio'];
+        $allowedFields = [
+            'nickname', 'birth_date', 'avatar_url', 'gender', 'height', 'weight',
+            'location', 'occupation', 'education', 'bio',
+            'style', 'dating_budget', 'dating_frequency', 'dating_type', 'relationship_goal',
+            'smoking', 'drinking', 'car_owner', 'availability',
+        ];
         $updates = $request->only($allowedFields);
 
         // Filter to only actually changed fields
         $before = [];
         $after = [];
+        $normalize = function ($v) {
+            if ($v instanceof \Carbon\Carbon) return $v->format('Y-m-d');
+            if (is_array($v)) return json_encode($v);
+            if (is_bool($v)) return $v ? '1' : '0';
+            return (string) ($v ?? '');
+        };
         foreach ($updates as $key => $newValue) {
             $oldValue = $user->getAttribute($key);
-            $oldStr = $oldValue instanceof \Carbon\Carbon ? $oldValue->format('Y-m-d') : (string) ($oldValue ?? '');
-            $newStr = (string) ($newValue ?? '');
-            if ($oldStr !== $newStr) {
+            if ($normalize($oldValue) !== $normalize($newValue)) {
                 $before[$key] = $oldValue;
                 $after[$key] = $newValue;
             }
