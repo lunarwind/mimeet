@@ -18,7 +18,7 @@ services:
         condition: service_healthy
     environment:
       - APP_ENV=staging
-      - APP_DEBUG=true
+      - APP_DEBUG=false
       - DB_HOST=db
       - DB_DATABASE=mimeet
       - DB_USERNAME=mimeet_user
