@@ -124,6 +124,19 @@ services:
     networks:
       - mimeet
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mimeet-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"  # Web UI（僅本機；外部用 SSH tunnel 或加認證後再改 0.0.0.0）
+      - "1025:1025"             # SMTP（container 內部走 Docker network 時不需 host port，保留做本機測試）
+    environment:
+      - MP_SMTP_AUTH_ALLOW_INSECURE=1
+      - MP_MAX_MESSAGES=500
+    networks:
+      - mimeet
+
   scheduler:
     build:
       context: ./backend
