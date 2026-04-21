@@ -92,6 +92,13 @@
 ### SubscriptionPlanSeeder
 - 必須用 `updateOrInsert`，不能用 `insert`，否則 migrate:fresh 後方案消失
 
+### POST response body 被污染（POST 帶 body → 前綴 request body + 200 text/html）
+- **症狀**：`curl -X POST -d '{"foo":"bar"}'` 回來的 body 變成 `{"foo":"bar"}{"success":...}`，status 200 Content-Type text/html，缺所有 Laravel headers
+- **後果**：前端 axios `res.data` 解析成 request body 而非 API response → 看起來「功能無反應 / 格式錯」。明碼密碼隨 response 洩漏。
+- **根因**：`mimeet-app` container 內 `output_buffering=0`。`Dockerfile.dev` 已在 `981e3d6 (2026-04-15)` 加 `output_buffering=4096`，但 image 在 `2026-04-13` 已 build，image 沒 rebuild 就永遠拿不到這個 fix。
+- **永久修復**：用 volume mount 繞過 image：`docker-compose.staging.yml` app service 已 mount `./backend/docker/output-buffering.ini:/usr/local/etc/php/conf.d/zzz-output-buffering.ini:ro`。重啟 container 時 mount 會保留，不需 rebuild。
+- **未來如果又 recurrence**：先 `docker exec mimeet-app php -i | grep output_buffering`，若是 `=0`→ mount 失效，檢查 `backend/docker/output-buffering.ini` 和 compose volume 有沒有被動到；若是 `=4096` 還污染→ 另有別的 echo 源頭。
+
 ## Commit 格式
 
 `{type}({scope}): {description}`
