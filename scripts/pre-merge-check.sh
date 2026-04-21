@@ -71,6 +71,21 @@ check \
   "grep 'text/html' backend/app/Http/Controllers/Api/V1/PaymentCallbackController.php | head -1" \
   "text/html"
 
+check \
+  "Dockerfile.dev sets output_buffering=4096 (防 POST response body 被 echo request body 污染)" \
+  "grep 'output_buffering=4096' backend/Dockerfile.dev" \
+  "output_buffering=4096"
+
+check \
+  "compose.staging 有 mount output-buffering.ini (確保 restart 後仍生效，不依賴 image rebuild)" \
+  "grep 'output-buffering.ini' docker-compose.staging.yml | head -1" \
+  "output-buffering.ini"
+
+check \
+  "backend/docker/output-buffering.ini 存在" \
+  "test -f backend/docker/output-buffering.ini && echo yes" \
+  "yes"
+
 echo ""
 echo "-- Frontend --"
 
