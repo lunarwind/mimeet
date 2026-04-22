@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { sendPhoneCode, verifyPhoneCode } from '@/api/auth'
 import client from '@/api/client'
 import { requestVerificationCode, uploadVerificationPhoto, getVerificationStatus } from '@/api/verification'
 import type { VerificationStatusResponse } from '@/api/verification'
@@ -42,9 +43,7 @@ async function sendSmsCode() {
   smsSending.value = true
   smsError.value = null
   try {
-    await client.post('/auth/verify-phone', {
-      data: { phone: phone.value, action: 'send_code' },
-    })
+    await sendPhoneCode({ phone: phone.value })
     startSmsCooldown()
     currentStep.value = 'sms-verify'
   } catch {
@@ -59,9 +58,7 @@ async function verifySmsCode() {
   smsVerifying.value = true
   smsError.value = null
   try {
-    await client.post('/auth/verify-phone', {
-      data: { phone: phone.value, verification_code: smsCode.value, action: 'verify_code' },
-    })
+    await verifyPhoneCode({ phone: phone.value, code: smsCode.value })
     await authStore.initialize()
     currentStep.value = 'overview'
   } catch {

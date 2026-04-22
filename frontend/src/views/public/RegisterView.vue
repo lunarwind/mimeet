@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { register, verifyEmail, resendVerification } from '@/api/auth'
+import { register, verifyEmail, resendVerification, sendPhoneCode, verifyPhoneCode } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 import {
@@ -239,8 +239,7 @@ function startSmsCountdown() {
 
 async function sendSmsCode() {
   try {
-    const client = (await import('@/api/client')).default
-    await client.post('/auth/verify-phone/send', { phone: step2.phone })
+    await sendPhoneCode({ phone: step2.phone })
     startSmsCountdown()
   } catch {
     smsError.value = '簡訊發送失敗，請稍後再試'
@@ -268,8 +267,7 @@ async function verifySms() {
   isSmsVerifying.value = true
   smsError.value = ''
   try {
-    const client = (await import('@/api/client')).default
-    await client.post('/auth/verify-phone/confirm', { phone: step2.phone, code })
+    await verifyPhoneCode({ phone: step2.phone, code })
     router.push('/app/explore')
   } catch {
     smsError.value = '驗證碼不正確或已過期'
