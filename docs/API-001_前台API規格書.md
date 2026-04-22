@@ -50,20 +50,15 @@ HTTP動詞：
 ### 1.2 通用規範
 
 #### 1.2.1 請求格式
+
+**請求 Body 採用扁平 JSON 格式，欄位直接置於 root，不額外包 `data` wrapper。**
+（`POST /auth/register` 為相容歷史版本，server 同時接受 flat 與 `{data:{...}}` 兩種格式。）
+
 ```json
 {
-  "data": {
-    "user": {
-      "nickname": "甜心寶貝",
-      "age": 23,
-      "location": "台北市"
-    }
-  },
-  "meta": {
-    "timestamp": "2024-12-20T10:30:00Z",
-    "request_id": "req_1234567890abcdef",
-    "client_version": "1.0.0"
-  }
+  "email": "user@example.com",
+  "password": "SecurePassword123",
+  "nickname": "甜心寶貝"
 }
 ```
 
@@ -160,18 +155,16 @@ Content-Type: application/json
 **請求參數：**
 ```json
 {
-  "data": {
-    "email": "user@example.com",
-    "password": "SecurePassword123",
-    "password_confirmation": "SecurePassword123",
-    "nickname": "甜心寶貝",
-    "gender": "female",
-    "birth_date": "2001-05-15",
-    "group": 2,
-    "terms_accepted": true,
-    "privacy_accepted": true,
-    "anti_fraud_read": true
-  }
+  "email": "user@example.com",
+  "password": "SecurePassword123",
+  "password_confirmation": "SecurePassword123",
+  "nickname": "甜心寶貝",
+  "gender": "female",
+  "birth_date": "2001-05-15",
+  "group": 2,
+  "terms_accepted": true,
+  "privacy_accepted": true,
+  "anti_fraud_read": true
 }
 ```
 
@@ -227,15 +220,13 @@ Content-Type: application/json
 **請求參數：**
 ```json
 {
-  "data": {
-    "email": "user@example.com",
-    "password": "SecurePassword123",
-    "remember_me": true,
-    "device_info": {
-      "type": "web",
-      "name": "Chrome 120.0",
-      "os": "Windows 10"
-    }
+  "email": "user@example.com",
+  "password": "SecurePassword123",
+  "remember_me": true,
+  "device_info": {
+    "type": "web",
+    "name": "Chrome 120.0",
+    "os": "Windows 10"
   }
 }
 ```
@@ -319,10 +310,8 @@ Content-Type: application/json
 **請求參數：**
 ```json
 {
-  "data": {
-    "verification_code": "123456",
-    "email": "user@example.com"
-  }
+  "verification_code": "123456",
+  "email": "user@example.com"
 }
 ```
 
@@ -405,10 +394,8 @@ Content-Type: application/json
 **請求參數：**
 ```json
 {
-  "data": {
-    "payment_method": "green_world",
-    "return_url": "https://app.example.com/verification/callback"
-  }
+  "payment_method": "green_world",
+  "return_url": "https://app.example.com/verification/callback"
 }
 ```
 
@@ -579,19 +566,17 @@ Content-Type: application/json
 **請求參數：**
 ```json
 {
-  "data": {
-    "nickname": "新暱稱",
-    "introduction": "更新的自我介紹",
-    "location": "新北市",
-    "height": 165,
-    "weight": 50,
-    "education": "master",
-    "job": "軟體工程師",
-    "preferences": {
-      "age_range": [25, 35],
-      "location_preference": ["台北市", "新北市"],
-      "relationship_type": "long_term"
-    }
+  "nickname": "新暱稱",
+  "introduction": "更新的自我介紹",
+  "location": "新北市",
+  "height": 165,
+  "weight": 50,
+  "education": "master",
+  "job": "軟體工程師",
+  "preferences": {
+    "age_range": [25, 35],
+    "location_preference": ["台北市", "新北市"],
+    "relationship_type": "long_term"
   }
 }
 ```
