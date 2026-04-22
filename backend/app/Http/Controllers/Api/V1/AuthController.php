@@ -611,4 +611,43 @@ class AuthController extends Controller
 
         return response()->json(['success' => true, 'code' => 'PASSWORD_RESET', 'message' => '密碼已重設，請重新登入。']);
     }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password'      => 'required|string',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required|string',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->input('current_password'), $user->password)) {
+            return response()->json([
+                'success' => false,
+                'error'   => ['code' => 'PASSWORD_INCORRECT', 'message' => '目前密碼不正確'],
+            ], 422);
+        }
+
+        if ($request->input('current_password') === $request->input('password')) {
+            return response()->json([
+                'success' => false,
+                'error'   => ['code' => 'PASSWORD_SAME_AS_CURRENT', 'message' => '新密碼不可與目前密碼相同'],
+            ], 422);
+        }
+
+        $user->update(['password' => Hash::make($request->input('password'))]);
+
+        $user->tokens()->delete();
+
+        try {
+            Log::info('[Auth] User changed password', ['user_id' => $user->id]);
+        } catch (\Throwable) {}
+
+        return response()->json([
+            'success' => true,
+            'code'    => 'PASSWORD_CHANGED',
+            'message' => '密碼已更新，所有裝置已登出',
+        ]);
+    }
 }

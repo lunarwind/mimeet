@@ -205,6 +205,12 @@ Route::prefix('api/v1')->group(function () {
         Route::patch('me/privacy', [PrivacyController::class, 'update']);
     });
 
+    // ─── Change Password (authenticated) ────────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('me/change-password', [AuthController::class, 'changePassword'])
+            ->middleware('throttle:otp');
+    });
+
     // ─── Account Deletion (authenticated) ───────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('me/delete-account', [DeleteAccountController::class, 'store']);
