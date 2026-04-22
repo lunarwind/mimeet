@@ -98,6 +98,12 @@ export const appRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, minLevel: 1 },
       },
       {
+        path: 'settings/change-password',
+        name: 'settings-change-password',
+        component: () => import('@/views/app/settings/ChangePasswordView.vue'),
+        meta: { requiresAuth: true, minLevel: 1 },
+      },
+      {
         path: 'settings/blocked',
         name: 'settings-blocked',
         component: () => import('@/views/app/settings/BlockedView.vue'),

@@ -384,6 +384,7 @@ async function handleLogout() {
 const settingsLinks = [
   { label: '會員方案', path: '/app/shop', highlight: true },
   { label: '身份驗證', path: '/app/settings/verify' },
+  { label: '修改密碼', path: '/app/settings/change-password' },
   { label: '訂閱管理', path: '/app/settings/subscription' },
   { label: '封鎖名單', path: '/app/settings/blocked' },
   { label: '刪除帳號', path: '/app/settings/delete-account', danger: true },

@@ -90,3 +90,13 @@ export function sendPhoneCode(payload: SendPhoneCodePayload) {
 export function verifyPhoneCode(payload: VerifyPhoneCodePayload) {
   return client.post('/auth/verify-phone/confirm', payload).then(r => r.data)
 }
+
+export interface ChangePasswordPayload {
+  current_password: string
+  password: string
+  password_confirmation: string
+}
+
+export function changePassword(payload: ChangePasswordPayload) {
+  return client.post('/me/change-password', payload).then(r => r.data)
+}
