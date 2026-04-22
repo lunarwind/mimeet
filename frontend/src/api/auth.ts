@@ -73,3 +73,20 @@ export function verifyEmail(payload: { verification_code: string; email: string 
 export function resendVerification(email: string) {
   return client.post('/auth/resend-verification', { email })
 }
+
+export interface SendPhoneCodePayload {
+  phone: string
+}
+
+export interface VerifyPhoneCodePayload {
+  phone: string
+  code: string
+}
+
+export function sendPhoneCode(payload: SendPhoneCodePayload) {
+  return client.post('/auth/verify-phone/send', payload).then(r => r.data)
+}
+
+export function verifyPhoneCode(payload: VerifyPhoneCodePayload) {
+  return client.post('/auth/verify-phone/confirm', payload).then(r => r.data)
+}

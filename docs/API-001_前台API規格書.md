@@ -316,32 +316,62 @@ Content-Type: application/json
 ```
 
 #### 2.2.2 手機驗證
+
+> **設計決定（v1.1）：** 拆為兩個 RESTful 端點，取代原本單一端點 + `action` 設計。
+
+##### 2.2.2.1 發送手機驗證碼
 ```http
-POST /api/v1/auth/verify-phone
+POST /api/v1/auth/verify-phone/send
 Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
 
-**發送驗證碼：**
+**請求參數：**
+```json
+{ "phone": "0912345678" }
+```
+
+**成功回應 (200)：**
 ```json
 {
-  "data": {
-    "phone": "+886912345678",
-    "action": "send_code"
-  }
+  "success": true,
+  "code": "PHONE_CODE_SENT",
+  "message": "驗證碼已發送。",
+  "data": { "expires_in": 300 }
 }
 ```
 
-**驗證手機號：**
+> 限流：套用 `throttle:otp`，60 秒內同一帳號僅可發送 1 次。
+
+---
+
+##### 2.2.2.2 確認手機驗證碼
+```http
+POST /api/v1/auth/verify-phone/confirm
+Authorization: Bearer {access_token}
+Content-Type: application/json
+```
+
+**請求參數：**
+```json
+{ "phone": "0912345678", "code": "123456" }
+```
+
+**成功回應 (200)：**
 ```json
 {
-  "data": {
-    "phone": "+886912345678",
-    "verification_code": "123456",
-    "action": "verify_code"
-  }
+  "success": true,
+  "code": "PHONE_VERIFIED",
+  "message": "手機驗證成功。"
 }
 ```
+
+**驗證碼錯誤 (422)：**
+```json
+{ "success": false, "error": { "code": "OTP_INVALID", "message": "驗證碼錯誤或已過期" } }
+```
+
+> 成功後寫入 `users.phone_verified_at`，並記錄到 `user_activity_logs`（type: phone_change）。
 
 #### 2.2.3 真人驗證（女性）
 ```http
