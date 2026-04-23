@@ -60,10 +60,18 @@ export interface RegisterPayload {
   nickname: string
   gender: 'male' | 'female'
   birth_date: string
+  terms_accepted: true
+  privacy_accepted: true
+  anti_fraud_read: true
 }
 
 export function register(payload: RegisterPayload) {
-  return client.post('/auth/register', payload)
+  return client.post('/auth/register', {
+    ...payload,
+    terms_accepted: true,
+    privacy_accepted: true,
+    anti_fraud_read: true,
+  })
 }
 
 export function verifyEmail(payload: { verification_code: string; email: string }) {
