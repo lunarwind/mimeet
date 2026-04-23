@@ -5,8 +5,10 @@
  */
 import client from './client'
 
+export type ReportType = 'harassment' | 'impersonation' | 'scam' | 'inappropriate' | 'other'
+
 export interface CreateReportPayload {
-  type: number
+  type: ReportType
   reportedUserId?: number
   title: string
   content: string
@@ -16,7 +18,7 @@ export interface CreateReportPayload {
 export interface ReportRecord {
   id: number
   ticketNumber: string
-  type: number
+  type: string
   typeLabel: string
   title: string
   status: number
@@ -24,14 +26,6 @@ export interface ReportRecord {
   adminReply: string | null
   createdAt: string
   processedAt: string | null
-}
-
-const TYPE_LABELS: Record<number, string> = {
-  1: '騷擾或不當訊息',
-  2: '假冒身份',
-  3: '詐騙行為',
-  4: '不雅照片或內容',
-  5: '其他',
 }
 
 const STATUS_LABELS: Record<number, string> = {

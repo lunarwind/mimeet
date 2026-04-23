@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Admin\ChatLogController;
 use App\Http\Controllers\Api\V1\AppealController;
 use App\Http\Controllers\Api\V1\PrivacyController;
 use App\Http\Controllers\Api\V1\DndController;
+use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\DeleteAccountController;
 use App\Http\Controllers\Api\V1\Admin\SystemControlController;
 use App\Http\Controllers\Api\V1\Admin\DatasetController;
@@ -67,6 +68,10 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend']);
         Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm']);
     });
+
+    // ─── Media upload (authenticated, upload rate-limited) ──────────────
+    Route::post('/uploads', [MediaController::class, 'upload'])
+        ->middleware(['auth:sanctum', 'throttle:upload']);
 
     // ─── Users (authenticated, rate-limited) ───────────────────────────
     Route::prefix('users')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
