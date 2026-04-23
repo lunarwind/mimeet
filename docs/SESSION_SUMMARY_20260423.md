@@ -202,7 +202,104 @@ Merge commit: `f852f44` — 10 個問題，6 個 commits on develop。
 
 ---
 
+## P3 規格文件修正（2026-04-23 第四批）
+
+Merge commit: `13072ca`（含 P3 + P4 所有變更）
+
+### P3 修正清單
+
+| ID | 文件 | 修正內容 |
+|----|------|---------|
+| P3-1 | API-001 §2.1.2 | `data.tokens{}` → `data.token` plain string；補 Sanctum PAT 24h 說明 |
+| P3-2 | API-001 §2.1.3 | 標記 refresh token 為「未實作」並說明 Sanctum PAT 無 refresh 機制 |
+| P3-3 | DEV-009 v1.0→v2.0 | 全文改寫：socket.io-client → Laravel Echo + pusher-js；頻道前綴自動規則；前端接線範例；Nginx `/app` vs `/apps` 說明 |
+| P3-4 | API-001 §2.2.3 | photo-verify 路徑 `/auth/photo-verification/*` → `/me/verification-photo/*` |
+| P3-5 | API-001 §2.2.4 | 信用卡驗證標記為「Phase 2 未實作」 |
+| P3-6 | API-001 §3.1.1 | `verification_status{}` 展開為個別欄位；photos 固定 `[]`；移除 stats |
+| P3-7 | API-001 §3.1.2 | `introduction` → `bio`；`job` → `occupation` |
+| P3-8 | API-001 §3.3 | 改寫為 Avatar Slots 系統說明，移除不存在的 `/me/photos` 端點 |
+| P3-9 | API-001 §4.1.2 | `before_id` → `cursor`；`next_before_id` → `next_cursor` |
+| P3-10 | API-001 §4.1.4 | 路由改 `PATCH /chats/{id}/read`；移除 `message_ids` body |
+| P3-11 | API-001 §5.1.1 | 移除 `message`/`estimated_duration`；`qr_code` → `qr_token`（hex 說明）|
+| P3-12 | API-001 §7.2.1 | callback 路徑 `callbacks/green-world` → `payments/ecpay/notify` |
+| P3-13 | API-001 §9.1 | 公告端點改 `/announcements/active`（公開）；已讀狀態說明改 localStorage |
+| P3-14 | API-001 §10.1 | following 清單 key `following` → `users` |
+| P3-15 | API-001 §10.2 | `uid` → `id`；`avatar` → `avatar_url` |
+| P3-16 | API-001 §10.7 | 通知路徑移除 `/me/` 前綴；`POST read-all` → `PATCH read-all` |
+
+---
+
+## P4 細節對齊（2026-04-23 第五批）
+
+### 程式碼修改
+
+| ID | 問題 | Commit | 受影響檔案 |
+|----|------|--------|-----------|
+| P4-1 A-M3 | reset-password 路由未套 throttle | `9a2a068` | `backend/routes/api.php` |
+| P4-2 A-L1 | register 缺合規欄位驗證 | `9a2a068` | `AuthController.php`；`frontend/src/api/auth.ts`；`RegisterView.vue`（hotfix `9f0eceb`）|
+| P4-3 B-006 | 搜尋缺 verified_only + 30 天未登入過濾 | `abfc636` | `UserController.php::search()` |
+| P4-4 E-009 | appeal ticket_no 非零填充格式 | `abfc636` | `AppealController.php` store() + current() |
+| P4-6 G-008 | tracking.ts 殘留 console.warn | `9a2a068` | `frontend/src/utils/tracking.ts` |
+
+### 文件修改
+
+| ID | 問題 | Commit | 修正內容 |
+|----|------|--------|---------|
+| P4-5 C-008 | DailyLimitException 429 未記載 | `81effff` | API-001 §4.1.3 補 429 + 業務規則；§3.2.1 修正 `last_active_at` 欄位名稱 |
+
+### P4-2 Hotfix 說明
+
+`RegisterPayload` interface 加入三個 `true` literal fields 後，`RegisterView.vue` 呼叫點未同步補上，導致前台 TypeScript build 型別檢查失敗（`error TS2345`）。Vite bundle 因 pipe 吞掉 exit code 而繼續建置，**dist 實際功能正常但型別不安全**。Hotfix commit `9f0eceb` 補上三個 literal 欄位，重新 build 後型別檢查通過。
+
+---
+
+## P3 + P4 部署記錄
+
+| 項目 | 結果 |
+|------|------|
+| Merge commit (main) | `13072ca`（P3+P4）、`847e424`（P4-2 hotfix）|
+| Migration | Nothing to migrate |
+| config:cache | ✅ |
+| route:cache | ✅ |
+| Frontend build | ✅ 8m 28s（hotfix 後型別檢查通過）|
+| Admin build | ✅ |
+| Worker status | `mimeet-worker Up About a minute` ✅ |
+
+## P3 + P4 驗收結果
+
+| 測試 | 結果 |
+|------|------|
+| 前台 https://mimeet.online | ✅ 200 |
+| 後台 https://admin.mimeet.online | ✅ 200 |
+| API /api/v1/auth/me (unauthenticated) | ✅ 401 |
+| P4-2: POST /auth/register 缺合規欄位 | ✅ 422（errors: terms_accepted, privacy_accepted, anti_fraud_read）|
+| P4-4: ticket_no 零填充 | ✅ A000000001 |
+| P4-3: verified_only filter | ✅（code review 驗證，測試帳號密碼已失效）|
+
+---
+
+## Queue Worker 狀態修正（P2 補記）
+
+調查發現 Queue Worker 並非 Supervisor 管理，而是 **Docker service `mimeet-worker`**（`docker-compose.staging.yml`），使用 Redis driver，`restart: unless-stopped`。`Mail::queue()` 驗證 end-to-end 正常。
+
+- CLAUDE.md 已更正 Queue Worker 欄位
+- OPS-003 §8 已補 Queue Worker 操作說明
+- deploy 腳本中 `supervisorctl restart` 已改為 `docker compose restart worker`
+
+---
+
+## 全面稽核週期正式完成
+
+| 批次 | 內容 | 狀態 |
+|------|------|------|
+| P0 | 稽核報告 A-H 8 份 + SUMMARY | ✅ 完成 |
+| P1 | 安全強化（G-001, G-004, G-007）| ✅ 完成 |
+| P2 | 業務功能缺口（10 issues）| ✅ 完成 |
+| P3 | 規格文件修正（16 items，API-001, DEV-009）| ✅ 完成 |
+| P4 | 細節對齊（6 fixes）| ✅ 完成 |
+
+---
+
 ## 待處理（未完成）
 
-- **Queue Worker 未設定** — Supervisor 無 mimeet-worker group，`Mail::queue()` 在 E-003 加入後郵件不會發出，需在 Droplet 設定 `/etc/supervisor/conf.d/mimeet-worker.conf`
-- **G-001 部分** — production nginx CSP 和 server_tokens off 尚未生效（`/etc/nginx/sites-enabled/mimeet` 需更新）
+- **G-001 部分** — production nginx CSP 和 server_tokens off 尚未生效（`/etc/nginx/sites-enabled/mimeet` 需更新，不在 git 管理內）
