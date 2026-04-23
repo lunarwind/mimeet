@@ -308,6 +308,9 @@ Route::prefix('api/v1')->group(function () {
 
             // F40 點數管理（後台）— 補完 A01 儀表板
             Route::get('/stats/summary', [StatsController::class, 'summary']);
+            Route::get('/stats/chart', [StatsController::class, 'chart'])->middleware('admin.permission:members.view');
+            Route::get('/stats/export', [StatsController::class, 'export'])->middleware('admin.permission:members.view');
+            Route::get('/stats/server-metrics', [StatsController::class, 'serverMetrics'])->middleware('admin.permission:settings.roles');
             Route::get('/point-packages', [AdminPointController::class, 'packages']);
             Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
             Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints'])->middleware('admin.permission:members.edit');
