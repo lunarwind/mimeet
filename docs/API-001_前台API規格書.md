@@ -251,38 +251,20 @@ Content-Type: application/json
       "phone_verified": true,
       "phone": "09xx-xxx-666"
     },
-    "tokens": {
-      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
+    "token": "eyJ0eXAiOiJKV1Qi..."
   }
 }
 ```
 
-#### 2.1.3 刷新Token
-```http
-POST /api/v1/auth/refresh
-Authorization: Bearer {refresh_token}
-```
+> 使用 Laravel Sanctum Personal Access Token，無 refresh 機制。
+> Token 有效期 24 小時（SANCTUM_TOKEN_EXPIRATION=1440），到期後需重新登入。
 
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "Token刷新成功",
-  "data": {
-    "tokens": {
-      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
-  }
-}
-```
+#### 2.1.3 刷新 Token（未實作 — Sanctum PAT 不支援）
+
+> **狀態：未實作**
+> 系統採用 Laravel Sanctum Personal Access Token，不支援 refresh token 機制。
+> Token 到期（24 小時）後，前端應引導用戶重新登入。
+> 若未來需要 token 輪換，請改用 Sanctum expiration + 401 自動跳轉登入頁方案。
 
 #### 2.1.4 用戶登出
 ```http
@@ -374,76 +356,29 @@ Content-Type: application/json
 > 成功後寫入 `users.phone_verified_at`，並記錄到 `user_activity_logs`（type: phone_change）。
 
 #### 2.2.3 真人驗證（女性）
-```http
-POST /api/v1/auth/photo-verification
-Authorization: Bearer {access_token}
-Content-Type: multipart/form-data
-```
+
+> 詳見 §16.3/§16.4 完整說明，本節為摘要。
 
 **開始驗證（獲取驗證碼）：**
 ```http
-POST /api/v1/auth/photo-verification/start
-```
-
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "驗證會話創建成功",
-  "data": {
-    "session_id": "session_1234567890",
-    "verification_code": "AB123C",
-    "expires_at": "2024-12-20T10:40:00Z",
-    "instructions": [
-      "請手持身份證件拍攝自拍照",
-      "照片中需清楚顯示驗證碼：AB123C",
-      "請確保光線充足，五官清晰可見",
-      "驗證碼有效時間10分鐘"
-    ]
-  }
-}
+POST /api/v1/me/verification-photo/request
+Authorization: Bearer {access_token}
 ```
 
 **上傳驗證照片：**
 ```http
-POST /api/v1/auth/photo-verification/upload
+POST /api/v1/me/verification-photo/upload
+Authorization: Bearer {access_token}
 Content-Type: multipart/form-data
 
-session_id: session_1234567890
 verification_photo: {file}
 ```
 
-#### 2.2.4 信用卡驗證（男性）
-```http
-POST /api/v1/auth/credit-card-verification
-Authorization: Bearer {access_token}
-Content-Type: application/json
-```
+#### 2.2.4 信用卡驗證（男性進階驗證）[未實作，Phase 2]
 
-**請求參數：**
-```json
-{
-  "payment_method": "green_world",
-  "return_url": "https://app.example.com/verification/callback"
-}
-```
-
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "信用卡驗證初始化成功",
-  "data": {
-    "verification_id": "verify_1234567890",
-    "payment_url": "https://payment.greenworld.com.tw/...",
-    "amount": 100,
-    "currency": "TWD",
-    "expires_at": "2024-12-20T11:30:00Z"
-  }
-}
-```
+> **狀態：Phase 2 待實作**
+> 目前男性進階驗證機制尚未建立。實作時路徑應對齊女性驗證模式，
+> 使用 /me/credit-card-verification/* 而非 /auth/ 前綴。
 
 ### 2.3 密碼重設
 
