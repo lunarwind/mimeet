@@ -2,10 +2,13 @@
 
 namespace App\Observers;
 
+use App\Mail\AccountAutoSuspendedMail;
+use App\Mail\AccountReactivatedMail;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CreditScoreObserver
 {
@@ -26,6 +29,9 @@ class CreditScoreObserver
             ]);
             Cache::put("suspended_user:{$user->id}", true, now()->addYear());
             Log::info("[AutoSuspend] user #{$user->id} suspended, score={$newScore}");
+            if ($user->email) {
+                Mail::to($user->email)->queue(new AccountAutoSuspendedMail($user));
+            }
         }
 
         // Auto-restore: score reached 30+ while auto-suspended
@@ -33,6 +39,9 @@ class CreditScoreObserver
             DB::table('users')->where('id', $user->id)->update(['status' => 'active']);
             Cache::forget("suspended_user:{$user->id}");
             Log::info("[AutoRestore] user #{$user->id} restored, score={$newScore}");
+            if ($user->email) {
+                Mail::to($user->email)->queue(new AccountReactivatedMail($user));
+            }
         }
     }
 }

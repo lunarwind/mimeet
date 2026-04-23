@@ -40,4 +40,13 @@ class CreditScoreService
     {
         return $user->fresh()->credit_score;
     }
+
+    /**
+     * Read a credit score config value from system_settings.
+     * Falls back to $default if the key is not set.
+     */
+    public static function getConfig(string $key, int $default): int
+    {
+        return (int) \App\Models\SystemSetting::get("credit_score.{$key}", $default);
+    }
 }

@@ -247,8 +247,16 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $userId = $request->user()?->id;
+
         if ($request->user()?->currentAccessToken()) {
             $request->user()->currentAccessToken()->delete();
+        }
+
+        if ($userId && $request->has('fcm_token')) {
+            \App\Models\FcmToken::where('user_id', $userId)
+                ->where('token', $request->fcm_token)
+                ->delete();
         }
 
         return response()->json([
@@ -330,6 +338,9 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
         if ($user) {
             $user->forceFill(['email_verified' => true])->save();
+            if ($user->wasChanged('email_verified')) {
+                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('email_verified', 5), 'email_verified', 'Email 驗證完成');
+            }
         }
 
         Cache::forget("email_verification:{$request->email}");
@@ -469,14 +480,22 @@ class AuthController extends Controller
                 Log::error('[PhoneVerify] Failed to save user', ['user_id' => $user->id]);
             }
             UserActivityLogService::logPhoneChange($user->id, $request);
+            if ($user->wasChanged('phone_verified')) {
+                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('phone_verified', 5), 'phone_verified', '手機驗證完成');
+            }
         } else {
             // Registration flow: mark phone as verified by email lookup
             $email = $request->input('email');
             if ($email) {
-                User::where('email', $email)->update([
-                    'phone' => $e164,
-                    'phone_verified' => true,
-                ]);
+                $regUser = User::where('email', $email)->first();
+                if ($regUser) {
+                    $regUser->phone = $e164;
+                    $regUser->phone_verified = true;
+                    $regUser->save();
+                    if ($regUser->wasChanged('phone_verified')) {
+                        \App\Services\CreditScoreService::adjust($regUser, \App\Services\CreditScoreService::getConfig('phone_verified', 5), 'phone_verified', '手機驗證完成');
+                    }
+                }
             }
         }
 

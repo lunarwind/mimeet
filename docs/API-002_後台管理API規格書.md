@@ -232,27 +232,25 @@ GET /api/v1/admin/stats/summary
 GET /api/v1/admin/stats/chart
 ```
 
+> 所需權限：`members.view`
+
 **Query 參數：**
 
 | 參數 | 類型 | 必填 | 說明 |
 |------|------|------|------|
-| `type` | string | 是 | `registrations` / `active_users` / `paid_members` |
-| `granularity` | string | 是 | `hourly`（今日）/ `daily`（近30天）/ `monthly`（近12月）|
-| `date` | string | 否 | 指定日期 YYYY-MM-DD，`granularity=hourly` 時使用，預設今天 |
+| `days` | integer | 否 | 回傳最近 N 天，最大 90，預設 30 |
 
-**成功回應 200（type=registrations, granularity=daily）：**
+**成功回應 200：**
 ```json
 {
   "success": true,
   "data": {
-    "type": "registrations",
-    "granularity": "daily",
     "labels": ["2025-01-01", "2025-01-02", "..."],
-    "series": [
-      { "name": "總數", "data": [15, 22, 18, "..."] },
-      { "name": "男性", "data": [7, 10, 8, "..."] },
-      { "name": "女性", "data": [8, 12, 10, "..."] }
-    ]
+    "series": {
+      "new_members": [15, 22, 18],
+      "subscription_revenue": [4500, 3200, 5100],
+      "point_revenue": [800, 1200, 950]
+    }
   }
 }
 ```
@@ -265,20 +263,21 @@ GET /api/v1/admin/stats/chart
 GET /api/v1/admin/stats/export
 ```
 
+> 所需權限：`members.view`
+
 **Query 參數：**
 
 | 參數 | 類型 | 必填 | 說明 |
 |------|------|------|------|
-| `type` | string | 是 | `registrations` / `active_users` / `paid_members` |
-| `start_date` | string | 是 | YYYY-MM-DD |
-| `end_date` | string | 是 | YYYY-MM-DD，最多跨度1年 |
-| `format` | string | 否 | `csv`（預設）/ `xlsx` |
+| `days` | integer | 否 | 匯出最近 N 天，最大 90，預設 30 |
 
 **成功回應 200：**
 
-回傳 Content-Type: `text/csv` 或 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+回傳 `Content-Type: text/csv; charset=UTF-8`，串流下載。
 
-檔案名稱格式：`mimeet_stats_{type}_{start_date}_{end_date}.{format}`
+欄位：`Date, New Members, Subscription Revenue, Point Revenue, Total Revenue`
+
+檔名格式：`mimeet-stats-{YYYYMMDD}.csv`
 
 ---
 
@@ -288,21 +287,27 @@ GET /api/v1/admin/stats/export
 GET /api/v1/admin/stats/server-metrics
 ```
 
-> 所需權限：`super_admin` 專屬
+> 所需權限：`settings.roles`（super_admin 專屬）
 
 **成功回應 200：**
 ```json
 {
   "success": true,
   "data": {
-    "cpu_usage_pct": 42.5,
-    "memory_usage_pct": 68.3,
-    "disk_usage_pct": 31.2,
-    "mysql_connections": 24,
-    "redis_memory_mb": 156,
-    "queue_jobs_pending": 3,
-    "queue_jobs_failed": 0,
-    "collected_at": "2025-01-15T10:30:00Z"
+    "db_version": "8.0.33",
+    "load_avg": { "1m": 0.42, "5m": 0.31, "15m": 0.28 },
+    "disk": {
+      "total_gb": 120.0,
+      "free_gb": 84.3,
+      "used_percent": 29.8
+    },
+    "redis": {
+      "version": "7.0.11",
+      "used_memory_human": "12.50M",
+      "connected_clients": 4
+    },
+    "php_version": "8.2.12",
+    "timestamp": "2025-01-15T10:30:00Z"
   }
 }
 ```
@@ -480,7 +485,7 @@ PATCH /api/v1/admin/members/{user_id}/actions
 
 | action | 必填參數 | 說明 | 所需權限 |
 |--------|---------|------|---------|
-| `adjust_credit` | `value`（整數，可負）、`reason` | 調整誠信分數 | members.edit |
+| `adjust_credit` | `value`（整數，可負）、`reason` | 調整誠信分數（後端實際 action key 為 `adjust_score`） | members.edit |
 | `set_level` | `level`（registered/verified/advanced/paid）、`reason` | 手動調整會員等級 | members.edit |
 | `require_reverify` | `verify_type`（phone/advanced）、`reason` | 要求重新驗證 | members.edit |
 | `suspend` | `reason` | 停權帳號（誠信分數降為0） | members.edit |

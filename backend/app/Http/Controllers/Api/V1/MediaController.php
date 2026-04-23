@@ -64,4 +64,32 @@ class MediaController extends Controller
             ],
         ], 201);
     }
+
+    public function delete(Request $request): JsonResponse
+    {
+        $request->validate(['url' => 'required|string|url']);
+
+        $url      = $request->input('url');
+        $baseUrl  = Storage::disk('public')->url('');
+        $path     = str_replace($baseUrl, '', $url);
+        $segments = explode('/', ltrim($path, '/'));
+        $userId   = $request->user()->id;
+
+        // Ownership check: avatars/{id}/... and photos/{id}/... must match the user
+        if (in_array($segments[0] ?? '', ['avatars', 'photos'])) {
+            if (($segments[1] ?? null) !== (string) $userId) {
+                return response()->json(['success' => false, 'message' => '無權限刪除此檔案'], 403);
+            }
+        } elseif (($segments[0] ?? '') !== 'report_images') {
+            return response()->json(['success' => false, 'message' => '不允許的路徑'], 403);
+        }
+
+        if (!Storage::disk('public')->exists($path)) {
+            return response()->json(['success' => false, 'message' => '檔案不存在'], 404);
+        }
+
+        Storage::disk('public')->delete($path);
+
+        return response()->json(['success' => true, 'message' => '檔案已刪除']);
+    }
 }

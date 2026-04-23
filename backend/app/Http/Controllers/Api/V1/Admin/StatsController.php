@@ -8,8 +8,10 @@ use App\Models\PointOrder;
 use App\Models\PointTransaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * 後台營運數據摘要（補完 A01）
@@ -85,6 +87,136 @@ class StatsController extends Controller
                 'points' => $points,
                 'pending_tickets' => $pendingTickets,
                 'pending_verifications' => $pendingVerifications,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /admin/stats/chart — daily new-member and revenue trend (last N days)
+     */
+    public function chart(Request $request): JsonResponse
+    {
+        $days = min((int) $request->input('days', 30), 90);
+        $start = now()->subDays($days - 1)->startOfDay();
+
+        $newMembers = User::where('id', '>', 1)
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $start)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->pluck('count', 'date');
+
+        $subscriptionRevenue = Order::where('status', 'paid')
+            ->where('paid_at', '>=', $start)
+            ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
+        $pointRevenue = PointOrder::where('status', 'paid')
+            ->where('paid_at', '>=', $start)
+            ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
+        $labels = [];
+        $series = ['new_members' => [], 'subscription_revenue' => [], 'point_revenue' => []];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('Y-m-d');
+            $labels[] = $date;
+            $series['new_members'][] = (int) ($newMembers[$date] ?? 0);
+            $series['subscription_revenue'][] = (int) ($subscriptionRevenue[$date] ?? 0);
+            $series['point_revenue'][] = (int) ($pointRevenue[$date] ?? 0);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['labels' => $labels, 'series' => $series],
+        ]);
+    }
+
+    /**
+     * GET /admin/stats/export — download daily stats CSV (last 30 days by default)
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $days = min((int) $request->input('days', 30), 90);
+        $start = now()->subDays($days - 1)->startOfDay();
+
+        $newMembers = User::where('id', '>', 1)
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $start)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->pluck('count', 'date');
+
+        $subscriptionRevenue = Order::where('status', 'paid')
+            ->where('paid_at', '>=', $start)
+            ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
+        $pointRevenue = PointOrder::where('status', 'paid')
+            ->where('paid_at', '>=', $start)
+            ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
+            ->groupBy('date')
+            ->pluck('total', 'date');
+
+        $filename = 'mimeet-stats-' . now()->format('Ymd') . '.csv';
+
+        return response()->streamDownload(function () use ($days, $newMembers, $subscriptionRevenue, $pointRevenue) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Date', 'New Members', 'Subscription Revenue', 'Point Revenue', 'Total Revenue']);
+            for ($i = $days - 1; $i >= 0; $i--) {
+                $date = now()->subDays($i)->format('Y-m-d');
+                $sub = (int) ($subscriptionRevenue[$date] ?? 0);
+                $pts = (int) ($pointRevenue[$date] ?? 0);
+                fputcsv($handle, [$date, (int) ($newMembers[$date] ?? 0), $sub, $pts, $sub + $pts]);
+            }
+            fclose($handle);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * GET /admin/stats/server-metrics — basic server health snapshot
+     */
+    public function serverMetrics(): JsonResponse
+    {
+        $dbVersion = DB::selectOne('SELECT VERSION() as version')?->version ?? 'unknown';
+
+        $load = null;
+        if (function_exists('sys_getloadavg')) {
+            $load = sys_getloadavg();
+        }
+
+        $diskTotal = disk_total_space('/');
+        $diskFree = disk_free_space('/');
+
+        $redisInfo = null;
+        try {
+            $redis = app('redis')->connection();
+            $info = $redis->info();
+            $redisInfo = [
+                'version' => $info['redis_version'] ?? null,
+                'used_memory_human' => $info['used_memory_human'] ?? null,
+                'connected_clients' => $info['connected_clients'] ?? null,
+            ];
+        } catch (\Throwable) {
+            $redisInfo = ['error' => 'unavailable'];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'db_version' => $dbVersion,
+                'load_avg' => $load ? ['1m' => round($load[0], 2), '5m' => round($load[1], 2), '15m' => round($load[2], 2)] : null,
+                'disk' => [
+                    'total_gb' => $diskTotal ? round($diskTotal / 1073741824, 1) : null,
+                    'free_gb' => $diskFree ? round($diskFree / 1073741824, 1) : null,
+                    'used_percent' => ($diskTotal && $diskFree) ? round(($diskTotal - $diskFree) / $diskTotal * 100, 1) : null,
+                ],
+                'redis' => $redisInfo,
+                'php_version' => PHP_VERSION,
+                'timestamp' => now()->toISOString(),
             ],
         ]);
     }

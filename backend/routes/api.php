@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\Admin\DatasetController;
 use App\Http\Controllers\Api\V1\Admin\MemberLevelPermissionController;
 use App\Http\Controllers\Api\V1\Admin\VerificationController;
 use App\Http\Controllers\Api\V1\Admin\BroadcastController;
+use App\Http\Controllers\Api\V1\FcmTokenController;
 use App\Http\Controllers\Api\V1\Admin\AdminLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminCrudController;
 use App\Http\Controllers\Api\V1\VerificationPhotoController;
@@ -72,6 +73,8 @@ Route::prefix('api/v1')->group(function () {
     // ─── Media upload (authenticated, upload rate-limited) ──────────────
     Route::post('/uploads', [MediaController::class, 'upload'])
         ->middleware(['auth:sanctum', 'throttle:upload']);
+    Route::delete('/uploads', [MediaController::class, 'delete'])
+        ->middleware('auth:sanctum');
 
     // ─── Users (authenticated, rate-limited) ───────────────────────────
     Route::prefix('users')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
@@ -178,6 +181,12 @@ Route::prefix('api/v1')->group(function () {
         Route::delete('me/stealth', [StealthController::class, 'deactivate']);
     });
 
+    // ─── FCM Push Token (B-003/H-004) ─────────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('me/fcm-token', [FcmTokenController::class, 'store']);
+        Route::delete('me/fcm-token', [FcmTokenController::class, 'destroy']);
+    });
+
     // ─── F40-c Super Like (authenticated) ─────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('users/{id}/super-like', [SuperLikeController::class, 'store']);
@@ -196,6 +205,7 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/', [ReportController::class, 'index']);
         Route::get('/history', [ReportController::class, 'history']);
         Route::delete('/{id}', [ReportController::class, 'destroy']);
+        Route::post('/{id}/followups', [ReportController::class, 'addFollowup']);
     });
 
     // ─── Appeal (authenticated — suspended users can access) ─────────
@@ -244,6 +254,8 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:admin-login');
 
         Route::middleware(['admin.auth', 'admin.log'])->group(function () {
+            Route::get('/auth/me', [AdminController::class, 'me']);
+            Route::post('/auth/logout', [AdminController::class, 'logout']);
             Route::get('/members', [AdminController::class, 'members'])->middleware('admin.permission:members.view');
             Route::get('/members/{id}', [AdminController::class, 'memberDetail'])->middleware('admin.permission:members.view');
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction'])->middleware('admin.permission:members.edit');
@@ -296,6 +308,9 @@ Route::prefix('api/v1')->group(function () {
 
             // F40 點數管理（後台）— 補完 A01 儀表板
             Route::get('/stats/summary', [StatsController::class, 'summary']);
+            Route::get('/stats/chart', [StatsController::class, 'chart'])->middleware('admin.permission:members.view');
+            Route::get('/stats/export', [StatsController::class, 'export'])->middleware('admin.permission:members.view');
+            Route::get('/stats/server-metrics', [StatsController::class, 'serverMetrics'])->middleware('admin.permission:settings.roles');
             Route::get('/point-packages', [AdminPointController::class, 'packages']);
             Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
             Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints'])->middleware('admin.permission:members.edit');
