@@ -244,28 +244,28 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:admin-login');
 
         Route::middleware(['admin.auth', 'admin.log'])->group(function () {
-            Route::get('/members', [AdminController::class, 'members']);
-            Route::get('/members/{id}', [AdminController::class, 'memberDetail']);
-            Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction']);
-            Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions']);
-            Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile']);
-            Route::delete('/members/{id}', [AdminController::class, 'deleteMember']);
-            Route::post('/members/{id}/change-password', [AdminController::class, 'changeMemberPassword']);
-            Route::post('/members/{id}/verify-email', [AdminController::class, 'forceVerifyEmail']);
-            Route::get('/tickets', [AdminController::class, 'tickets']);
-            Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket']);
-            Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus']);
-            Route::post('/tickets/{id}/reply', [TicketController::class, 'reply']);
-            Route::get('/payments', [AdminController::class, 'payments']);
+            Route::get('/members', [AdminController::class, 'members'])->middleware('admin.permission:members.view');
+            Route::get('/members/{id}', [AdminController::class, 'memberDetail'])->middleware('admin.permission:members.view');
+            Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction'])->middleware('admin.permission:members.edit');
+            Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions'])->middleware('admin.permission:members.edit');
+            Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile'])->middleware('admin.permission:members.edit');
+            Route::delete('/members/{id}', [AdminController::class, 'deleteMember'])->middleware('admin.permission:members.delete');
+            Route::post('/members/{id}/change-password', [AdminController::class, 'changeMemberPassword'])->middleware('admin.permission:members.edit');
+            Route::post('/members/{id}/verify-email', [AdminController::class, 'forceVerifyEmail'])->middleware('admin.permission:members.edit');
+            Route::get('/tickets', [AdminController::class, 'tickets'])->middleware('admin.permission:reports.view');
+            Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket'])->middleware('admin.permission:reports.process');
+            Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus'])->middleware('admin.permission:reports.process');
+            Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])->middleware('admin.permission:reports.process');
+            Route::get('/payments', [AdminController::class, 'payments'])->middleware('admin.permission:payments.view');
             Route::get('/settings', [AdminController::class, 'getSettings']);
             Route::patch('/settings', [AdminController::class, 'updateSettings']);
 
             // Chat logs (admin only)
-            Route::get('/chat-logs/search', [ChatLogController::class, 'search']);
-            Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations']);
-            Route::get('/chat-logs/export', [ChatLogController::class, 'export']);
-            Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs']);
-            Route::get('/members/{userId}/chat-logs/export', [ChatLogController::class, 'memberChatLogsExport']);
+            Route::get('/chat-logs/search', [ChatLogController::class, 'search'])->middleware('admin.permission:chat.view');
+            Route::get('/chat-logs/conversations', [ChatLogController::class, 'conversations'])->middleware('admin.permission:chat.view');
+            Route::get('/chat-logs/export', [ChatLogController::class, 'export'])->middleware('admin.permission:chat.view');
+            Route::get('/members/{userId}/chat-logs', [ChatLogController::class, 'memberChatLogs'])->middleware('admin.permission:chat.view');
+            Route::get('/members/{userId}/chat-logs/export', [ChatLogController::class, 'memberChatLogsExport'])->middleware('admin.permission:chat.view');
 
             // Verification review (Sprint 11)
             Route::get('/verifications', [VerificationController::class, 'index']);
@@ -273,8 +273,8 @@ Route::prefix('api/v1')->group(function () {
             Route::patch('/verifications/{id}', [VerificationController::class, 'review']);
 
             // SEO Meta 管理（A17）— A18 廣告跳轉連結保留 Phase 2
-            Route::get('/seo/meta', [\App\Http\Controllers\Admin\SeoController::class, 'metaIndex']);
-            Route::patch('/seo/meta/{id}', [\App\Http\Controllers\Admin\SeoController::class, 'metaUpdate']);
+            Route::get('/seo/meta', [\App\Http\Controllers\Admin\SeoController::class, 'metaIndex'])->middleware('admin.permission:seo.manage');
+            Route::patch('/seo/meta/{id}', [\App\Http\Controllers\Admin\SeoController::class, 'metaUpdate'])->middleware('admin.permission:seo.manage');
 
             // Announcements
             Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);
@@ -283,10 +283,10 @@ Route::prefix('api/v1')->group(function () {
             Route::delete('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'destroy']);
 
             // Broadcasts (Sprint 11)
-            Route::get('/broadcasts', [BroadcastController::class, 'index']);
-            Route::post('/broadcasts', [BroadcastController::class, 'store']);
-            Route::get('/broadcasts/{id}', [BroadcastController::class, 'show']);
-            Route::post('/broadcasts/{id}/send', [BroadcastController::class, 'send']);
+            Route::get('/broadcasts', [BroadcastController::class, 'index'])->middleware('admin.permission:broadcasts.manage');
+            Route::post('/broadcasts', [BroadcastController::class, 'store'])->middleware('admin.permission:broadcasts.manage');
+            Route::get('/broadcasts/{id}', [BroadcastController::class, 'show'])->middleware('admin.permission:broadcasts.manage');
+            Route::post('/broadcasts/{id}/send', [BroadcastController::class, 'send'])->middleware('admin.permission:broadcasts.manage');
 
             // Operation logs (Sprint 11)
             Route::get('/logs', [AdminLogController::class, 'index']);
@@ -298,7 +298,7 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/stats/summary', [StatsController::class, 'summary']);
             Route::get('/point-packages', [AdminPointController::class, 'packages']);
             Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
-            Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints']);
+            Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints'])->middleware('admin.permission:members.edit');
             Route::get('/point-transactions', [AdminPointController::class, 'transactions']);
 
             // System Control (super_admin only)
