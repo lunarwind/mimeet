@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -40,6 +41,25 @@ class EnsureAdminUser
                 'code' => 403,
                 'message' => '帳號已停用',
             ], 403);
+        }
+
+        // IP binding check (VULN-008)
+        $tokenName = $token->name ?? '';
+        if (str_starts_with($tokenName, 'admin-token-')) {
+            $boundIp = substr($tokenName, strlen('admin-token-'));
+            $currentIp = $request->ip();
+            if ($boundIp !== $currentIp) {
+                Log::warning('Admin token IP mismatch', [
+                    'admin_id'   => $admin->id,
+                    'bound_ip'   => $boundIp,
+                    'request_ip' => $currentIp,
+                    'path'       => $request->path(),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => ['code' => 'ADMIN_4001', 'message' => 'Token IP 不符，請重新登入'],
+                ], 401);
+            }
         }
 
         // Set the authenticated user on the request
