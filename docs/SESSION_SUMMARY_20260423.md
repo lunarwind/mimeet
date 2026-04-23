@@ -107,11 +107,54 @@
 
 ---
 
+## P1 安全強化記錄（2026-04-23 第二批）
+
+### G-001 — security(nginx): HSTS + CSP + server_tokens off (VULN-004)
+
+**Commit:** `f160add`
+**受影響檔案：** `docker/nginx/default.conf`
+**修復內容：** 在既有 5 個 security header 後新增 HSTS（max-age=31536000; includeSubDomains）、CSP（default-src 'self'、script-src 'self'、style-src 'self' 'unsafe-inline' 等）、server_tokens off。
+
+**⚠️ 重要發現：** `docker/nginx/default.conf` 是本機 Docker 開發用，**不影響 production**。production nginx 跑在 Droplet host（systemctl），config 在 `/etc/nginx/sites-enabled/mimeet`，**不在 git repo 內**。
+- HSTS：production 已有 ✅（三個 server block 均有）
+- CSP：production 尚未加入 ❌（需手動更新 `/etc/nginx/sites-enabled/mimeet`）
+- server_tokens off：production 尚未加入 ❌（`Server: nginx` header 仍暴露，無版本號）
+
+**待辦：** 將 `/etc/nginx/sites-enabled/mimeet` 納入 git 管理，或在 deploy script 中 sync 此檔案。
+
+---
+
+### G-004 — security(admin): admin token IP binding (VULN-008)
+
+**Commit:** `bf4d3d2`
+**受影響檔案：**
+- `backend/app/Http/Controllers/Api/V1/AdminController.php` — token name 改 `admin-token-{ip}`；response 加 `last_login_ip`
+- `backend/app/Http/Middleware/EnsureAdminUser.php` — IP binding check，不符 → 401 + Log::warning
+- `backend/database/migrations/2026_04_23_090045_add_last_login_ip_to_admin_users_table.php` — 新增 `last_login_ip VARCHAR(45) NULLABLE`
+
+**驗收：** 登入後 token name = `admin-token-220.135.209.213` ✅；`last_login_ip` 欄位 migration 執行成功 ✅
+
+---
+
+### G-007 — security(cors): allowed_origins via env (VULN-011)
+
+**Commit:** `7d4e58f`
+**受影響檔案：**
+- `backend/config/cors.php` — `allowed_origins` 改讀 `CORS_ALLOWED_ORIGINS` env，預設值僅含三個正式域名
+- `backend/.env.example` — 補 CORS 說明
+
+**驗收：**
+- `Origin: http://localhost:5173` → 無 ACAO header ✅
+- `Origin: https://mimeet.online` → `Access-Control-Allow-Origin: https://mimeet.online` ✅
+- Droplet `.env` 無 `CORS_ALLOWED_ORIGINS` key → 使用安全預設值 ✅
+
+---
+
 ## 待處理（Sprint 14 P1+）
 
 詳見 `docs/audits/SUMMARY-20260423.md`。次高優先：
 
+- **G-001 部分** — production nginx 的 CSP 和 server_tokens off 尚未生效（需把 `/etc/nginx/sites-enabled/mimeet` 納入 git 管理）
 - **H-003 🟠** — NotificationsView markAllRead / handleClick 只更新 local state，不呼叫後端
 - **H-004 🟡** — FCM Token 路由 POST/DELETE /me/fcm-token 未實作（B-003 對應）
 - **E-001 🟠** — 手機/Email 驗證後未呼叫 credit score +10 API
-- **G-001 🟠** — nginx 缺 HSTS + CSP + server_tokens off
