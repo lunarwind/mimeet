@@ -150,11 +150,59 @@
 
 ---
 
-## 待處理（Sprint 14 P1+）
+## P2 業務功能缺口修復（2026-04-23 第三批）
 
-詳見 `docs/audits/SUMMARY-20260423.md`。次高優先：
+Merge commit: `f852f44` — 10 個問題，6 個 commits on develop。
 
-- **G-001 部分** — production nginx 的 CSP 和 server_tokens off 尚未生效（需把 `/etc/nginx/sites-enabled/mimeet` 納入 git 管理）
-- **H-003 🟠** — NotificationsView markAllRead / handleClick 只更新 local state，不呼叫後端
-- **H-004 🟡** — FCM Token 路由 POST/DELETE /me/fcm-token 未實作（B-003 對應）
-- **E-001 🟠** — 手機/Email 驗證後未呼叫 credit score +10 API
+### 修復清單
+
+| ID | 問題 | Commit | 受影響檔案 |
+|----|------|--------|-----------|
+| H-003 | 通知已讀只改 local state，不呼叫後端 | `b3594a6` | `NotificationsView.vue` |
+| F-002 | 後台缺 GET /admin/auth/me + POST /auth/logout | `b3594a6` | `AdminController.php`、`api.php` |
+| E-001 | Email/手機驗證後未加 credit score +5 | `4944471` | `AuthController.php` |
+| E-003 | 帳號停權/解停後未寄 Email 通知 | `4944471` | `CreditScoreObserver.php`、`AccountAutoSuspendedMail.php`（新建）、`AccountReactivatedMail.php`（新建）、2 個 blade view |
+| B-003/H-004 | FCM Token 路由全缺（POST/DELETE /me/fcm-token） | `29bbd8f` | `FcmTokenController.php`（新建）、`api.php` |
+| D-003 | DELETE /uploads 路由缺失（上傳後無法刪除） | `5410d58` | `MediaController.php`、`api.php` |
+| H-005 | POST /reports/{id}/followups 路由缺失 | `5410d58` | `ReportController.php`、`api.php` |
+| E-002 | CreditScore 所有 delta 全 hardcode，無法後台調整 | `0c84887` | `CreditScoreService.php`（加 `getConfig()`）、`ReportService.php`、`AuthController.php`、`VerificationController.php`、`ReportController.php` |
+| F-003 | memberAction 支援三個未實作的 action（set_level / require_reverify / add_note） | `0c84887` | `AdminController.php` |
+| F-004 | /stats/chart、/stats/export、/stats/server-metrics 路由全缺 | `c1fc42a` | `StatsController.php`、`api.php`、`API-002_後台管理API規格書.md` |
+
+### 實作細節紀錄
+
+**H-003 修正路徑：** 後端路由為 `PATCH /notifications/{id}/read` 和 `PATCH /notifications/read-all`（無 `me/` 前綴，HTTP method 為 PATCH 非 POST）。
+
+**E-001 雙重防護：** 用 `$user->wasChanged('email_verified')` / `wasChanged('phone_verified')` 在 save 後判斷，防止重複加分。手機驗證走登入分支時，需改用 `find() + save()` 取代原有的 bulk `User::where()->update()`（`wasChanged` 必須在 Eloquent model 上才有效）。
+
+**E-002 getConfig 設計：** `CreditScoreService::getConfig(string $key, int $default)` 讀 `system_settings.credit_score.{$key}`；refund 用 `-getConfig('report_filed_deduct', -10)` 自動取反，後台調整扣分值時 refund 也同步變動。
+
+**F-003 add_note 欄位映射：** `AdminOperationLog` 的 fillable 無 `note` 欄位，改用 `description`（傳入 note 文字）+ `request_summary` JSON（`['note' => ...]`）儲存。
+
+**F-004 StreamedResponse 說明：** `/stats/export` 用 `response()->streamDownload()` 直接串流 CSV，不寫暫存檔；`/stats/server-metrics` 用 PHP 原生 `sys_getloadavg()` + `disk_free_space()` + Redis `info()` 組合，Redis 不可用時 fallback 為 `['error' => 'unavailable']`。
+
+### 已知差異（不影響功能）
+
+- `supervisorctl status mimeet-worker:*` → "no such group"：Droplet 上 Supervisor 設定不含 mimeet-worker，Queue Worker 未以 Supervisor 管理（pre-existing 問題，E-003 的 Mail::queue 需此 worker，後續需補設定）。
+- 本批不含 migration（無新表 / 新欄位）。
+
+### 驗收結果
+
+| 測試 | 結果 |
+|------|------|
+| 前台 https://mimeet.online | ✅ 200 |
+| 後台 https://admin.mimeet.online | ✅ 200 |
+| API /api/v1/auth/me (unauthenticated) | ✅ 401 |
+| GET /admin/auth/me (unauthenticated) | ✅ 401 |
+| POST /me/fcm-token (unauthenticated) | ✅ 401 |
+| GET /admin/stats/chart (unauthenticated) | ✅ 401 |
+| GET /admin/stats/export (unauthenticated) | ✅ 401 |
+| GET /admin/stats/server-metrics (unauthenticated) | ✅ 401 |
+| CreditScoreService::getConfig('email_verified', 5) | ✅ 5 |
+
+---
+
+## 待處理（未完成）
+
+- **Queue Worker 未設定** — Supervisor 無 mimeet-worker group，`Mail::queue()` 在 E-003 加入後郵件不會發出，需在 Droplet 設定 `/etc/supervisor/conf.d/mimeet-worker.conf`
+- **G-001 部分** — production nginx CSP 和 server_tokens off 尚未生效（`/etc/nginx/sites-enabled/mimeet` 需更新）
