@@ -12,13 +12,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'https://mimeet.online',
-        'https://www.mimeet.online',
-        'https://admin.mimeet.online',
-    ],
+    'allowed_origins' => array_filter(
+        array_map(
+            'trim',
+            explode(',', env('CORS_ALLOWED_ORIGINS', 'https://mimeet.online,https://www.mimeet.online,https://admin.mimeet.online'))
+        )
+    ),
 
     'allowed_origins_patterns' => [],
 
