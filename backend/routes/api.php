@@ -55,7 +55,8 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
         Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:otp');
         Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:otp');
-        Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+        Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+            ->middleware('throttle:otp');
     });
 
     // ─── Auth (authenticated) ────────────────────────────────────────

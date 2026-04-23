@@ -202,3 +202,46 @@ services:
 
 2. 更新 `docker/nginx/default.conf` 加入 SSL 配置
 3. 確保 certbot 在宿主機執行，不在容器內
+
+---
+
+## 8. Queue Worker（Docker）
+
+Queue Worker 以 Docker service 形式管理，**不透過 Supervisor**。
+
+**Service 定義位置：** `docker-compose.staging.yml` → `worker` service
+
+```yaml
+worker:
+  command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+  container_name: mimeet-worker
+  restart: unless-stopped
+```
+
+**Queue driver：** Redis（非 database，無 `jobs` 資料表）
+
+**日常操作：**
+```bash
+# 查看狀態
+docker ps | grep mimeet-worker
+
+# 查看即時 log
+docker logs mimeet-worker --tail=30 -f
+
+# 重啟 worker（deploy 後若有新 job class）
+cd /var/www/mimeet && docker compose -f docker-compose.staging.yml restart worker
+
+# 確認 worker 正在消化 jobs
+docker exec mimeet-app php artisan tinker \
+  --execute="echo app('redis')->llen('queues:default');"
+```
+
+**Droplet 重建後恢復：**
+```bash
+cd /var/www/mimeet
+docker compose -f docker-compose.staging.yml up -d worker
+```
+
+Worker 隨 Docker daemon 自動重啟（`restart: unless-stopped`），無需手動 Supervisor 設定。
+
+> ⚠️ 歷史誤區：CLAUDE.md 舊版寫 `supervisorctl restart mimeet-worker:*`，Droplet 上從未有此 Supervisor group。已更正為 `docker compose ... restart worker`。

@@ -251,38 +251,20 @@ Content-Type: application/json
       "phone_verified": true,
       "phone": "09xx-xxx-666"
     },
-    "tokens": {
-      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
+    "token": "eyJ0eXAiOiJKV1Qi..."
   }
 }
 ```
 
-#### 2.1.3 刷新Token
-```http
-POST /api/v1/auth/refresh
-Authorization: Bearer {refresh_token}
-```
+> 使用 Laravel Sanctum Personal Access Token，無 refresh 機制。
+> Token 有效期 24 小時（SANCTUM_TOKEN_EXPIRATION=1440），到期後需重新登入。
 
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "Token刷新成功",
-  "data": {
-    "tokens": {
-      "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
-  }
-}
-```
+#### 2.1.3 刷新 Token（未實作 — Sanctum PAT 不支援）
+
+> **狀態：未實作**
+> 系統採用 Laravel Sanctum Personal Access Token，不支援 refresh token 機制。
+> Token 到期（24 小時）後，前端應引導用戶重新登入。
+> 若未來需要 token 輪換，請改用 Sanctum expiration + 401 自動跳轉登入頁方案。
 
 #### 2.1.4 用戶登出
 ```http
@@ -374,76 +356,29 @@ Content-Type: application/json
 > 成功後寫入 `users.phone_verified_at`，並記錄到 `user_activity_logs`（type: phone_change）。
 
 #### 2.2.3 真人驗證（女性）
-```http
-POST /api/v1/auth/photo-verification
-Authorization: Bearer {access_token}
-Content-Type: multipart/form-data
-```
+
+> 詳見 §16.3/§16.4 完整說明，本節為摘要。
 
 **開始驗證（獲取驗證碼）：**
 ```http
-POST /api/v1/auth/photo-verification/start
-```
-
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "驗證會話創建成功",
-  "data": {
-    "session_id": "session_1234567890",
-    "verification_code": "AB123C",
-    "expires_at": "2024-12-20T10:40:00Z",
-    "instructions": [
-      "請手持身份證件拍攝自拍照",
-      "照片中需清楚顯示驗證碼：AB123C",
-      "請確保光線充足，五官清晰可見",
-      "驗證碼有效時間10分鐘"
-    ]
-  }
-}
+POST /api/v1/me/verification-photo/request
+Authorization: Bearer {access_token}
 ```
 
 **上傳驗證照片：**
 ```http
-POST /api/v1/auth/photo-verification/upload
+POST /api/v1/me/verification-photo/upload
+Authorization: Bearer {access_token}
 Content-Type: multipart/form-data
 
-session_id: session_1234567890
 verification_photo: {file}
 ```
 
-#### 2.2.4 信用卡驗證（男性）
-```http
-POST /api/v1/auth/credit-card-verification
-Authorization: Bearer {access_token}
-Content-Type: application/json
-```
+#### 2.2.4 信用卡驗證（男性進階驗證）[未實作，Phase 2]
 
-**請求參數：**
-```json
-{
-  "payment_method": "green_world",
-  "return_url": "https://app.example.com/verification/callback"
-}
-```
-
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "信用卡驗證初始化成功",
-  "data": {
-    "verification_id": "verify_1234567890",
-    "payment_url": "https://payment.greenworld.com.tw/...",
-    "amount": 100,
-    "currency": "TWD",
-    "expires_at": "2024-12-20T11:30:00Z"
-  }
-}
-```
+> **狀態：Phase 2 待實作**
+> 目前男性進階驗證機制尚未建立。實作時路徑應對齊女性驗證模式，
+> 使用 /me/credit-card-verification/* 而非 /auth/ 前綴。
 
 ### 2.3 密碼重設
 
@@ -536,15 +471,6 @@ GET /api/v1/users/{user_id}
 Authorization: Bearer {access_token}
 ```
 
-**查詢參數：**
-- `include`: 包含的關聯資料，可選值：`photos,preferences,stats`
-- `fields`: 指定返回的欄位
-
-**範例：**
-```http
-GET /api/v1/users/123?include=photos,stats&fields=id,nickname,age,location,photos,stats
-```
-
 **成功回應 (200)：**
 ```json
 {
@@ -559,32 +485,20 @@ GET /api/v1/users/123?include=photos,stats&fields=id,nickname,age,location,photo
       "location": "台北市",
       "avatar": "https://cdn.example.com/avatars/123.jpg",
       "credit_score": 85,
-      "vip_status": "premium",
-      "verification_status": {
-        "email_verified": true,
-        "phone_verified": true,
-        "photo_verified": true,
-        "credit_card_verified": false
-      },
-      "photos": [
-        {
-          "id": 1,
-          "url": "https://cdn.example.com/photos/123_1.jpg",
-          "is_avatar": true,
-          "order": 1
-        }
-      ],
-      "stats": {
-        "profile_views": 156,
-        "messages_received": 23,
-        "likes_received": 45
-      },
+      "email_verified": true,
+      "phone_verified": true,
+      "advanced_verified": false,
+      "photos": [],
       "last_active_at": "2024-12-20T09:15:00Z",
       "created_at": "2024-11-15T14:20:00Z"
     }
   }
 }
 ```
+
+> `photos` 目前恆回傳空陣列 `[]`，頭像由 `avatar` 欄位直接提供。
+>
+> `stats` 資料目前不包含於此端點回應。
 
 #### 3.1.2 更新用戶資料
 ```http
@@ -597,17 +511,12 @@ Content-Type: application/json
 ```json
 {
   "nickname": "新暱稱",
-  "introduction": "更新的自我介紹",
+  "bio": "更新的自我介紹",
   "location": "新北市",
   "height": 165,
   "weight": 50,
   "education": "master",
-  "job": "軟體工程師",
-  "preferences": {
-    "age_range": [25, 35],
-    "location_preference": ["台北市", "新北市"],
-    "relationship_type": "long_term"
-  }
+  "occupation": "軟體工程師"
 }
 ```
 
@@ -621,7 +530,7 @@ Content-Type: application/json
     "user": {
       "id": 123,
       "nickname": "新暱稱",
-      "introduction": "更新的自我介紹",
+      "bio": "更新的自我介紹",
       "updated_at": "2024-12-20T10:30:00Z"
     }
   }
@@ -715,9 +624,9 @@ Authorization: Bearer {access_token}
       "age": 23,
       "avatar_url": "https://cdn.mimeet.tw/avatars/123.webp",
       "city": "台北市",
-      "job": "軟體工程師",
+      "occupation": "軟體工程師",
       "education": "bachelor",
-      "introduction": "喜歡旅遊和攝影",
+      "bio": "喜歡旅遊和攝影",
       "height": 165,
       "weight": 50
     },
@@ -839,7 +748,7 @@ GET /api/v1/users/search?gender=male&age_min=25&age_max=40&location=台北市&cr
 ```
 
 **業務規則：**
-- **30天未登入自動隱藏：** `last_login_at < NOW() - 30 days` 的用戶不出現在搜尋結果，除非呼叫方明確傳入 `include_inactive=true`（付費功能保留欄位）
+- **30天未登入自動隱藏：** `last_active_at < 今日 - 30 天` 的用戶不出現在搜尋結果（已實作，`UserController::search()` 預設套用）；從未登入者（`last_active_at IS NULL`）保留在結果中
 - **信用分數區間：** 30分以下（受限）、31-60（普通）、61-90（優質）、91+（頂級）
 - **跨區間傳訊限制：** 較高分數區間的用戶可主動向較低分數區間用戶發送訊息；反之 **不可**。若信用分數 ≤ 30 分（受限），**無法主動發起聊天**（嘗試時 API 回傳 `403 + error_code 2003`）
 - **推薦排序預設：** 信用分數優先，次之最後上線時間；超過 30 天未登入者不在推薦列表出現
@@ -889,84 +798,26 @@ refresh: true|false  # 是否刷新推薦列表
 
 ---
 
-### 3.3 個人相冊管理
+### 3.3 頭像槽位系統（Avatar Slots）
 
-#### 3.3.1 取得我的相冊
-```http
-GET /api/v1/me/photos
-Authorization: Bearer {access_token}
-```
+用戶最多可上傳 **3 張照片**，以 JSON 陣列儲存於 `users.avatar_slots`，無獨立相冊表。
 
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "data": {
-    "photos": [
-      { "id": 1, "url": "https://cdn.mimeet.tw/photos/gallery/.../img.webp", "sort_order": 0, "created_at": "..." }
-    ],
-    "max_photos": 6
-  }
-}
-```
+**上傳流程：**
 
----
+1. 呼叫 `POST /api/v1/uploads`（`context: 'avatar'` 或 `'profile_photo'`）取得 CDN URL
+2. 呼叫 `PATCH /api/v1/users/me` 將 URL 寫入 `avatar_slots` 陣列
 
-#### 3.3.2 新增相冊照片
-先呼叫 `POST /api/v1/uploads?context=profile_photo` 取得 CDN URL，再呼叫本端點。
+**槽位管理端點（頭像）：**
 
 ```http
-POST /api/v1/me/photos
-Authorization: Bearer {access_token}
-Content-Type: application/json
+GET  /api/v1/users/me/avatars         # 取得頭像槽位列表
+POST /api/v1/users/me/avatars         # 上傳新頭像（multipart）
+PATCH /api/v1/users/me/avatars/active # 設定主頭像
+DELETE /api/v1/users/me/avatars       # 刪除指定槽位照片
 ```
 
-**請求參數：**
-```json
-{ "url": "https://cdn.mimeet.tw/photos/gallery/.../img.webp" }
-```
-
-**成功回應 (201)：**
-```json
-{ "success": true, "data": { "id": 7, "url": "...", "sort_order": 5 } }
-```
-
-**超過上限 (422)：**
-```json
-{ "success": false, "error": { "code": "2031", "message": "相冊最多 6 張照片" } }
-```
-
----
-
-#### 3.3.3 排序相冊照片
-```http
-PATCH /api/v1/me/photos/sort
-Authorization: Bearer {access_token}
-Content-Type: application/json
-```
-
-**請求參數：**
-```json
-{ "order": [3, 1, 2] }
-```
-
-**成功回應 (200)：**
-```json
-{ "success": true }
-```
-
----
-
-#### 3.3.4 刪除相冊照片
-```http
-DELETE /api/v1/me/photos/{photo_id}
-Authorization: Bearer {access_token}
-```
-
-**成功回應 (200)：**
-```json
-{ "success": true }
-```
+> 無獨立 `/me/photos` 端點，無 sort 操作。
+> 詳見 §16.1（`POST /uploads` 統一上傳端點）。
 
 ---
 
@@ -1031,49 +882,7 @@ Authorization: Bearer {access_token}
 
 ### 3.5 帳號刪除
 
-#### 3.5.1 申請帳號刪除（進入 7 天冷靜期）
-```http
-DELETE /api/v1/me/account
-Authorization: Bearer {access_token}
-Content-Type: application/json
-```
-
-**請求參數：**
-```json
-{
-  "password": "CurrentPass123!",
-  "reason": "no_longer_needed"
-}
-```
-
-`reason` 枚舉：`no_longer_needed` | `privacy_concern` | `bad_experience` | `found_partner` | `other`
-
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "message": "帳號刪除申請已送出。7 天內重新登入可取消。",
-  "data": { "scheduled_deletion_at": "2025-01-22T00:00:00Z" }
-}
-```
-
-**密碼錯誤 (422)：**
-```json
-{ "success": false, "error": { "code": "1011", "message": "密碼錯誤" } }
-```
-
----
-
-#### 3.5.2 取消帳號刪除申請
-```http
-POST /api/v1/me/account/cancel-deletion
-Authorization: Bearer {access_token}
-```
-
-**成功回應 (200)：**
-```json
-{ "success": true, "message": "帳號刪除申請已取消" }
-```
+> 相關功能已移至 §10.11。
 
 ---
 
@@ -1190,7 +999,7 @@ Authorization: Bearer {access_token}
 
 **查詢參數：**
 ```
-before_id: 123  # 獲取指定消息ID之前的消息
+cursor: 123  # 獲取指定消息ID之前的消息（游標分頁）
 limit: 50
 ```
 
@@ -1222,7 +1031,7 @@ limit: 50
       }
     ],
     "has_more": true,
-    "next_before_id": 788
+    "next_cursor": 788
   }
 }
 ```
@@ -1274,20 +1083,32 @@ image: {file}
 }
 ```
 
-#### 4.1.4 標記消息已讀
-```http
-PATCH /api/v1/chats/{chat_id}/messages/read
-Authorization: Bearer {access_token}
-Content-Type: application/json
-```
-
-**請求參數：**
+**每日訊息上限 (429)：**
 ```json
 {
-  "data": {
-    "message_ids": [789, 790, 791]
-  }
+  "success": false,
+  "code": 429,
+  "message": "今日訊息已達上限（30則）"
 }
+```
+
+> **業務規則：**
+> - Lv0–Lv2.x（未付費）用戶每日上限 30 則訊息
+> - Lv3（付費會員）無上限
+> - 上限計算為當日 00:00–23:59（UTC+8），跨日自動重置
+> - 前端收到 429 時應提示用戶升級付費方案
+
+#### 4.1.4 標記消息已讀
+```http
+PATCH /api/v1/chats/{id}/read
+Authorization: Bearer {access_token}
+```
+
+對話層級標記，一次將整個對話所有訊息設為已讀，無需 request body。
+
+**成功回應 (200)：**
+```json
+{ "success": true }
 ```
 
 #### 4.1.5 回收訊息（F19）
@@ -1490,9 +1311,7 @@ Content-Type: application/json
     "scheduled_at": "2024-12-25T19:00:00Z",
     "location": "台北101美食街",
     "location_lat": 25.0340,
-    "location_lng": 121.5645,
-    "message": "邀請你一起吃晚餐，期待與你見面！",
-    "estimated_duration": 120
+    "location_lng": 121.5645
   }
 }
 ```
@@ -1513,14 +1332,15 @@ Content-Type: application/json
       "location_lat": 25.0340,
       "location_lng": 121.5645,
       "status": "pending",
-      "qr_code": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "qr_token": "a3f9c2d1e8b4...",
       "qr_expires_at": "2024-12-25T20:00:00Z",
-      "message": "邀請你一起吃晚餐，期待與你見面！",
       "created_at": "2024-12-20T10:30:00Z"
     }
   }
 }
 ```
+
+> `qr_token` 為 64 字元 hex 字串（`bin2hex(random_bytes(32))`），非 JWT。
 
 #### 5.1.2 回應約會邀請
 ```http
@@ -2099,7 +1919,7 @@ Authorization: Bearer {access_token}
 
 #### 7.2.1 綠界科技回調
 ```http
-POST /api/v1/payments/callbacks/green-world
+POST /api/v1/payments/ecpay/notify
 Content-Type: application/x-www-form-urlencoded
 ```
 
@@ -2279,18 +2099,12 @@ GET /api/v1/site-config
 
 ### 9.1 公告查詢
 
-#### 9.1.1 獲取系統公告
+#### 9.1.1 獲取目前有效公告
 ```http
-GET /api/v1/announcements
-Authorization: Bearer {access_token}
+GET /api/v1/announcements/active
 ```
 
-**查詢參數：**
-```
-position: top|popup|sidebar
-active_only: true|false
-limit: 10
-```
+> 公開端點，無需認證。回傳所有目前有效（`is_active=1`、在有效期內）的公告。
 
 **成功回應 (200)：**
 ```json
@@ -2315,20 +2129,7 @@ limit: 10
 }
 ```
 
-#### 9.1.2 標記公告已讀
-```http
-POST /api/v1/announcements/{announcement_id}/read
-Authorization: Bearer {access_token}
-```
-
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "code": 200,
-  "message": "已標記為已讀"
-}
-```
+> 已讀狀態由前端 localStorage 管理，不呼叫後端。
 
 ---
 
@@ -2968,11 +2769,11 @@ Authorization: Bearer {access_token}
 {
   "success": true,
   "data": {
-    "following": [
+    "users": [
       {
-        "uid": 456,
+        "id": 456,
         "nickname": "甜心寶貝",
-        "avatar": "https://cdn.example.com/avatars/456.jpg",
+        "avatar_url": "https://cdn.example.com/avatars/456.jpg",
         "age": 23,
         "credit_score": 85,
         "last_active_at": "2024-12-20T09:00:00Z",
@@ -3002,9 +2803,9 @@ Authorization: Bearer {access_token}
   "data": {
     "visitors": [
       {
-        "uid": 789,
+        "id": 789,
         "nickname": "金主大叔",
-        "avatar": "https://cdn.example.com/avatars/789.jpg",
+        "avatar_url": "https://cdn.example.com/avatars/789.jpg",
         "age": 38,
         "credit_score": 91,
         "visited_at": "2024-12-20T14:30:00Z",
@@ -3186,7 +2987,7 @@ Content-Type: application/json
 
 #### 10.7.1 取得通知列表
 ```http
-GET /api/v1/me/notifications
+GET /api/v1/notifications
 Authorization: Bearer {access_token}
 ```
 
@@ -3241,7 +3042,7 @@ Authorization: Bearer {access_token}
 
 #### 10.7.2 取得未讀通知數（Badge 用）
 ```http
-GET /api/v1/me/notifications/unread-count
+GET /api/v1/notifications/unread-count
 Authorization: Bearer {access_token}
 ```
 
@@ -3254,7 +3055,7 @@ Authorization: Bearer {access_token}
 
 #### 10.7.3 標記單筆已讀
 ```http
-PATCH /api/v1/me/notifications/{id}/read
+PATCH /api/v1/notifications/{id}/read
 Authorization: Bearer {access_token}
 ```
 
@@ -3267,7 +3068,7 @@ Authorization: Bearer {access_token}
 
 #### 10.7.4 全部標記已讀
 ```http
-POST /api/v1/me/notifications/read-all
+PATCH /api/v1/notifications/read-all
 Authorization: Bearer {access_token}
 ```
 

@@ -96,11 +96,18 @@ class UserController extends Controller
             'max_credit'       => 'sometimes|integer|max:100',
             'credit_score_min' => 'sometimes|integer|min:0',  // legacy alias
             'credit_score_max' => 'sometimes|integer|max:100', // legacy alias
+            'verified_only'    => 'sometimes|boolean',
             'per_page'         => 'sometimes|integer|min:1|max:50',
         ]);
 
         $query = User::where('status', 'active')
             ->where('id', '!=', $request->user()?->id);
+
+        // 預設只顯示 30 天內有活動的用戶（含從未登入者保留）
+        $query->where(function ($q) {
+            $q->whereNull('last_active_at')
+              ->orWhere('last_active_at', '>=', now()->subDays(30));
+        });
 
         // Privacy: hide users who opted out of search
         $query->where(function ($q) {
@@ -127,6 +134,14 @@ class UserController extends Controller
 
         // ── 性別（精確）──
         if ($request->filled('gender')) $query->where('gender', $request->gender);
+
+        // ── 僅顯示已驗證用戶（email + phone 均已驗證）──
+        if ($request->boolean('verified_only')) {
+            $query->where(function ($q) {
+                $q->where('email_verified', true)
+                  ->where('phone_verified', true);
+            });
+        }
 
         // ── 年齡：基於 birth_date 計算，未填生日者 nullable 放過 ──
         if ($request->filled('age_min')) {

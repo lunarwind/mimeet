@@ -29,8 +29,8 @@ export async function initTracking(): Promise<void> {
     if (tracking.ga_measurement_id) loadGA4(tracking.ga_measurement_id)
     if (tracking.fb_pixel_id) loadFBPixel(tracking.fb_pixel_id)
     if (tracking.gtm_id) loadGTM(tracking.gtm_id)
-  } catch (err) {
-    console.warn('[tracking] init failed:', err)
+  } catch {
+    // tracking init failure is non-fatal
   }
 }
 
