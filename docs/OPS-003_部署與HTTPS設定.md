@@ -1,7 +1,8 @@
 # OPS-003 部署與 HTTPS/TLS 設定
 
-**文檔版本：** v1.0
+**文檔版本：** v1.1
 **建立日期：** 2026年4月（Sprint 14）
+**最後更新：** 2026-04-23（G-001 完整修復：CSP + server_tokens off 上線）
 **適用範圍：** MiMeet 生產環境部署
 
 ---
@@ -130,7 +131,60 @@ sudo systemctl status certbot.timer
 
 ---
 
-## 6. Docker 環境部署注意
+## 6. Production Nginx Config 版控與同步
+
+### 架構說明
+
+| 檔案 | 用途 |
+|------|------|
+| `docker/nginx/default.conf` | 本機 Docker 開發環境（Laravel backend fastcgi） |
+| `deploy/nginx/mimeet.conf` | **Production nginx config（版控來源）** |
+| `/etc/nginx/sites-enabled/mimeet` | Droplet 上的實際生效檔案 |
+
+Production nginx 跑在 Droplet host（systemctl），不是 Docker container。
+
+### 同步步驟（每次修改 deploy/nginx/mimeet.conf 後執行）
+
+```bash
+# 1. 備份現有 config
+ssh root@188.166.229.100 'cp /etc/nginx/sites-enabled/mimeet /etc/nginx/sites-enabled/mimeet.bak'
+
+# 2. 上傳新版 config
+scp deploy/nginx/mimeet.conf root@188.166.229.100:/etc/nginx/sites-enabled/mimeet
+
+# 3. 驗證語法並 reload
+ssh root@188.166.229.100 'nginx -t && nginx -s reload && echo "✅ nginx reloaded"'
+```
+
+### 當前 Security Headers（v1.1）
+
+三個 server block（api / frontend / admin）均包含：
+
+```nginx
+server_tokens off;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.mimeet.online wss://api.mimeet.online; font-src 'self' data:; frame-ancestors 'none';" always;
+```
+
+前台 / 後台 server block 額外有：
+
+```nginx
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(self)" always;
+```
+
+### 注意事項
+
+- **HSTS 一旦發出，瀏覽器記憶 1 年**。確認 HTTPS 設定正確後才修改 HSTS 值。
+- **CSP 的 `'unsafe-inline'` 僅在 style-src**，script-src 不含（Vue 3 build 不需要 inline script）。
+- Certbot renew hook 已設定 `systemctl reload nginx`，憑證更新後自動 reload。
+
+---
+
+## 7. Docker 環境部署注意
 
 若使用 Docker 部署，需要：
 
