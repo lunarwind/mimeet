@@ -39,10 +39,11 @@ class AdminController extends Controller
             ], 403);
         }
 
-        // Issue token with 'admin' ability to distinguish from user tokens
-        $token = $admin->createToken('admin-token', ['admin'])->plainTextToken;
+        // Issue token bound to login IP (VULN-008)
+        $loginIp = $request->ip();
+        $token = $admin->createToken("admin-token-{$loginIp}", ['admin'])->plainTextToken;
 
-        $admin->update(['last_login_at' => now()]);
+        $admin->update(['last_login_at' => now(), 'last_login_ip' => $loginIp]);
 
         return response()->json([
             'success' => true,
@@ -56,6 +57,7 @@ class AdminController extends Controller
                     'role' => $admin->role,
                 ],
                 'token' => $token,
+                'last_login_ip' => $loginIp,
             ],
         ]);
     }
