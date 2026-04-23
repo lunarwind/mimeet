@@ -41,7 +41,7 @@ class AppealController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'ticket_no' => "A{$report->id}",
+                'ticket_no' => 'A' . str_pad($report->id, 9, '0', STR_PAD_LEFT),
                 'message' => '申訴已送出，我們將在 3 個工作天內回覆',
             ],
         ], 201);
@@ -54,7 +54,7 @@ class AppealController extends Controller
         return response()->json([
             'success' => true,
             'data' => $appeal ? [
-                'ticket_no' => "A{$appeal->id}",
+                'ticket_no' => 'A' . str_pad($appeal->id, 9, '0', STR_PAD_LEFT),
                 'status' => $appeal->status,
                 'submitted_at' => $appeal->created_at?->toISOString(),
                 'admin_reply' => $appeal->resolution_note,
