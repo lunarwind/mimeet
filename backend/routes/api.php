@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\V1\Admin\DatasetController;
 use App\Http\Controllers\Api\V1\Admin\MemberLevelPermissionController;
 use App\Http\Controllers\Api\V1\Admin\VerificationController;
 use App\Http\Controllers\Api\V1\Admin\BroadcastController;
+use App\Http\Controllers\Api\V1\FcmTokenController;
 use App\Http\Controllers\Api\V1\Admin\AdminLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminCrudController;
 use App\Http\Controllers\Api\V1\VerificationPhotoController;
@@ -176,6 +177,12 @@ Route::prefix('api/v1')->group(function () {
         Route::get('me/stealth', [StealthController::class, 'status']);
         Route::post('me/stealth', [StealthController::class, 'activate']);
         Route::delete('me/stealth', [StealthController::class, 'deactivate']);
+    });
+
+    // ─── FCM Push Token (B-003/H-004) ─────────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('me/fcm-token', [FcmTokenController::class, 'store']);
+        Route::delete('me/fcm-token', [FcmTokenController::class, 'destroy']);
     });
 
     // ─── F40-c Super Like (authenticated) ─────────────────────────

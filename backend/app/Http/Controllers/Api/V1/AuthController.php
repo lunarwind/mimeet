@@ -247,8 +247,16 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $userId = $request->user()?->id;
+
         if ($request->user()?->currentAccessToken()) {
             $request->user()->currentAccessToken()->delete();
+        }
+
+        if ($userId && $request->has('fcm_token')) {
+            \App\Models\FcmToken::where('user_id', $userId)
+                ->where('token', $request->fcm_token)
+                ->delete();
         }
 
         return response()->json([
