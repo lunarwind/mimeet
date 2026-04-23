@@ -100,6 +100,9 @@ async function submitStep2() {
       nickname: step1.nickname.trim(),
       gender: step1.gender as 'male' | 'female',
       birth_date: birthDate,
+      terms_accepted: true,
+      privacy_accepted: true,
+      anti_fraud_read: true,
     })
     // Store token and user from registration response
     const token = res.data?.data?.token ?? res.data?.token ?? ''
