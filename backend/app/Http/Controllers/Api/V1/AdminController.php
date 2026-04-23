@@ -280,9 +280,12 @@ class AdminController extends Controller
     public function memberAction(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'action' => 'required|string|in:adjust_score,suspend,unsuspend,verify_phone,unverify_phone,verify_advanced,unverify_advanced',
+            'action'      => 'required|string|in:adjust_score,suspend,unsuspend,verify_phone,unverify_phone,verify_advanced,unverify_advanced,set_level,require_reverify,add_note',
             'score_delta' => 'required_if:action,adjust_score|integer|min:-50|max:50',
-            'reason' => 'sometimes|string|max:500',
+            'reason'      => 'sometimes|string|max:500',
+            'level'       => 'required_if:action,set_level|numeric|in:0,1,1.5,2,3',
+            'verify_type' => 'required_if:action,require_reverify|in:phone,advanced',
+            'note'        => 'required_if:action,add_note|string|max:500',
         ]);
 
         $user = User::findOrFail($id);
@@ -317,6 +320,27 @@ class AdminController extends Controller
             if ($current === 1.5 || $current === 2.0) {
                 $user->forceFill(['membership_level' => 1])->save();
             }
+        } elseif ($action === 'set_level') {
+            $user->forceFill(['membership_level' => (float) $request->input('level')])->save();
+        } elseif ($action === 'require_reverify') {
+            $type = $request->input('verify_type');
+            if ($type === 'phone') {
+                $user->forceFill(['phone_verified' => false])->save();
+            } elseif ($type === 'advanced') {
+                $user->forceFill(['advanced_verified' => false])->save();
+            }
+        } elseif ($action === 'add_note') {
+            \App\Models\AdminOperationLog::create([
+                'admin_id'        => $request->user()->id,
+                'action'          => 'add_note',
+                'resource_type'   => 'member',
+                'resource_id'     => $id,
+                'description'     => $request->input('note'),
+                'ip_address'      => $request->ip(),
+                'user_agent'      => substr((string) $request->userAgent(), 0, 500),
+                'request_summary' => ['note' => $request->input('note')],
+                'created_at'      => now(),
+            ]);
         }
 
         $messages = [
@@ -325,8 +349,11 @@ class AdminController extends Controller
             'unsuspend' => '會員已恢復。',
             'verify_phone' => '已手動通過手機驗證。',
             'unverify_phone' => '已撤銷手機驗證。',
-            'verify_advanced' => '已手動通過進階驗證。',
+            'verify_advanced'   => '已手動通過進階驗證。',
             'unverify_advanced' => '已撤銷進階驗證。',
+            'set_level'         => '會員等級已調整。',
+            'require_reverify'  => '已要求重新驗證。',
+            'add_note'          => '備註已新增。',
         ];
 
         return response()->json([

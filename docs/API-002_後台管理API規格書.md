@@ -480,7 +480,7 @@ PATCH /api/v1/admin/members/{user_id}/actions
 
 | action | 必填參數 | 說明 | 所需權限 |
 |--------|---------|------|---------|
-| `adjust_credit` | `value`（整數，可負）、`reason` | 調整誠信分數 | members.edit |
+| `adjust_credit` | `value`（整數，可負）、`reason` | 調整誠信分數（後端實際 action key 為 `adjust_score`） | members.edit |
 | `set_level` | `level`（registered/verified/advanced/paid）、`reason` | 手動調整會員等級 | members.edit |
 | `require_reverify` | `verify_type`（phone/advanced）、`reason` | 要求重新驗證 | members.edit |
 | `suspend` | `reason` | 停權帳號（誠信分數降為0） | members.edit |
