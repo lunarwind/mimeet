@@ -20,7 +20,7 @@
 | 後台 | https://admin.mimeet.online |
 | API | https://api.mimeet.online |
 | artisan | `docker exec -u www-data mimeet-app php artisan <cmd>` |
-| Queue Worker | Supervisor `mimeet-worker:*`（_00、_01）|
+| Queue Worker | Docker service `mimeet-worker`（`docker-compose.staging.yml`，Redis driver）|
 | API 健康檢查 | `GET /api/v1/auth/me` → 401（Sanctum），不是 `/auth/user` |
 
 ## 部署流程（強制，不可跳步）
@@ -38,7 +38,7 @@
    docker exec -u www-data mimeet-app php artisan route:cache
    cd /var/www/mimeet/frontend && npm ci --prefer-offline 2>&1 | tail -3 && npm run build 2>&1 | tail -5
    cd /var/www/mimeet/admin && npm ci --prefer-offline 2>&1 | tail -3 && npm run build 2>&1 | tail -5
-   supervisorctl restart mimeet-worker:*
+   docker compose -f docker-compose.staging.yml restart worker
    echo "✅ Deploy 完成"
    '
 6. Smoke Test：前台 200 / 後台 200 / API /api/v1/auth/me 401
