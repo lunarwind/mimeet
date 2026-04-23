@@ -1,7 +1,8 @@
 # [DEV-009] MiMeet WebSocket 事件規格書
 
-**文檔版本：** v1.0  
+**文檔版本：** v2.0  
 **建立日期：** 2026年3月  
+**最後更新：** 2026-04-23（v2.0：全面對齊 Laravel Reverb 實作，修正頻道命名、前端 Echo 初始化語法、authEndpoint）  
 **適用範圍：** 前台 Vue.js SPA ↔ Laravel Reverb（WebSocket Server）  
 **前置文件：** DEV-001（技術架構）、DEV-003（前端規範）、DEV-004（後端規範）、API-001  
 **審核狀態：** 待確認
@@ -12,17 +13,14 @@
 
 ```
 前台 Vue.js SPA
-  └─ Laravel Echo (socket.io-client)
+  └─ Laravel Echo + pusher-js（Reverb 使用 Pusher protocol）
         │
         │ WSS（WebSocket Secure）
         ▼
-  CloudFlare（Pass-through WSS）
+  Nginx（Reverse Proxy → port 8080，location /app + /apps）
         │
         ▼
-  Nginx（Reverse Proxy → port 8080）
-        │
-        ▼
-  Laravel Reverb（WebSocket Server）
+  Laravel Reverb（WebSocket Server，Pusher-compatible protocol）
         │
         ├─ private-chat.{conversationId}     ← 私人聊天頻道
         ├─ private-user.{userId}             ← 個人通知頻道
@@ -35,27 +33,30 @@
 | 項目 | 選型 | 版本 |
 |------|------|------|
 | WS Server | Laravel Reverb | 1.x |
-| 前端 WS 客戶端 | socket.io-client（直接使用，未安裝 Laravel Echo） | 4.x |
-| 廣播驅動 | Reverb（取代 Pusher） | — |
-| 前端認證 | Sanctum Cookie（SPA 模式） | — |
+| 前端 WS 客戶端 | Laravel Echo + pusher-js（Reverb Pusher-compatible protocol） | Echo 1.x / pusher-js 8.x |
+| 廣播驅動 | reverb | — |
+| 前端認證 | Sanctum PAT（Bearer Token，via authEndpoint） | — |
 
 ---
 
 ## 2. 頻道一覽表
 
-| 頻道名稱 | 類型 | 訂閱者 | 用途 | MVP |
-|---------|------|-------|------|-----|
-| `private-chat.{conversationId}` | Private | 對話雙方 | 即時訊息、訊息撤回 | ✅ |
-| `private-user.{userId}` | Private | 用戶本人 | 通知、未讀數、分數異動 | ✅ |
-| `presence-online` | Presence | 所有已登入用戶 | 顯示對方是否在線 | ✅ |
-| `private-anon-chat.{channelId}` | Private | 符合條件的用戶 | 匿名聊天室即時訊息 | Phase 2 |
+> **命名重要說明：** `channels.php` 定義頻道時**不含** `private-` 前綴（Reverb / Pusher protocol 規範）。
+> 前端使用 `echo.private(...)` 時 Laravel Echo 會**自動加上** `private-` 前綴再送出訂閱請求。
 
-### 頻道命名規則
+| channels.php 定義名稱 | 前端訂閱名（Echo 自動加前綴） | 類型 | 訂閱者 | 用途 | MVP |
+|----------------------|------------------------------|------|-------|------|-----|
+| `chat.{conversationId}` | `private-chat.{conversationId}` | Private | 對話雙方 | 即時訊息、訊息撤回 | ✅ |
+| `user.{userId}` | `private-user.{userId}` | Private | 用戶本人 | 通知、未讀數、分數異動 | ✅ |
+| `online` | `presence-online` | Presence | 所有已登入用戶 | 顯示對方是否在線 | ✅ |
+| `anon-chat.{channelId}` | `private-anon-chat.{channelId}` | Private | 符合條件的用戶 | 匿名聊天室即時訊息 | Phase 2 |
 
-```
-private-{domain}.{id}       ← 私有頻道（需認證，點對點或用戶專屬）
-presence-{domain}           ← Presence 頻道（需認證，可感知其他在線成員）
-public-{domain}             ← 公開頻道（無需認證，MVP 不使用）
+### 前端訂閱語法對照
+
+```typescript
+// Private 頻道 → echo.private('chat.123')  （Echo 自動送 private-chat.123）
+// Presence 頻道 → echo.join('online')       （Echo 自動送 presence-online）
+// Public 頻道  → echo.channel('...')        （MVP 不使用）
 ```
 
 ---
@@ -64,43 +65,52 @@ public-{domain}             ← 公開頻道（無需認證，MVP 不使用）
 
 ### 3.1 前端初始化（`src/plugins/echo.ts`）
 
+Reverb 採用 Pusher-compatible protocol，需使用 `pusher-js` 作為底層 transport。
+
 ```typescript
 import Echo from 'laravel-echo'
-import { io } from 'socket.io-client'
+import Pusher from 'pusher-js'
+
+window.Pusher = Pusher
 
 const echo = new Echo({
-  broadcaster: 'socket.io',
-  client: io,
-  host: `${import.meta.env.VITE_REVERB_HOST}:${import.meta.env.VITE_REVERB_PORT}`,
-  forceTLS: import.meta.env.VITE_REVERB_SCHEME === 'wss',
-  // Sanctum Cookie 模式：依靠 withCredentials 傳送認證 Cookie
+  broadcaster: 'reverb',
+  key: import.meta.env.VITE_REVERB_APP_KEY,
+  wsHost: import.meta.env.VITE_REVERB_HOST,
+  wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+  wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+  forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+  enabledTransports: ['ws', 'wss'],
+  authEndpoint: `${import.meta.env.VITE_API_BASE_URL}/broadcasting/auth`,
   auth: {
     headers: {
-      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+      Authorization: `Bearer ${localStorage.getItem('token')}`,
     },
   },
-  withCredentials: true,
 })
 
 export default echo
 ```
 
-### 3.2 環境變數（`.env`）
+### 3.2 authEndpoint 與環境變數
+
+廣播授權端點：`/api/v1/broadcasting/auth`（由 Sanctum Bearer Token 認證）
 
 ```dotenv
-# WebSocket（Laravel Reverb）
-VITE_REVERB_SCHEME=wss
-VITE_REVERB_HOST=api.mimeet.tw
-VITE_REVERB_PORT=443          # 生產環境透過 Nginx proxy 到 8080
+# 前端環境變數（frontend/.env）
+VITE_REVERB_APP_KEY=your-reverb-key
+VITE_REVERB_HOST=api.mimeet.online
+VITE_REVERB_PORT=443
+VITE_REVERB_SCHEME=https
 
-# 後端 Reverb Server 設定（.env Laravel）
+# 後端 Reverb Server 設定（backend/.env）
 REVERB_APP_ID=mimeet-app
 REVERB_APP_KEY=your-reverb-key
 REVERB_APP_SECRET=your-reverb-secret
 REVERB_HOST=0.0.0.0
 REVERB_PORT=8080
 REVERB_SCHEME=http            # 後端本機 HTTP，SSL 由 Nginx 終止
-BROADCAST_DRIVER=reverb
+BROADCAST_CONNECTION=reverb
 ```
 
 ### 3.3 頻道授權端點（`routes/channels.php`）
@@ -385,20 +395,35 @@ interface AnonMessageReceivedPayload {
 
 ---
 
-## 5. 連線中斷與重連策略
+## 5. 前端訂閱範例（App.vue 全局訂閱）
 
-### 5.1 前端重連邏輯
+登入後在 `App.vue` mounted 執行一次，建立持久全局頻道。
 
 ```typescript
-// src/plugins/echo.ts 補充設定
-const socket = io(host, {
-  reconnection: true,
-  reconnectionDelay: 1000,         // 首次重連等待 1 秒
-  reconnectionDelayMax: 10000,     // 最長等待 10 秒
-  reconnectionAttempts: Infinity,  // 無限重試（由用戶手動離開頁面才停止）
-  timeout: 20000,                  // 連線逾時 20 秒
-})
+// App.vue
+function subscribeGlobalChannels(userId: number) {
+  // 個人通知頻道
+  echo.private(`user.${userId}`)
+    .listen('NotificationReceived', (e) => {
+      notifStore.addNotification(e)
+      uiStore.incrementUnreadBadge()
+    })
+    .listen('CreditScoreChanged', (e) => {
+      authStore.user.credit_score = e.new_score
+      uiStore.showToast(e.delta > 0 ? `誠信分數 +${e.delta}` : `誠信分數 ${e.delta}`, e.delta > 0 ? 'success' : 'error')
+      if (e.new_score <= 0) router.push('/suspended')
+    })
+
+  // 聊天頻道（進入對話頁時訂閱）
+  // 在 useChat.ts 內按需訂閱：
+  // echo.private(`chat.${conversationId}`)
+  //   .listen('MessageSent', (e) => { ... })
+}
 ```
+
+## 5.1 連線中斷與重連策略
+
+pusher-js 內建自動重連，無需手動設定。Laravel Echo 重連後自動重新訂閱頻道。
 
 ### 5.2 離線期間訊息補償（Message Catch-up）
 
@@ -406,7 +431,7 @@ WebSocket 斷線期間，後端不保存 WS 事件，重連後前端需主動拉
 
 ```typescript
 // src/composables/useChat.ts
-socket.on('connect', async () => {
+echo.connector.pusher.connection.bind('connected', async () => {
   // 重連成功後，拉取斷線期間的新訊息
   const lastMessageId = chatStore.getLastMessageId(conversationId)
   if (lastMessageId) {
@@ -440,23 +465,23 @@ socket.on('connect', async () => {
 // App.vue（全域持久訂閱，登入後執行一次）
 onMounted(() => {
   if (authStore.isLoggedIn) {
-    subscribeGlobalChannels()
+    subscribeGlobalChannels(authStore.userId)
   }
 })
 
-function subscribeGlobalChannels() {
-  // 個人通知頻道
-  echo.private(`user.${authStore.userId}`)
-    .listen('NotificationCreated', handleNotification)
+function subscribeGlobalChannels(userId: number) {
+  // 個人通知頻道（channels.php: user.{id} → 前端送 private-user.{id}）
+  echo.private(`user.${userId}`)
+    .listen('NotificationReceived', handleNotification)
     .listen('UnreadCountUpdated', handleUnreadUpdate)
     .listen('CreditScoreChanged', handleCreditChange)
     .listen('SubscriptionStatusChanged', handleSubscriptionChange)
 
-  // 全域在線狀態
+  // 全域在線狀態（channels.php: online → 前端送 presence-online）
   echo.join('online')
-    .here(users => presenceStore.setOnlineUsers(users))
-    .joining(user => presenceStore.addOnlineUser(user))
-    .leaving(user => presenceStore.removeOnlineUser(user.id))
+    .here((users: OnlineUser[]) => presenceStore.setOnlineUsers(users))
+    .joining((user: OnlineUser) => presenceStore.addOnlineUser(user))
+    .leaving((user: OnlineUser) => presenceStore.removeOnlineUser(user.id))
 }
 ```
 
@@ -483,19 +508,36 @@ function subscribeGlobalChannels() {
 
 ## 8. Nginx WebSocket 代理設定
 
+實際設定見 `deploy/nginx/mimeet.conf`（版本控制中）。Reverb 需兩個 location：
+
 ```nginx
-# /etc/nginx/sites-available/mimeet.conf 補充 WS 區塊
-location /app/ {
+# WebSocket 升級（Pusher protocol 的 /app 路徑）
+location /app {
     proxy_pass http://127.0.0.1:8080;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "Upgrade";
+    proxy_set_header Connection "upgrade";
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
     proxy_read_timeout 3600s;    # WebSocket 長連線，避免 Nginx 60s 超時斷線
     proxy_send_timeout 3600s;
 }
+
+# Reverb HTTP API（/apps 路徑，用於頻道認證等）
+location /apps {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
 ```
+
+> `location /app`（無尾斜線）可同時匹配 `/app`、`/app/...`，這是 Reverb 的正確寫法。
+> `location /app/`（有尾斜線）只匹配 `/app/...`，會導致 WebSocket 握手失敗。
 
 ---
 
@@ -504,7 +546,7 @@ location /app/ {
 | 錯誤現象 | 可能原因 | 排查步驟 |
 |---------|---------|---------|
 | 前端連不上 WS | Nginx 未設定 Upgrade header | 檢查 §8 Nginx 設定 |
-| 頻道訂閱 403 | Sanctum Cookie 未傳送 | 確認 `withCredentials: true` + CORS 設定 |
+| 頻道訂閱 403 | Authorization header 未傳送 | 確認 `echo.ts` 的 `auth.headers.Authorization` 有正確 Bearer Token |
 | 事件收不到 | broadcastAs() 名稱不符 | 後端 `broadcastAs()` 需與前端 `.listen('...')` 完全一致 |
 | 重連後訊息遺失 | 未實作 Message Catch-up | 實作 §5.2 補償邏輯 |
 | Presence 頻道人數不準確 | 用戶快速重連 | Laravel Reverb 有內建 grace period，屬正常現象 |
@@ -535,4 +577,4 @@ Sprint 7（已完成 2026-04-08）：
 
 ---
 
-*本文件版本 v1.0，如後續業主確認訊息撤回時間窗（目前假設 5 分鐘）或其他細節，請同步更新。*
+*本文件版本 v2.0。v1.0→v2.0 主要修正：broadcaster 從 socket.io 改為 reverb（Pusher protocol）、頻道命名補上 private- 前綴說明、authEndpoint 改為 Bearer Token 模式。如後續業主確認訊息撤回時間窗（目前假設 5 分鐘）或其他細節，請同步更新。*
