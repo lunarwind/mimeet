@@ -124,4 +124,27 @@ class ReportController extends Controller
             'data' => ['credit_score_refunded' => 10],
         ]);
     }
+
+    public function addFollowup(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'content' => 'required|string|max:1000',
+        ]);
+
+        $report = Report::where('id', $id)
+            ->where('reporter_id', $request->user()->id)
+            ->firstOrFail();
+
+        $followup = \App\Models\ReportFollowup::create([
+            'report_id'  => $report->id,
+            'message'    => $request->input('content'),
+            'created_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '補充說明已送出',
+            'data'    => ['followup_id' => $followup->id],
+        ], 201);
+    }
 }

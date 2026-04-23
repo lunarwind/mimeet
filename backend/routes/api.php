@@ -73,6 +73,8 @@ Route::prefix('api/v1')->group(function () {
     // ─── Media upload (authenticated, upload rate-limited) ──────────────
     Route::post('/uploads', [MediaController::class, 'upload'])
         ->middleware(['auth:sanctum', 'throttle:upload']);
+    Route::delete('/uploads', [MediaController::class, 'delete'])
+        ->middleware('auth:sanctum');
 
     // ─── Users (authenticated, rate-limited) ───────────────────────────
     Route::prefix('users')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
@@ -203,6 +205,7 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/', [ReportController::class, 'index']);
         Route::get('/history', [ReportController::class, 'history']);
         Route::delete('/{id}', [ReportController::class, 'destroy']);
+        Route::post('/{id}/followups', [ReportController::class, 'addFollowup']);
     });
 
     // ─── Appeal (authenticated — suspended users can access) ─────────
