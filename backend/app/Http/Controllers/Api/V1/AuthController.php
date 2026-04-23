@@ -330,6 +330,9 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
         if ($user) {
             $user->forceFill(['email_verified' => true])->save();
+            if ($user->wasChanged('email_verified')) {
+                \App\Services\CreditScoreService::adjust($user, 5, 'email_verified', 'Email 驗證完成 +5');
+            }
         }
 
         Cache::forget("email_verification:{$request->email}");
@@ -469,14 +472,22 @@ class AuthController extends Controller
                 Log::error('[PhoneVerify] Failed to save user', ['user_id' => $user->id]);
             }
             UserActivityLogService::logPhoneChange($user->id, $request);
+            if ($user->wasChanged('phone_verified')) {
+                \App\Services\CreditScoreService::adjust($user, 5, 'phone_verified', '手機驗證完成 +5');
+            }
         } else {
             // Registration flow: mark phone as verified by email lookup
             $email = $request->input('email');
             if ($email) {
-                User::where('email', $email)->update([
-                    'phone' => $e164,
-                    'phone_verified' => true,
-                ]);
+                $regUser = User::where('email', $email)->first();
+                if ($regUser) {
+                    $regUser->phone = $e164;
+                    $regUser->phone_verified = true;
+                    $regUser->save();
+                    if ($regUser->wasChanged('phone_verified')) {
+                        \App\Services\CreditScoreService::adjust($regUser, 5, 'phone_verified', '手機驗證完成 +5');
+                    }
+                }
             }
         }
 
