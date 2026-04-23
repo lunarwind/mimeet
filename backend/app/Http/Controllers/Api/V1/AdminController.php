@@ -62,6 +62,28 @@ class AdminController extends Controller
         ]);
     }
 
+    public function me(Request $request): JsonResponse
+    {
+        $admin = $request->user();
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id'            => $admin->id,
+                'name'          => $admin->name,
+                'email'         => $admin->email,
+                'role'          => $admin->role,
+                'last_login_at' => $admin->last_login_at?->toISOString(),
+                'last_login_ip' => $admin->last_login_ip,
+            ],
+        ]);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()?->currentAccessToken()?->delete();
+        return response()->json(['success' => true, 'message' => '已登出']);
+    }
+
     /**
      * Get paginated member list.
      */

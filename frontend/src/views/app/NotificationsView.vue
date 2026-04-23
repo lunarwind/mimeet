@@ -61,13 +61,15 @@ onMounted(async () => {
   isLoading.value = false
 })
 
-function handleClick(notif: Notification) {
+async function handleClick(notif: Notification) {
   notif.isRead = true
+  await client.patch(`/notifications/${notif.id}/read`).catch(() => {})
   router.push(notif.actionUrl)
 }
 
-function markAllRead() {
+async function markAllRead() {
   notifications.value.forEach(n => { n.isRead = true })
+  await client.patch('/notifications/read-all').catch(() => {})
   uiStore.showToast('已全部標記為已讀', 'success')
 }
 </script>

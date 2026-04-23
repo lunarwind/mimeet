@@ -244,6 +244,8 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/auth/login', [AdminController::class, 'login'])->middleware('throttle:admin-login');
 
         Route::middleware(['admin.auth', 'admin.log'])->group(function () {
+            Route::get('/auth/me', [AdminController::class, 'me']);
+            Route::post('/auth/logout', [AdminController::class, 'logout']);
             Route::get('/members', [AdminController::class, 'members'])->middleware('admin.permission:members.view');
             Route::get('/members/{id}', [AdminController::class, 'memberDetail'])->middleware('admin.permission:members.view');
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction'])->middleware('admin.permission:members.edit');
