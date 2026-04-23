@@ -2144,42 +2144,37 @@ Content-Type: multipart/form-data
 ```
 
 **請求參數：**
-```
-report_user: 456
-type: 1  # 1:一般檢舉, 2:系統問題, 3:匿名聊天檢舉
-reason: 3  # 具體原因編號
-title: 檢舉標題
-content: 詳細說明檢舉原因
-images[]: {file1}
-images[]: {file2}
-```
+
+| 欄位 | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| `type` | string | ✅ | 舉報類型（見下方 enum） |
+| `reported_user_id` | integer | 選填 | 被舉報用戶 ID |
+| `description` | string | 選填 | 詳細描述（max 2000 字） |
+| `images[]` | file | 選填 | 截圖佐證（最多 3 張，JPEG/PNG/WebP，每張 ≤ 5MB）|
+
+**`type` 枚舉值：**
+
+| type | 中文說明 |
+|------|---------|
+| `harassment` | 騷擾或不當訊息 |
+| `impersonation` | 假冒身份 |
+| `scam` | 詐騙行為 |
+| `inappropriate` | 不雅照片或內容 |
+| `other` | 其他 |
 
 **成功回應 (201)：**
 ```json
 {
   "success": true,
   "code": 201,
-  "message": "舉報提交成功",
+  "message": "檢舉提交成功",
   "data": {
     "report": {
       "id": 123,
-      "report_number": "R2024122001",
-      "type": 1,
-      "reason": 3,
-      "title": "檢舉標題",
-      "content": "詳細說明檢舉原因",
-      "status": 1,
-      "images": [
-        {
-          "id": 1,
-          "url": "https://cdn.example.com/reports/123_1.jpg"
-        }
-      ],
+      "uuid": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "type": "harassment",
+      "status": "pending",
       "created_at": "2024-12-20T10:30:00Z"
-    },
-    "notice": {
-      "credit_score_deducted": 10,
-      "estimated_review_time": "1-3個工作天"
     }
   }
 }
@@ -2187,13 +2182,9 @@ images[]: {file2}
 
 **業務規則（提交時即刻扣分）：**
 
-| `type` | 說明 | 提交時雙方扣分 | 查證屬實後 |
-|--------|------|--------------|----------|
-| `1` 一般檢舉 | 檢舉其他用戶違規行為 | 檢舉人 **-10 分**，被檢舉人 **-10 分** | 檢舉人補回 +10 分；管理員可酌情追加 |
-| `2` 系統問題 | 回報網站功能問題（可附圖） | 無扣分 | 管理員可酌情給予 +N 分獎勵 |
-| `3` 匿名聊天室檢舉 | 針對匿名聊天室違規 | 檢舉人 **-5 分**，被檢舉人 **-5 分** | 檢舉人補回 +5 分 |
-
-> `credit_score_deducted` 回傳值會依 `type` 動態計算（type=1 為 10，type=3 為 5，type=2 為 0）。
+- 舉報人提交時扣 **-10 分**，被舉報人同時扣 **-10 分**
+- 管理員審核「屬實（resolved）」→ 舉報人補回 +10 分，被舉報人再追加 **-5 分**
+- 管理員審核「不成立（dismissed）」→ 舉報人補回 +10 分
 
 
 ```http

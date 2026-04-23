@@ -50,7 +50,7 @@ class ReportTest extends TestCase
 
         $this->actingAs($reporter)->postJson('/api/v1/reports', [
             'reported_user_id' => $reported->id,
-            'type' => 'spam',
+            'type' => 'harassment',
         ]);
 
         $reporter->refresh();
@@ -122,7 +122,7 @@ class ReportTest extends TestCase
             'uuid' => fake()->uuid(),
             'reporter_id' => $reporter->id,
             'reported_user_id' => $reported->id,
-            'type' => 'fake_photo',
+            'type' => 'impersonation',
             'status' => 'pending',
         ]);
 
@@ -144,7 +144,7 @@ class ReportTest extends TestCase
 
         $response = $this->actingAs($user)->postJson('/api/v1/reports', [
             'reported_user_id' => $user->id,
-            'type' => 'spam',
+            'type' => 'other',
         ]);
 
         $response->assertStatus(422);
@@ -154,7 +154,7 @@ class ReportTest extends TestCase
     {
         $response = $this->postJson('/api/v1/reports', [
             'reported_user_id' => 1,
-            'type' => 'spam',
+            'type' => 'other',
         ]);
 
         $response->assertStatus(401);

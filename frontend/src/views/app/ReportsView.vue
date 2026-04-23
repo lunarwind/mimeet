@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import { createReport } from '@/api/reports'
+import { createReport, type ReportType } from '@/api/reports'
 import { useImageUpload } from '@/composables/useImageUpload'
 import { useUiStore } from '@/stores/ui'
 
@@ -11,15 +11,15 @@ const route = useRoute()
 const uiStore = useUiStore()
 const { isUploading, uploadReport, error: uploadError } = useImageUpload()
 
-const REPORT_TYPES = [
-  { value: 1, label: '騷擾或不當訊息', icon: '💬' },
-  { value: 2, label: '假冒身份', icon: '🎭' },
-  { value: 3, label: '詐騙行為', icon: '⚠️' },
-  { value: 4, label: '不雅照片或內容', icon: '🚫' },
-  { value: 5, label: '其他', icon: '📝' },
+const REPORT_TYPES: { value: ReportType; label: string; icon: string }[] = [
+  { value: 'harassment',    label: '騷擾或不當訊息', icon: '💬' },
+  { value: 'impersonation', label: '假冒身份',       icon: '🎭' },
+  { value: 'scam',          label: '詐騙行為',        icon: '⚠️' },
+  { value: 'inappropriate', label: '不雅照片或內容', icon: '🚫' },
+  { value: 'other',         label: '其他',            icon: '📝' },
 ]
 
-const selectedType = ref<number | null>(null)
+const selectedType = ref<ReportType | null>(null)
 const reportedUserId = ref<number | undefined>(
   route.query.userId ? Number(route.query.userId) : undefined
 )

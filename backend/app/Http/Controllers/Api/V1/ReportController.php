@@ -7,7 +7,6 @@ use App\Models\Report;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
 {
@@ -21,11 +20,8 @@ class ReportController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'type' => 'required|in:fake_photo,harassment,spam,scam,inappropriate,system_issue,other',
-            'reported_user_id' => [
-                Rule::requiredIf(fn () => $request->input('type') !== 'system_issue'),
-                'nullable', 'integer', 'exists:users,id',
-            ],
+            'type' => 'required|in:harassment,impersonation,scam,inappropriate,other',
+            'reported_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'description' => 'nullable|string|max:2000',
             'images' => 'nullable|array|max:3',
             'images.*' => 'image|mimes:jpeg,png,gif,webp|max:5120',
