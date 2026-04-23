@@ -4268,54 +4268,53 @@ paths:
 
 > 本節整合自 DEV-008 Part A。
 
-### 16.1 照片上傳端點
-
-> **⚠️ 實作說明：** 目前無統一 `/uploads` 端點。各類照片使用專用端點上傳。
-
-#### 個人相冊 / 驗證照片上傳
+### 16.1 統一上傳端點
 
 ```
-POST /api/v1/users/me/photos
+POST /api/v1/uploads
 Authorization: Bearer {access_token}
 Content-Type: multipart/form-data
 ```
 
 | 欄位 | 類型 | 必填 | 說明 |
 |------|------|------|------|
-| `photo` | File | 是 | 圖片檔案（jpeg/png/gif/webp，最大 5MB） |
+| `file` | File | ✅ | 圖片檔案（jpeg/png/webp，最大 5MB） |
+| `context` | string | ✅ | 上傳用途（見下方枚舉） |
 
-> **注意：** 上傳 field name 為 `photo`（非 `file`）。
+**`context` 枚舉值：**
+
+| context | 存放路徑 | 說明 |
+|---------|---------|------|
+| `avatar` | `storage/avatars/{userId}/` | 上傳後同步更新 `users.avatar_url` |
+| `profile_photo` | `storage/photos/{userId}/` | 個人相冊照片 |
+| `report_image` | `storage/report_images/` | 舉報截圖佐證 |
+
+**Rate Limit：** 10 requests/min（per user）
 
 **成功回應 (201)：**
 ```json
 {
   "success": true,
   "data": {
-    "photo": {
-      "url": "https://api.mimeet.online/storage/photos/3/xxx.jpg",
-      "is_primary": false,
-      "created_at": "2026-04-18T10:00:00Z"
-    }
+    "url": "https://api.mimeet.online/storage/avatars/3/xxx.jpg",
+    "original_filename": "photo.jpg"
   }
 }
 ```
 
-**錯誤 422（格式/大小不符）：**
+**錯誤 422（格式/大小不符 / 偽裝 MIME）：**
 ```json
 { "success": false, "code": 422, "message": "檔案格式不合法（偽裝 MIME 偵測）" }
 ```
 
-#### 頭像上傳
+#### 專用上傳端點（已保留，不衝突）
+
+以下端點仍可使用，回應結構略有不同（含 avatar_slots 等額外資訊）：
 
 ```
-POST /api/v1/users/me/avatars
-Authorization: Bearer {access_token}
-Content-Type: multipart/form-data
+POST /api/v1/users/me/photos   — 個人相冊，field name: photo
+POST /api/v1/users/me/avatars  — 頭像槽位管理，field name: photo
 ```
-
-| 欄位 | 類型 | 必填 | 說明 |
-|------|------|------|------|
-| `photo` | File | 是 | 圖片檔案（jpeg/png/webp，最大 5MB） |
 
 ---
 
