@@ -36,10 +36,21 @@ class ChatLogController extends Controller
 
         $paginated = $query->paginate($perPage);
 
-        $data = $paginated->map(function (Message $msg) {
+        // 批次查詢 receiver，避免 N+1（一次 whereIn 取代 N 次 find）
+        $receiverIds = $paginated->map(function (Message $msg) {
+            $conv = $msg->conversation;
+            return $conv->user_a_id === $msg->sender_id ? $conv->user_b_id : $conv->user_a_id;
+        })->filter()->unique();
+
+        $receivers = User::select('id', 'nickname')
+            ->whereIn('id', $receiverIds)
+            ->get()
+            ->keyBy('id');
+
+        $data = $paginated->map(function (Message $msg) use ($receivers) {
             $conv = $msg->conversation;
             $receiverId = $conv->user_a_id === $msg->sender_id ? $conv->user_b_id : $conv->user_a_id;
-            $receiver = User::select('id', 'nickname')->find($receiverId);
+            $receiver = $receivers->get($receiverId);
 
             return [
                 'message_id' => $msg->id,
