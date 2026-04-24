@@ -65,8 +65,8 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
     });
 
-    // ─── Phone verify (works both authenticated and unauthenticated) ──
-    Route::prefix('auth')->middleware('throttle:otp')->group(function () {
+    // ─── Phone verify (requires auth — A-001/G-001 fix) ─────────────
+    Route::prefix('auth')->middleware(['auth:sanctum', 'throttle:otp'])->group(function () {
         Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend']);
         Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm']);
     });
@@ -102,9 +102,11 @@ Route::prefix('api/v1')->group(function () {
         Route::get('/me/blocked-users', [UserController::class, 'blockedUsers']);
     });
 
+    // ─── Subscriptions plans (public — D-001 fix) ────────────────────
+    Route::get('/subscriptions/plans', [SubscriptionController::class, 'plans']);
+
     // ─── Subscriptions (authenticated) ───────────────────────────────
     Route::prefix('subscriptions')->middleware('auth:sanctum')->group(function () {
-        Route::get('/plans', [SubscriptionController::class, 'plans']);
         Route::get('/me', [SubscriptionController::class, 'mySubscription']);
         Route::post('/orders', [SubscriptionController::class, 'createOrder']);
         Route::patch('/me', [SubscriptionController::class, 'update']);

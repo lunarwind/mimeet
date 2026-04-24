@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SubscriptionPlanSeeder::class);
         $this->call(MemberLevelPermissionsSeeder::class);
         $this->call(AdminPermissionsSeeder::class);
+        $this->call(SystemSettingsSeeder::class);
 
         // Admin account in admin_users table (separate from frontend users)
         \App\Models\AdminUser::firstOrCreate(

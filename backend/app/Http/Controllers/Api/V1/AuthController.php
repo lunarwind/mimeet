@@ -29,7 +29,7 @@ class AuthController extends Controller
         // ── 2. 格式驗證（不查 DB，快速失敗）─────────────────────────
         $formatValidator = Validator::make($input, [
             'email'            => ['required', 'email'],
-            'password'         => ['required', 'string', 'min:8'],
+            'password'         => ['required', 'string', 'min:8', 'confirmed'],
             'nickname'         => ['required', 'string', 'max:20'],
             'gender'           => ['required', 'in:male,female'],
             'birth_date'       => ['required', 'date', 'before:-18 years'],

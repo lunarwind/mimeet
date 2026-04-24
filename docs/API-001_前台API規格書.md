@@ -308,6 +308,9 @@ Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
 
+> **認證必要（v1.2 更新）：** 此端點需要 Bearer Token（`auth:sanctum`），未登入請求返回 401。
+> 修復安全漏洞：原本無需登入即可觸發 SMS OTP，可造成費用濫用。
+
 **請求參數：**
 ```json
 { "phone": "0912345678" }
@@ -1787,8 +1790,11 @@ Authorization: Bearer {access_token}
 
 #### 7.1.1 獲取訂閱方案
 ```http
-GET /api/v1/subscription/plans
+GET /api/v1/subscriptions/plans
 ```
+
+> **認證：** 無需 Authorization（公開端點），允許未登入用戶瀏覽訂閱方案。  
+> **注意：** 實際路由為 `/subscriptions/plans`（複數），舊版規格的 `/subscription/plans` 已修正。
 
 **成功回應 (200)：**
 ```json
