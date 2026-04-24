@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FcmToken;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +38,12 @@ class FcmService
             ],
         ]);
 
+        if ($response->status() === 404) {
+            FcmToken::where('token', $token)->delete();
+            Log::info('[FCM] Invalid token removed', ['token' => substr($token, 0, 20) . '...']);
+            return false;
+        }
+
         if (!$response->successful()) {
             Log::error('[FCM] Send failed', [
                 'status' => $response->status(),
@@ -46,6 +53,65 @@ class FcmService
         }
 
         return true;
+    }
+
+    /**
+     * Send to multiple tokens in one batch (uses FCM HTTP v1 individual sends).
+     * Returns ['success' => N, 'failure' => N].
+     */
+    public function sendMulticast(array $tokens, string $title, string $body, array $data = []): array
+    {
+        if (empty($tokens)) {
+            return ['success' => 0, 'failure' => 0];
+        }
+
+        if (config('app.env') !== 'production') {
+            Log::info('[FCM STUB multicast]', ['count' => count($tokens), 'title' => $title]);
+            return ['success' => count($tokens), 'failure' => 0];
+        }
+
+        $credentials = $this->loadCredentials();
+        if (!$credentials) {
+            Log::warning('[FCM] No credentials configured for multicast.');
+            return ['success' => 0, 'failure' => count($tokens)];
+        }
+
+        $accessToken = $this->getAccessToken($credentials);
+        if (!$accessToken) {
+            return ['success' => 0, 'failure' => count($tokens)];
+        }
+
+        $success = 0;
+        $failure = 0;
+        $invalidTokens = [];
+        $projectId = $credentials['project_id'] ?? '';
+        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
+        foreach ($tokens as $token) {
+            $response = Http::withToken($accessToken)->post($url, [
+                'message' => [
+                    'token' => $token,
+                    'notification' => ['title' => $title, 'body' => $body],
+                    'data' => array_map('strval', $data),
+                ],
+            ]);
+
+            if ($response->status() === 404) {
+                $invalidTokens[] = $token;
+                $failure++;
+            } elseif ($response->successful()) {
+                $success++;
+            } else {
+                $failure++;
+            }
+        }
+
+        if (!empty($invalidTokens)) {
+            FcmToken::whereIn('token', $invalidTokens)->delete();
+            Log::info('[FCM] Removed invalid tokens', ['count' => count($invalidTokens)]);
+        }
+
+        return compact('success', 'failure');
     }
 
     private function loadCredentials(): ?array
