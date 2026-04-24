@@ -703,6 +703,7 @@ drinking:                  never|social|often
 car_owner:                 boolean
 availability:              weekday_day|weekday_night|weekend|flexible（JSON_CONTAINS 單值）
 min_credit / max_credit:   誠信分數範圍（相容舊稱 credit_score_min/max）
+last_online:               today|3days|7days（最後上線時間篩選；不傳預設顯示 30 天內有活動者）
 ```
 
 **未填欄位的使用者不會被排除：** 每個進階篩選都用 `WHERE (column = val OR column IS NULL)` 形式，避免把剛註冊、尚未完整填寫 profile 的用戶排除在外。

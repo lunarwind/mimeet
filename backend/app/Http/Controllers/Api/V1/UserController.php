@@ -98,6 +98,7 @@ class UserController extends Controller
             'credit_score_max' => 'sometimes|integer|max:100', // legacy alias
             'verified_only'    => 'sometimes|boolean',
             'per_page'         => 'sometimes|integer|min:1|max:50',
+            'last_online'      => 'sometimes|string|in:today,3days,7days',
         ]);
 
         $query = User::where('status', 'active')
@@ -206,6 +207,22 @@ class UserController extends Controller
             }
         }
 
+        // ── 最後上線時間篩選（覆蓋預設 30 天，收窄至指定範圍）──
+        if ($request->filled('last_online')) {
+            $cutoff = match($request->input('last_online')) {
+                'today' => now()->subDay(),
+                '3days' => now()->subDays(3),
+                '7days' => now()->subDays(7),
+                default => null,
+            };
+            if ($cutoff) {
+                $query->where(function ($q) use ($cutoff) {
+                    $q->whereNull('last_active_at')
+                      ->orWhere('last_active_at', '>=', $cutoff);
+                });
+            }
+        }
+
         // ── 文字模糊（occupation / location）──
         foreach (['occupation', 'location'] as $field) {
             if ($request->filled($field)) {
@@ -228,10 +245,19 @@ class UserController extends Controller
         $perPage = (int) $request->input('per_page', 20);
         $users = $query->paginate($perPage);
 
+        // 批次查詢 is_favorited，避免 N+1（每頁一次 whereIn 取代 N 次 exists）
+        $favoritedIds = collect();
+        if ($request->user()) {
+            $favoritedIds = \DB::table('user_follows')
+                ->where('follower_id', $request->user()->id)
+                ->whereIn('following_id', $users->pluck('id'))
+                ->pluck('following_id');
+        }
+
         return response()->json([
             'success' => true, 'code' => 'SEARCH_RESULTS', 'message' => 'OK',
             'data' => [
-                'users' => $users->map(function (User $u) use ($request) {
+                'users' => $users->map(function (User $u) use ($favoritedIds) {
                     return [
                         'id' => $u->id,
                         'nickname' => $u->nickname,
@@ -246,7 +272,7 @@ class UserController extends Controller
                         'advanced_verified' => (bool) ($u->advanced_verified ?? false),
                         'online_status' => $u->last_active_at && $u->last_active_at->gt(now()->subMinutes(5)) ? 'online' : 'offline',
                         'last_active_at' => $u->last_active_at?->toIso8601String(),
-                        'is_favorited' => $request->user() ? \DB::table('user_follows')->where('follower_id', $request->user()->id)->where('following_id', $u->id)->exists() : false,
+                        'is_favorited' => $favoritedIds->contains($u->id),
                     ];
                 }),
                 'pagination' => [
