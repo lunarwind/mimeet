@@ -67,7 +67,10 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                'allowed_origins' => [
+                    'https://mimeet.online',
+                    'https://admin.mimeet.online',
+                ],
                 'max_message_size' => env('REVERB_MAX_MESSAGE_SIZE', 10_000),
             ],
         ],
