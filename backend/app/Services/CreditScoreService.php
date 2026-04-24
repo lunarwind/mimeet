@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CreditScoreHistory;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class CreditScoreService
@@ -47,6 +48,8 @@ class CreditScoreService
      */
     public static function getConfig(string $key, int $default): int
     {
-        return (int) \App\Models\SystemSetting::get($key, $default);
+        return (int) Cache::remember("setting:{$key}", 300, function () use ($key, $default) {
+            return \App\Models\SystemSetting::get($key, $default) ?? $default;
+        });
     }
 }

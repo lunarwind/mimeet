@@ -104,7 +104,7 @@ class AuthController extends Controller
                 'birth_date' => $input['birth_date'],
                 'phone' => $input['phone'] ?? null,
                 'membership_level' => 0,
-                'credit_score' => 60,
+                'credit_score' => \App\Services\CreditScoreService::getConfig('credit_score_initial', 60),
                 'status' => 'active',
             ]);
         } catch (\Illuminate\Database\QueryException $e) {

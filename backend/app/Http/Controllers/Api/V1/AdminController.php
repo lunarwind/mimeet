@@ -771,11 +771,29 @@ class AdminController extends Controller
     public function getSettings(): JsonResponse
     {
         $defaults = [
-            'credit_score_initial' => '60', 'credit_score_min' => '0',
-            'credit_score_report_deduction' => '10', 'credit_score_no_show_deduction' => '20',
-            'credit_score_suspend_threshold' => '0', 'max_photos_per_user' => '6',
-            'image_moderation_enabled' => '0', 'ecpay_is_sandbox' => '1',
-            'trial_plan_price' => '49', 'trial_plan_days' => '3',
+            // 誠信分數基準（DEV-008 §3）
+            'credit_score_initial'           => '60',
+            'credit_score_suspend_threshold' => '0',
+            // 加分 key（DEV-008 §4）
+            'credit_add_email_verify'        => '5',
+            'credit_add_phone_verify'        => '5',
+            'credit_add_adv_verify_male'     => '15',
+            'credit_add_adv_verify_female'   => '15',
+            'credit_add_date_gps'            => '5',
+            'credit_add_date_no_gps'         => '2',
+            // 扣分 key（DEV-008 §5，負值）
+            'credit_sub_date_noshow'         => '-10',
+            'credit_sub_report_user'         => '-10',
+            'credit_sub_report_anon'         => '-5',
+            'credit_sub_bad_content'         => '-5',
+            'credit_sub_harassment'          => '-20',
+            'credit_sub_additional_penalty'  => '-5',
+            // 其他設定
+            'max_photos_per_user'            => '6',
+            'image_moderation_enabled'       => '0',
+            'ecpay_is_sandbox'               => '1',
+            'trial_plan_price'               => '49',
+            'trial_plan_days'                => '3',
         ];
         $settings = [];
         foreach ($defaults as $k => $v) {
@@ -794,14 +812,28 @@ class AdminController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $request->validate([
-            'credit_score_initial' => 'sometimes|integer|min:0|max:200',
-            'credit_score_report_deduction' => 'sometimes|integer|min:0|max:50',
-            'credit_score_no_show_deduction' => 'sometimes|integer|min:0|max:50',
+            // 誠信分數基準
+            'credit_score_initial'           => 'sometimes|integer|min:0|max:100',
             'credit_score_suspend_threshold' => 'sometimes|integer|min:0|max:100',
-            'max_photos_per_user' => 'sometimes|integer|min:1|max:20',
-            'image_moderation_enabled' => 'sometimes|boolean',
-            'trial_plan_price' => 'sometimes|integer|min:0',
-            'trial_plan_days' => 'sometimes|integer|min:1|max:30',
+            // 加分 key（DEV-008 §4）
+            'credit_add_email_verify'        => 'sometimes|integer|min:0|max:50',
+            'credit_add_phone_verify'        => 'sometimes|integer|min:0|max:50',
+            'credit_add_adv_verify_male'     => 'sometimes|integer|min:0|max:50',
+            'credit_add_adv_verify_female'   => 'sometimes|integer|min:0|max:50',
+            'credit_add_date_gps'            => 'sometimes|integer|min:0|max:50',
+            'credit_add_date_no_gps'         => 'sometimes|integer|min:0|max:50',
+            // 扣分 key（DEV-008 §5，負值）
+            'credit_sub_date_noshow'         => 'sometimes|integer|min:-100|max:0',
+            'credit_sub_report_user'         => 'sometimes|integer|min:-100|max:0',
+            'credit_sub_report_anon'         => 'sometimes|integer|min:-100|max:0',
+            'credit_sub_bad_content'         => 'sometimes|integer|min:-100|max:0',
+            'credit_sub_harassment'          => 'sometimes|integer|min:-100|max:0',
+            'credit_sub_additional_penalty'  => 'sometimes|integer|min:-100|max:0',
+            // 其他設定
+            'max_photos_per_user'            => 'sometimes|integer|min:1|max:20',
+            'image_moderation_enabled'       => 'sometimes|boolean',
+            'trial_plan_price'               => 'sometimes|integer|min:0',
+            'trial_plan_days'                => 'sometimes|integer|min:1|max:30',
         ]);
 
         $admin = $request->user();
