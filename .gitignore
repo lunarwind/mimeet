@@ -12,3 +12,8 @@ node_modules/
 vendor/
 *.log
 .DS_Store
+
+# Firebase Service Account (NEVER commit private keys)
+**/storage/app/firebase-service-account.json
+**/*-service-account.json
+**/firebase-credentials.json
