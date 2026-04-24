@@ -532,8 +532,29 @@ class UserController extends Controller
                     'show_last_active' => true,
                     'allow_stranger_message' => true,
                 ],
+                'membership' => $this->buildMembershipData($user),
             ],
         ]);
+    }
+
+    private function buildMembershipData(\App\Models\User $user): array
+    {
+        $sub = \App\Models\Subscription::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->with('plan')
+            ->first();
+
+        if (!$sub) {
+            return ['is_paid' => false, 'expires_at' => null, 'days_remaining' => 0];
+        }
+
+        return [
+            'is_paid' => true,
+            'plan_name' => $sub->plan?->name,
+            'expires_at' => $sub->expires_at->toISOString(),
+            'days_remaining' => max(0, (int) now()->startOfDay()->diffInDays($sub->expires_at, false)),
+        ];
     }
 
     public function following(Request $request): JsonResponse

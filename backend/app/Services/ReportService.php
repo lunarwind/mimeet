@@ -38,11 +38,11 @@ class ReportService
 
         // Deduct points from both parties (skip for system issues)
         if (!$isSystemIssue) {
-            CreditScoreService::adjust($reporter, CreditScoreService::getConfig('report_filed_deduct', -10), 'report_filed', '送出檢舉');
+            CreditScoreService::adjust($reporter, CreditScoreService::getConfig('credit_sub_report_user', -10), 'report_filed', '送出檢舉');
 
             $reportedUser = User::find($data['reported_user_id'] ?? null);
             if ($reportedUser) {
-                CreditScoreService::adjust($reportedUser, CreditScoreService::getConfig('report_filed_deduct', -10), 'report_received', '被他人檢舉（待審）');
+                CreditScoreService::adjust($reportedUser, CreditScoreService::getConfig('credit_sub_report_user', -10), 'report_received', '被他人檢舉（待審）');
             }
         }
 
@@ -64,7 +64,7 @@ class ReportService
         if ($action === 'resolved') {
             // Report confirmed — extra penalty for reported user
             if ($reportedUser) {
-                $penalty = CreditScoreService::getConfig('report_deduct', -5);
+                $penalty = CreditScoreService::getConfig('credit_sub_additional_penalty', -5);
                 CreditScoreService::adjust($reportedUser, $penalty, 'report_penalty', '檢舉屬實額外處分', $adminId);
                 $reportedChange = $penalty;
             }
@@ -72,7 +72,7 @@ class ReportService
         } elseif ($action === 'dismissed') {
             // Report dismissed — refund reporter
             if ($reporter) {
-                $refund = -CreditScoreService::getConfig('report_filed_deduct', -10);
+                $refund = -CreditScoreService::getConfig('credit_sub_report_user', -10);
                 CreditScoreService::adjust($reporter, $refund, 'report_dismissed', '檢舉不成立退還分數', $adminId);
                 $reporterScoreChange = $refund;
             }

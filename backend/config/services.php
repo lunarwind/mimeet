@@ -8,6 +8,7 @@ return [
         'is_sandbox' => (bool) env('ECPAY_IS_SANDBOX', true),
     ],
     'fcm' => [
-        'server_key' => env('FCM_SERVER_KEY', ''),
+        'credentials_path' => env('FIREBASE_CREDENTIALS_PATH', ''),
+        'credentials_json' => env('FIREBASE_CREDENTIALS_JSON', ''),
     ],
 ];

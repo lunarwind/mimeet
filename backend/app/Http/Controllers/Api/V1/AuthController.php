@@ -342,7 +342,7 @@ class AuthController extends Controller
         if ($user) {
             $user->forceFill(['email_verified' => true])->save();
             if ($user->wasChanged('email_verified')) {
-                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('email_verified', 5), 'email_verified', 'Email 驗證完成');
+                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('credit_add_email_verify', 5), 'email_verified', 'Email 驗證完成');
             }
         }
 
@@ -484,7 +484,7 @@ class AuthController extends Controller
             }
             UserActivityLogService::logPhoneChange($user->id, $request);
             if ($user->wasChanged('phone_verified')) {
-                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('phone_verified', 5), 'phone_verified', '手機驗證完成');
+                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5), 'phone_verified', '手機驗證完成');
             }
         } else {
             // Registration flow: mark phone as verified by email lookup
@@ -496,7 +496,7 @@ class AuthController extends Controller
                     $regUser->phone_verified = true;
                     $regUser->save();
                     if ($regUser->wasChanged('phone_verified')) {
-                        \App\Services\CreditScoreService::adjust($regUser, \App\Services\CreditScoreService::getConfig('phone_verified', 5), 'phone_verified', '手機驗證完成');
+                        \App\Services\CreditScoreService::adjust($regUser, \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5), 'phone_verified', '手機驗證完成');
                     }
                 }
             }
