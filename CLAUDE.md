@@ -97,7 +97,8 @@
 - **後果**：前端 axios `res.data` 解析成 request body 而非 API response → 看起來「功能無反應 / 格式錯」。明碼密碼隨 response 洩漏。
 - **根因**：`mimeet-app` container 內 `output_buffering=0`。`Dockerfile.dev` 已在 `981e3d6 (2026-04-15)` 加 `output_buffering=4096`，但 image 在 `2026-04-13` 已 build，image 沒 rebuild 就永遠拿不到這個 fix。
 - **永久修復**：用 volume mount 繞過 image：`docker-compose.staging.yml` app service 已 mount `./backend/docker/output-buffering.ini:/usr/local/etc/php/conf.d/zzz-output-buffering.ini:ro`。重啟 container 時 mount 會保留，不需 rebuild。
-- **未來如果又 recurrence**：先 `docker exec mimeet-app php -i | grep output_buffering`，若是 `=0`→ mount 失效，檢查 `backend/docker/output-buffering.ini` 和 compose volume 有沒有被動到；若是 `=4096` 還污染→ 另有別的 echo 源頭。
+- **2026-04-24 更新修復**：PHP-FPM 中 `output_buffering` 無法透過 conf.d ini 檔案設定（PHP_INI_PERDIR 限制），需改用 FPM pool 的 `php_admin_value`。已新增 `backend/docker/fpm-output-buffering.conf` 並在 `docker-compose.staging.yml` 加入 volume mount（`/usr/local/etc/php-fpm.d/zzz-output-buffering.conf`）。
+- **未來如果又 recurrence**：先 `docker exec mimeet-app php -r 'echo ini_get("output_buffering");'`，若是 `0`→ FPM pool conf 未 mount 或未 reload，檢查 `backend/docker/fpm-output-buffering.conf` 和 compose volume；若是 `4096` 還污染→ 另有別的 echo 源頭。
 
 ## Commit 格式
 
@@ -110,9 +111,79 @@ type: feat / fix / refactor / test / docs / chore / perf / style
 | 帳號 | 密碼 | 用途 |
 |------|------|------|
 | chuck@lunarwind.org | ChangeMe@2026 | 後台 super_admin |
-| Chengfong0404@gmail.com | Test1234 | 前台測試 |
 
 ## uid=1 官方帳號
 
-email: admin@mimeet.club，每次 `php artisan mimeet:reset --force` 後自動重建。
+email: admin@mimeet.club，password: Test1234，每次 `php artisan mimeet:reset --force` 後自動重建。
+
+## 稽核框架（Audit Framework）
+
+### 1 稽核等級
+
+| 等級 | 定義 |
+|------|------|
+| 🔴 Critical | 安全漏洞、線上功能壞掉、資料錯誤（已登入用戶可感知） |
+| 🟠 High | 規格要求的功能未實作，或行為與規格明顯不符 |
+| 🟡 Medium | 命名/結構與規格不一致，但功能可正常使用 |
+| 🔵 Low | 規格與實作有微小差異，不影響用戶體驗 |
+| ✅ Symmetric | 規格與程式碼完全一致 |
+
+### 2 每輪 Report 格式
+
+產出到 `docs/audits/audit-{X}-{YYYYMMDD}.md`：
+
+```markdown
+# Audit Report {X} — {領域}
+**執行日期：**
+**稽核者：** Claude Code
+**規格來源：** docs/{實際讀取的規格文件名稱與版本號}
+**程式碼基準：** git log --oneline -1（當前 HEAD commit）
+**總結：** {N} issues（🔴 N / 🟠 N / 🟡 N / 🔵 N）+ {M} Symmetric
+
+---
+
+## 規格文件摘要（本輪讀到的）
+
+> 列出本輪從 docs/ 讀到的規格章節標題 + 版本號，
+> 作為「稽核基準」的正式記錄。
+
+---
+
+## 索引
+
+🔴 Critical
+- Issue #{X}-001 — [摘要]
+
+✅ Symmetric
+- [列出對照一致的端點/功能]
+
+---
+
+## Issue #{X}-001
+
+**規格位置：** docs/API-001 §X.Y（第 N 行）
+**規格內容：** [直接引用規格原文，不超過 5 行]
+**程式碼位置：** backend/routes/api.php:N 或 frontend/src/api/xxx.ts:N
+**程式碼現況：** [直接引用程式碼片段，不超過 5 行]
+**差異說明：** [具體描述差異]
+**等級：** 🔴 Critical
+**建議方案：**
+- Option A：改規格
+- Option B：改程式碼
+- Option C：雙向修改
+**推薦：** B（理由）
+```
+
+### 3 八輪稽核範圍分工
+
+| Audit | 主要規格文件 | 章節範圍 |
+|-------|-----------|---------|
+| A | API-001 | §2 認證與身份驗證 |
+| B | API-001 | §3 用戶管理 |
+| C | API-001 | §4 聊天、§5 約會驗證 |
+| D | API-001 | §7 訂閱付費、§10.3/§10.5/§10.9/§16 |
+| E | DEV-008、API-001 | §10.8/§10.10/§10.11 誠信/停權/隱私/刪除 |
+| F | API-002 | 全部章節（後台管理） |
+| G | DEV-006（DDD）、DEV-012 | 36 張表 Schema + 安全漏洞 |
+| H | API-001 | §3.6/§6/§8/§9.1/§10.1/§10.2/§10.4/§10.6/§10.7/§11 |
 

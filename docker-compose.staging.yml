@@ -10,6 +10,7 @@ services:
       - ./backend:/var/www/html
       - /var/www/html/vendor
       - ./backend/docker/output-buffering.ini:/usr/local/etc/php/conf.d/zzz-output-buffering.ini:ro
+      - ./backend/docker/fpm-output-buffering.conf:/usr/local/etc/php-fpm.d/zzz-output-buffering.conf:ro
     ports:
       - "9000:9000"
     depends_on:
