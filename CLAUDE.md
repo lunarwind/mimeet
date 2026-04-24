@@ -99,6 +99,7 @@
 - **永久修復**：用 volume mount 繞過 image：`docker-compose.staging.yml` app service 已 mount `./backend/docker/output-buffering.ini:/usr/local/etc/php/conf.d/zzz-output-buffering.ini:ro`。重啟 container 時 mount 會保留，不需 rebuild。
 - **2026-04-24 更新修復**：PHP-FPM 中 `output_buffering` 無法透過 conf.d ini 檔案設定（PHP_INI_PERDIR 限制），需改用 FPM pool 的 `php_admin_value`。已新增 `backend/docker/fpm-output-buffering.conf` 並在 `docker-compose.staging.yml` 加入 volume mount（`/usr/local/etc/php-fpm.d/zzz-output-buffering.conf`）。
 - **未來如果又 recurrence**：先 `docker exec mimeet-app php -r 'echo ini_get("output_buffering");'`，若是 `0`→ FPM pool conf 未 mount 或未 reload，檢查 `backend/docker/fpm-output-buffering.conf` 和 compose volume；若是 `4096` 還污染→ 另有別的 echo 源頭。
+- **⚠️ 關鍵：`restart` 不套用新 volume**：`docker compose restart app` 只重啟 process，不重建容器。若新增了 volume mount（如 fpm-output-buffering.conf）但容器是舊的，必須執行 `docker compose -f docker-compose.staging.yml up -d --force-recreate app` 才會真正套用。症狀：`docker exec` 找不到掛載的檔案（NOT FOUND）。
 
 ## Commit 格式
 
