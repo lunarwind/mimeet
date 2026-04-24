@@ -279,6 +279,46 @@ class AdminController extends Controller
     }
 
     /**
+     * GET /api/v1/admin/members/{id}/credit-logs — F-002
+     */
+    public function memberCreditLogs(Request $request, int $id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此會員'], 404);
+        }
+
+        $perPage = min((int) $request->input('per_page', 20), 100);
+
+        $logs = \App\Models\CreditScoreHistory::where('user_id', $id)
+            ->orderByDesc('created_at')
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'current_score' => $user->credit_score,
+                'logs' => $logs->map(fn ($l) => [
+                    'id' => $l->id,
+                    'delta' => $l->delta,
+                    'score_before' => $l->score_before,
+                    'score_after' => $l->score_after,
+                    'type' => $l->type,
+                    'reason' => $l->reason,
+                    'operator_id' => $l->operator_id,
+                    'created_at' => $l->created_at?->toISOString(),
+                ]),
+            ],
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+                'last_page' => $logs->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
      * Perform action on a member (adjust_score, suspend, unsuspend).
      */
     public function memberAction(Request $request, int $id): JsonResponse

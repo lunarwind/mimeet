@@ -87,7 +87,7 @@ class VerificationController extends Controller
             $user = $verification->user;
             if ($user) {
                 $user->forceFill(['membership_level' => 1.5])->save();
-                CreditScoreService::adjust($user, CreditScoreService::getConfig('advanced_verified', 15), 'verification_approved', '女性驗證通過', $adminId);
+                CreditScoreService::adjust($user, CreditScoreService::getConfig('credit_add_adv_verify_female', 15), 'verification_approved', '女性驗證通過', $adminId);
             }
 
             return response()->json([

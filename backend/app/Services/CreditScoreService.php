@@ -47,6 +47,6 @@ class CreditScoreService
      */
     public static function getConfig(string $key, int $default): int
     {
-        return (int) \App\Models\SystemSetting::get("credit_score.{$key}", $default);
+        return (int) \App\Models\SystemSetting::get($key, $default);
     }
 }

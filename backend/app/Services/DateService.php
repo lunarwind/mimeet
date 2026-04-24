@@ -146,8 +146,8 @@ class DateService
 
         if (!$alreadyScored) {
             $score = $gpsPassed
-                ? (int) (config('mimeet.credit_add_date_gps', 5))
-                : (int) (config('mimeet.credit_add_date_no_gps', 2));
+                ? CreditScoreService::getConfig('credit_add_date_gps', 5)
+                : CreditScoreService::getConfig('credit_add_date_no_gps', 2);
 
             $inviter = User::find($inv->inviter_id);
             $invitee = User::find($inv->invitee_id);
