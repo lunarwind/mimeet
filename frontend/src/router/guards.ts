@@ -37,12 +37,18 @@ export function setupRouterGuards(router: Router) {
       return { path: '/suspended' }
     }
 
-    // 6. Logged in but not verified → only allow public routes
+    // 6. Membership level gate — routes with minLevel meta redirect to shop (H-007 fix)
+    const minLevel = (to.meta.minLevel as number) ?? 0
+    if (minLevel > 0 && auth.user && auth.user.membership_level < minLevel) {
+      return { path: '/app/shop' }
+    }
+
+    // 7. Logged in but not verified → only allow public routes
     if (!auth.isVerified && !PUBLIC_ROUTE_NAMES.has(routeName)) {
       return { path: '/login' }
     }
 
-    // 7. All checks passed → allow
+    // 8. All checks passed → allow
     return true
   })
 }

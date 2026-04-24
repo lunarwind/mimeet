@@ -39,9 +39,12 @@ class AdminController extends Controller
             ], 403);
         }
 
-        // Issue token bound to login IP (VULN-008)
+        // Issue token bound to login IP, TTL 480min (8h) per API-002 §1.2 (F-001 fix)
         $loginIp = $request->ip();
-        $token = $admin->createToken("admin-token-{$loginIp}", ['admin'])->plainTextToken;
+        $expiresAt = now()->addMinutes(480);
+        $tokenResult = $admin->createToken("admin-token-{$loginIp}", ['admin']);
+        $tokenResult->accessToken->forceFill(['expires_at' => $expiresAt])->save();
+        $token = $tokenResult->plainTextToken;
 
         $admin->update(['last_login_at' => now(), 'last_login_ip' => $loginIp]);
 
@@ -57,6 +60,7 @@ class AdminController extends Controller
                     'role' => $admin->role,
                 ],
                 'token' => $token,
+                'expires_at' => $expiresAt->toISOString(),
                 'last_login_ip' => $loginIp,
             ],
         ]);

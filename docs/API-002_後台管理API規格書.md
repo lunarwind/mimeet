@@ -28,7 +28,10 @@ Content-Type: application/json
 Accept: application/json
 ```
 
-Token 由後台登入 API 取得，**有效期 8 小時**（與前台用戶 24h 不同，安全性更高）。
+Token 由後台登入 API 取得，**有效期 8 小時**（480 分鐘，與前台用戶 24h 不同，安全性更高）。
+登入成功回應含 `data.expires_at`（ISO 8601），前端可顯示 session 剩餘時效。
+
+> **實作說明（2026-04-24 F-001 修復）：** admin token 在建立後以 `forceFill(['expires_at'])` 設定為 `now()->addMinutes(480)`，獨立於全域 `SANCTUM_TOKEN_EXPIRATION`（前台 1440 min）。
 
 ### 1.3 統一回應格式
 
