@@ -292,10 +292,12 @@ Route::prefix('api/v1')->group(function () {
             Route::patch('/seo/meta/{id}', [\App\Http\Controllers\Admin\SeoController::class, 'metaUpdate'])->middleware('admin.permission:seo.manage');
 
             // Announcements
-            Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);
-            Route::post('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'store']);
-            Route::patch('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'update']);
-            Route::delete('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'destroy']);
+            Route::middleware('admin.permission:announcements.manage')->group(function () {
+                Route::get('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'index']);
+                Route::post('/announcements', [\App\Http\Controllers\Admin\AnnouncementController::class, 'store']);
+                Route::patch('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'update']);
+                Route::delete('/announcements/{id}', [\App\Http\Controllers\Admin\AnnouncementController::class, 'destroy']);
+            });
 
             // Broadcasts (Sprint 11)
             Route::get('/broadcasts', [BroadcastController::class, 'index'])->middleware('admin.permission:broadcasts.manage');
@@ -304,20 +306,24 @@ Route::prefix('api/v1')->group(function () {
             Route::post('/broadcasts/{id}/send', [BroadcastController::class, 'send'])->middleware('admin.permission:broadcasts.manage');
 
             // Operation logs (Sprint 11)
-            Route::get('/logs', [AdminLogController::class, 'index']);
+            Route::get('/logs', [AdminLogController::class, 'index'])->middleware('admin.permission:logs.view');
 
             // User activity logs (super_admin only)
-            Route::get('/user-activity-logs', [UserActivityLogController::class, 'index']);
+            Route::get('/user-activity-logs', [UserActivityLogController::class, 'index'])->middleware('admin.permission:logs.view');
 
             // F40 點數管理（後台）— 補完 A01 儀表板
-            Route::get('/stats/summary', [StatsController::class, 'summary']);
-            Route::get('/stats/chart', [StatsController::class, 'chart'])->middleware('admin.permission:members.view');
-            Route::get('/stats/export', [StatsController::class, 'export'])->middleware('admin.permission:members.view');
+            Route::middleware('admin.permission:members.view')->group(function () {
+                Route::get('/stats/summary', [StatsController::class, 'summary']);
+                Route::get('/stats/chart', [StatsController::class, 'chart']);
+                Route::get('/stats/export', [StatsController::class, 'export']);
+            });
             Route::get('/stats/server-metrics', [StatsController::class, 'serverMetrics'])->middleware('admin.permission:settings.roles');
-            Route::get('/point-packages', [AdminPointController::class, 'packages']);
-            Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
+            Route::middleware('admin.permission:settings.pricing')->group(function () {
+                Route::get('/point-packages', [AdminPointController::class, 'packages']);
+                Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
+                Route::get('/point-transactions', [AdminPointController::class, 'transactions']);
+            });
             Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints'])->middleware('admin.permission:members.edit');
-            Route::get('/point-transactions', [AdminPointController::class, 'transactions']);
 
             // System Control (super_admin only)
             Route::middleware('check.super_admin')->prefix('settings')->group(function () {
