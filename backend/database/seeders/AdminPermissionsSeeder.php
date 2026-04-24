@@ -9,7 +9,7 @@ class AdminPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // 11 permission keys (API-002 §10)
+        // 13 permission keys (API-002 §10)
         $permissions = [
             ['key' => 'members.view', 'name' => '查看會員', 'module' => 'members'],
             ['key' => 'members.edit', 'name' => '編輯會員（調整分數/停權/驗證）', 'module' => 'members'],
@@ -19,9 +19,11 @@ class AdminPermissionsSeeder extends Seeder
             ['key' => 'chat.view', 'name' => '查看聊天記錄', 'module' => 'chat'],
             ['key' => 'payments.view', 'name' => '查看支付記錄', 'module' => 'payments'],
             ['key' => 'seo.manage', 'name' => 'SEO Meta + 廣告追蹤連結', 'module' => 'seo'],
-            ['key' => 'settings.pricing', 'name' => '訂閱方案管理', 'module' => 'settings'],
+            ['key' => 'settings.pricing', 'name' => '訂閱方案 + 點數方案管理', 'module' => 'settings'],
             ['key' => 'settings.roles', 'name' => '角色權限管理（super_admin only）', 'module' => 'settings'],
             ['key' => 'broadcasts.manage', 'name' => '廣播訊息管理', 'module' => 'broadcasts'],
+            ['key' => 'announcements.manage', 'name' => '系統公告管理', 'module' => 'announcements'],
+            ['key' => 'logs.view', 'name' => '操作日誌查看', 'module' => 'logs'],
         ];
 
         foreach ($permissions as $perm) {
@@ -40,6 +42,8 @@ class AdminPermissionsSeeder extends Seeder
                 'chat.view', 'payments.view',
                 'seo.manage', 'settings.pricing',
                 'broadcasts.manage',
+                'announcements.manage',
+                'logs.view',
             ],
             'cs' => [
                 'members.view',
