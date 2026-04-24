@@ -471,35 +471,27 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Success — update user (resolve via guard since route has no auth middleware)
-        $user = auth()->guard('sanctum')->user();
-        if ($user) {
-            $user->phone = $e164;
-            $user->phone_verified = true;
-            if ($user->membership_level < 1) {
-                $user->membership_level = 1;
-            }
-            if (!$user->save()) {
-                Log::error('[PhoneVerify] Failed to save user', ['user_id' => $user->id]);
-            }
-            UserActivityLogService::logPhoneChange($user->id, $request);
-            if ($user->wasChanged('phone_verified')) {
-                \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5), 'phone_verified', '手機驗證完成');
-            }
-        } else {
-            // Registration flow: mark phone as verified by email lookup
-            $email = $request->input('email');
-            if ($email) {
-                $regUser = User::where('email', $email)->first();
-                if ($regUser) {
-                    $regUser->phone = $e164;
-                    $regUser->phone_verified = true;
-                    $regUser->save();
-                    if ($regUser->wasChanged('phone_verified')) {
-                        \App\Services\CreditScoreService::adjust($regUser, \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5), 'phone_verified', '手機驗證完成');
-                    }
-                }
-            }
+        // Success — route now requires auth:sanctum, so user is always the token holder
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'code'    => 'UNAUTHENTICATED',
+                'message' => '請先登入再進行手機驗證。',
+            ], 401);
+        }
+
+        $user->phone = $e164;
+        $user->phone_verified = true;
+        if ($user->membership_level < 1) {
+            $user->membership_level = 1;
+        }
+        if (!$user->save()) {
+            Log::error('[PhoneVerify] Failed to save user', ['user_id' => $user->id]);
+        }
+        UserActivityLogService::logPhoneChange($user->id, $request);
+        if ($user->wasChanged('phone_verified')) {
+            \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5), 'phone_verified', '手機驗證完成');
         }
 
         Cache::forget($otpKey);
