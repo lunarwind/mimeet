@@ -25,6 +25,7 @@ class CreditScoreHistory extends Model
         'delta' => 'integer',
         'score_before' => 'integer',
         'score_after' => 'integer',
+        'created_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
