@@ -152,11 +152,12 @@ class DateService
             $inviter = User::find($inv->inviter_id);
             $invitee = User::find($inv->invitee_id);
 
+            $dateType = $gpsPassed ? 'date_gps' : 'date_no_gps';
             if ($inviter) {
-                CreditScoreService::adjust($inviter, $score, 'date_verified', 'QR約會驗證');
+                CreditScoreService::adjust($inviter, $score, $dateType, 'QR約會驗證');
             }
             if ($invitee) {
-                CreditScoreService::adjust($invitee, $score, 'date_verified', 'QR約會驗證');
+                CreditScoreService::adjust($invitee, $score, $dateType, 'QR約會驗證');
             }
 
             Cache::put($cooldownKey, 1, 86400);

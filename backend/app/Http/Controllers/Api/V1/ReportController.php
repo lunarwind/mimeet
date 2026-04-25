@@ -115,7 +115,7 @@ class ReportController extends Controller
         $report->update(['status' => 'dismissed']);
 
         // Refund reporter
-        \App\Services\CreditScoreService::adjust($request->user(), -\App\Services\CreditScoreService::getConfig('credit_sub_report_user', -10), 'report_cancelled', '取消檢舉退還分數');
+        \App\Services\CreditScoreService::adjust($request->user(), -\App\Services\CreditScoreService::getConfig('credit_sub_report_user', -10), 'report_result_refund', '取消檢舉退還分數');
 
         return response()->json([
             'success' => true,

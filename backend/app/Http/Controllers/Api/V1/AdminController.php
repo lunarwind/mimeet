@@ -328,7 +328,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'action'      => 'required|string|in:adjust_score,suspend,unsuspend,verify_phone,unverify_phone,verify_advanced,unverify_advanced,set_level,require_reverify,add_note',
-            'score_delta' => 'required_if:action,adjust_score|integer|min:-50|max:50',
+            'score_delta' => 'required_if:action,adjust_score|integer|min:-50|max:50|not_in:0',
             'reason'      => 'sometimes|string|max:500',
             'level'       => 'required_if:action,set_level|numeric|in:0,1,1.5,2,3',
             'verify_type' => 'required_if:action,require_reverify|in:phone,advanced',
@@ -339,9 +339,11 @@ class AdminController extends Controller
         $action = $request->input('action');
 
         if ($action === 'adjust_score') {
+            $scoreDelta = (int) $request->input('score_delta');
+            $adjustType = $scoreDelta > 0 ? 'admin_reward' : 'admin_penalty';
             \App\Services\CreditScoreService::adjust(
-                $user, (int) $request->input('score_delta'),
-                'admin_adjust', $request->input('reason', '管理員手動調整'), $request->user()?->id
+                $user, $scoreDelta,
+                $adjustType, $request->input('reason', '管理員手動調整'), $request->user()?->id
             );
         } elseif ($action === 'suspend') {
             $user->forceFill(['status' => 'suspended', 'suspended_at' => now()])->save();
@@ -439,7 +441,7 @@ class AdminController extends Controller
             $newScore = (int) $request->input('credit_score');
             $delta = $newScore - $user->credit_score;
             if ($delta !== 0) {
-                \App\Services\CreditScoreService::adjust($user, $delta, 'admin_set', $reason, $adminId);
+                \App\Services\CreditScoreService::adjust($user, $delta, $delta > 0 ? 'admin_reward' : 'admin_penalty', $reason, $adminId);
                 $changes[] = "credit_score: {$user->credit_score} → {$newScore}";
             }
         }

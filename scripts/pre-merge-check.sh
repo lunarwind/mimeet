@@ -179,6 +179,11 @@ check \
   "grep \"'created_at' => 'datetime'\" backend/app/Models/DateInvitation.php" \
   "datetime"
 
+check \
+  "14i CreditScoreHistory type 不使用舊枚舉值（DEV-008 §10.3 規格化守護）" \
+  "grep -rn \"CreditScoreService::adjust\" backend/app/ | grep -cE \"'email_verified'|'phone_verified'|'date_verified'|'admin_adjust'|'admin_set'|'report_filed'|'report_received'|'report_dismissed'|'report_cancelled'|'report_penalty'|'appeal_approved'|'verification_approved'\" | tr -d ' '" \
+  "^0$"
+
 echo ""
 
 if [ $ERRORS -eq 0 ]; then
