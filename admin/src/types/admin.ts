@@ -119,9 +119,12 @@ export interface MemberDetail extends MemberListItem {
 
 export interface ScoreRecord {
   id: number
-  delta: number
+  change: number
+  before: number
+  after: number
+  type: string
   reason: string
-  operator: string
+  operator: { id: number; name: string } | null
   created_at: string
 }
 

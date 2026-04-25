@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\AdminUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -29,5 +30,10 @@ class CreditScoreHistory extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function adminUser(): BelongsTo
+    {
+        return $this->belongsTo(AdminUser::class, 'operator_id');
     }
 }
