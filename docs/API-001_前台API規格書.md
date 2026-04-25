@@ -2950,6 +2950,11 @@ Content-Type: application/json
 
 ### 10.6 匿名聊天室 API
 
+> ⏸️ **實作狀態：Phase 4 — 營運穩定後實作**
+> 此功能 API 規格已設計完成，但後端 Controller 尚未實作（無相關路由）。
+> 目前呼叫這些端點會回傳 404。
+> 預計於平台月活 > 500 後評估開發優先級。
+
 ```http
 # 取得頻道列表
 GET /api/v1/anonymous-chat/channels
