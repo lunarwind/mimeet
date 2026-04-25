@@ -199,6 +199,21 @@ check \
   "^0$"
 
 echo ""
+echo "-- TypeScript strict mode guard (14q) --"
+
+# ============================================================
+# 第 14q 項：admin/tsconfig.app.json 必須啟用 strict
+# ============================================================
+# Issue #4 啟用 strict mode 後的退化防護。
+# strict: true 是 admin/ 編譯期 null crash 防護的核心。
+# （延伸 2026-04-25 admin 分數頁 crash 教訓）
+
+check \
+  "14q admin/tsconfig.app.json 啟用 strict mode（防 null crash 退化）" \
+  "grep -c '\"strict\": true' admin/tsconfig.app.json | tr -d ' '" \
+  "^1$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

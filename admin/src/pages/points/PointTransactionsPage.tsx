@@ -119,7 +119,7 @@ export default function PointTransactionsPage() {
           placeholder="消費功能" style={{ width: 140 }} allowClear>
           {Object.entries(FEATURE_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
         </Select>
-        <RangePicker value={dateRange as any} onChange={(v) => { setDateRange(v as any); setPage(1) }} />
+        <RangePicker value={dateRange} onChange={(v) => { setDateRange(v); setPage(1) }} />
         <Button onClick={() => { setPage(1); fetchData() }}>搜尋</Button>
         <Button icon={<ReloadOutlined />} onClick={reset}>重設</Button>
       </Space>

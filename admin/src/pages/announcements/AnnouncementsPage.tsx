@@ -92,8 +92,9 @@ export default function AnnouncementsPage() {
       }
       setModalOpen(false)
       fetchAnnouncements()
-    } catch (err: any) {
-      message.error(err?.response?.data?.message ?? '操作失敗')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg ?? '操作失敗')
     }
   }
 

@@ -81,8 +81,9 @@ export default function MemberDetailPage() {
       message.success(pointAction === 'gift' ? `已贈送 ${pointAmount} 點` : `已扣除 ${pointAmount} 點`)
       setPointModalOpen(false)
       reloadMember()
-    } catch (err: any) {
-      message.error(err?.response?.data?.message ?? '操作失敗')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      message.error(msg ?? '操作失敗')
     } finally {
       setPointSaving(false)
     }
