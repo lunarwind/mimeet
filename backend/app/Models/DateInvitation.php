@@ -34,6 +34,7 @@ class DateInvitation extends Model
     ];
 
     protected $casts = [
+        'created_at' => 'datetime',
         'date_time' => 'datetime',
         'expires_at' => 'datetime',
         'verified_at' => 'datetime',
