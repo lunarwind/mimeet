@@ -185,6 +185,20 @@ check \
   "^0$"
 
 echo ""
+echo "-- Worker health check guard (14p) --"
+
+# ============================================================
+# 第 14p 項：禁止腳本或 CLAUDE.md 出現 supervisorctl
+# ============================================================
+# Staging 主機 supervisord 未管任何 program，supervisorctl 回傳空結果。
+# 所有 worker 健康檢查必須改用 docker compose ps。
+
+check \
+  "14p scripts/ 中不出現 supervisorctl（worker 健康檢查盲點守護）" \
+  "grep -r \"supervisorctl\" scripts/ --exclude=\"pre-merge-check.sh\" | grep -cv \"^Binary file\" | tr -d ' '" \
+  "^0$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
