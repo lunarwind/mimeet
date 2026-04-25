@@ -1,5 +1,60 @@
 # SESSION SUMMARY 2026-04-25
 
+## CLAUDE.md 整合重寫 Layer 2（2026-04-26）
+
+### 背景
+Layer 1（三小修）完成後，推進 Layer 2：完整重寫 CLAUDE.md（312 行 → ~491 行），
+補上 Worker 健康檢查盲點修復、三支部署腳本、staging vs production 環境分離、
+SSH alias 標準化、pre-merge-check 14p。
+
+### 改動範圍
+
+**CLAUDE.md 重寫**
+- 新增「環境配置概觀」表格（Staging `.online` / Production `.club`，後者目前全空）
+- SSH alias `mimeet-staging` 取代所有硬編 `root@188.166.229.100`
+- 部署 script 入口改為 `bash scripts/staging-deploy.sh`（含 `--yes` 旗標）
+- Container 變更規則表格（restart vs up --force-recreate 選錯的後果）
+- 健康檢查規範（`/api/v1/health` 端點待補，觸發條件：上任何外部監控前）
+- Commit scope 清單（11 個規定 scope，禁止自創）
+- 例外處置 SOP（止血 → 記錄 → 事後補文件 → 流程修正）
+- Audit Framework 新增「證據要求」章節（規格引用 + 程式碼引用雙重）
+- Worker 健康檢查盲點移至「已知陷阱」：supervisorctl 為空殼，改用 docker compose ps
+
+**scripts/staging-deploy.sh（新增）**
+- 本機端入口：SSH 連線確認 → 部署確認 → 觸發伺服器端腳本 → Smoke Test
+- `--yes` 跳過確認，支援 CI 模式
+
+**scripts/staging-server-deploy.sh（新增）**
+- 伺服器端邏輯：git pull → storage 權限 → migrate → cache → 前後台 build → worker restart
+- `set -euo pipefail` + log 寫入 `/var/log/mimeet-deploy/deploy-YYYYMMDD-HHMMSS.log`
+- 失敗時自動 tail 50 行 log
+- 成功後寫入 `.deploy-version`（git SHA + 時間戳 + deployer）
+
+**scripts/staging-rollback.sh（新增）**
+- 無 SHA 引數：讀 `.deploy-version` 自動找前一版
+- 有 SHA 引數：直接 reset --hard 到指定 commit
+- 不自動回滾 migration（附提醒指令）
+- 完整重建前後端 + worker restart + Smoke Test
+
+**scripts/pre-merge-check.sh**
+- 新增 14p：`scripts/` 目錄不得出現 `supervisorctl` 字樣
+
+**docs/DEV-001_技術架構規格書.md**
+- line 536：`DDD-001` → `DEV-006`（錯誤文件 ID 更正）
+
+### 設計決策
+
+**「不自動回滾 migration」原則**：
+若先 git revert 才 migrate:rollback，migration class 不存在會報錯（常見錯誤 2）。
+正確順序：先 migrate:rollback --step=N，再 git revert。腳本不自動化此步驟，
+因為回滾幾步 migration 需人工判斷，強制自動化反而危險。
+
+**supervisorctl 廢棄**：
+`scripts/` 中的 supervisorctl 呼叫一律改用 `docker compose ps worker`。
+14p 守護確保不會在未來的腳本中復發。
+
+---
+
 ## Admin 分數頁新增 type 欄位（Issue #5，2026-04-26）
 
 ### 背景
