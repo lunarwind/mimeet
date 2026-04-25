@@ -102,7 +102,7 @@ export default function MemberDetailPage() {
 
     // Fetch score history
     apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => {
-      setScoreRecords(res.data.data ?? [])
+      setScoreRecords(res.data.data?.logs ?? [])
     }).catch(() => {})
 
     // Fetch subscription history
@@ -142,7 +142,7 @@ export default function MemberDetailPage() {
       setAdjustReason('')
       reloadMember()
       // Refresh score history
-      apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data ?? [])).catch(() => {})
+      apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data?.logs ?? [])).catch(() => {})
     } catch {
       message.error('調整失敗')
     }
