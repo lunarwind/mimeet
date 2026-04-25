@@ -23,6 +23,11 @@
 | Queue Worker | Docker service `mimeet-worker`（`docker-compose.staging.yml`，Redis driver）|
 | API 健康檢查 | `GET /api/v1/auth/me` → 401（Sanctum），不是 `/auth/user` |
 
+> **[待補]** 上監控前需新增 `GET /api/v1/health` 端點，
+> 回傳 `{ db: 'ok', redis: 'ok', queue: 'ok' }` 200 OK，
+> 給 UptimeRobot / Better Stack 等外部監控用。
+> 觸發條件：要上任何外部監控時。
+
 ## 部署流程（強制，不可跳步）
 
 ```
@@ -33,7 +38,7 @@
 5. ssh root@188.166.229.100 '
    cd /var/www/mimeet && git pull origin main
    docker exec mimeet-app sh -c "touch storage/logs/laravel.log && chown www-data:www-data storage/logs/laravel.log && chmod 664 storage/logs/laravel.log"
-   docker exec mimeet-app php artisan migrate --force 2>/dev/null || true
+   docker exec mimeet-app php artisan migrate --force
    docker exec -u www-data mimeet-app php artisan config:cache
    docker exec -u www-data mimeet-app php artisan route:cache
    cd /var/www/mimeet/frontend && npm ci --prefer-offline 2>&1 | tail -3 && npm run build 2>&1 | tail -5
@@ -156,6 +161,7 @@ curl -s https://api.mimeet.online/api/v1/auth/me 2>&1 | grep -q "401\|Unauthenti
 ### 相關歷史紀錄
 
 - **2026-04-25**：admin 分數頁 crash 修復，本流程的草擬源頭（見 SESSION_SUMMARY_20260425 P4 §B.4）
+- [待補] 全系統 pagination 規格化：完成後在此追加日期與 SESSION_SUMMARY 連結
 - 後續同類事件可在此處追加紀錄
 
 ---
