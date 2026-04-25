@@ -280,6 +280,7 @@ class AdminController extends Controller
 
     /**
      * GET /api/v1/admin/members/{id}/credit-logs — F-002
+     * Response aligned to API-002 §4.4 spec.
      */
     public function memberCreditLogs(Request $request, int $id): JsonResponse
     {
@@ -288,29 +289,31 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此會員'], 404);
         }
 
-        $perPage = min((int) $request->input('per_page', 20), 100);
+        $perPage = min((int) $request->query('per_page', 20), 100);
 
         $logs = \App\Models\CreditScoreHistory::where('user_id', $id)
+            ->with('adminUser')
             ->orderByDesc('created_at')
             ->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'current_score' => $user->credit_score,
-                'logs' => $logs->map(fn ($l) => [
-                    'id' => $l->id,
-                    'delta' => $l->delta,
-                    'score_before' => $l->score_before,
-                    'score_after' => $l->score_after,
-                    'type' => $l->type,
-                    'reason' => $l->reason,
-                    'operator_id' => $l->operator_id,
-                    'created_at' => $l->created_at?->toISOString(),
-                ]),
-            ],
+            'data' => $logs->map(fn ($l) => [
+                'id' => $l->id,
+                'change' => $l->delta,
+                'before' => $l->score_before,
+                'after' => $l->score_after,
+                'type' => $l->type,
+                'reason' => $l->reason,
+                'operator' => $l->adminUser ? [
+                    'id' => $l->adminUser->id,
+                    'name' => $l->adminUser->name,
+                ] : null,
+                'created_at' => $l->created_at?->toISOString(),
+            ]),
             'meta' => [
-                'current_page' => $logs->currentPage(),
+                // [TECH DEBT] meta.page 符合 API-002 §4.4 規格（current_page 已順便校正）
+                'page' => $logs->currentPage(),
                 'per_page' => $logs->perPage(),
                 'total' => $logs->total(),
                 'last_page' => $logs->lastPage(),

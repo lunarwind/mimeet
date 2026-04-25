@@ -6,7 +6,7 @@ import {
   Drawer, Form, DatePicker, Checkbox, Progress, Popconfirm,
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
-import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail } from '../../types/admin'
+import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail, type ScoreRecord } from '../../types/admin'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -33,7 +33,7 @@ export default function MemberDetailPage() {
   const uid = Number(id)
 
   const [member, setMember] = useState<MemberDetail | null>(null)
-  const [scoreRecords, setScoreRecords] = useState<Record<string, unknown>[]>([])
+  const [scoreRecords, setScoreRecords] = useState<ScoreRecord[]>([])
   const [subscriptions, setSubscriptions] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
   const [adjustModalOpen, setAdjustModalOpen] = useState(false)
@@ -102,7 +102,7 @@ export default function MemberDetailPage() {
 
     // Fetch score history
     apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => {
-      setScoreRecords(res.data.data?.logs ?? [])
+      setScoreRecords(res.data.data ?? [])
     }).catch(() => {})
 
     // Fetch subscription history
@@ -142,7 +142,7 @@ export default function MemberDetailPage() {
       setAdjustReason('')
       reloadMember()
       // Refresh score history
-      apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data?.logs ?? [])).catch(() => {})
+      apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data ?? [])).catch(() => {})
     } catch {
       message.error('調整失敗')
     }
@@ -263,11 +263,14 @@ export default function MemberDetailPage() {
   const scoreColumns = [
     { title: '時間', dataIndex: 'created_at', key: 'created_at', render: (d: string) => dayjs(d).format('YYYY/MM/DD HH:mm') },
     {
-      title: '分數變化', dataIndex: 'delta', key: 'delta',
+      title: '分數變化', dataIndex: 'change', key: 'change',
       render: (d: number) => <Text style={{ color: d > 0 ? '#10B981' : '#EF4444', fontWeight: 700 }}>{d > 0 ? `+${d}` : d}</Text>,
     },
     { title: '原因', dataIndex: 'reason', key: 'reason' },
-    { title: '操作者', dataIndex: 'operator', key: 'operator' },
+    {
+      title: '操作者', dataIndex: 'operator', key: 'operator',
+      render: (op: ScoreRecord['operator']) => op?.name ?? '—',
+    },
   ]
 
   const subColumns = [

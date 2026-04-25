@@ -115,6 +115,57 @@ check \
   "selectedPaymentMethod"
 
 echo ""
+echo "-- Admin credit-logs API structure (14a-1~14g) --"
+
+# ============================================================
+# 第 14 項：memberCreditLogs API 結構守護（方案 B 退化防護）
+# ============================================================
+# 使用 awk 精準切出 memberCreditLogs 方法區段，避免對其他方法誤觸。
+# 邊界條件：遇到下一個同級 public/private/protected function 即停止。
+
+CREDIT_LOG_SLICE="awk '/^    public function memberCreditLogs/ { flag=1 } flag && /^    (public|private|protected) function / && !/memberCreditLogs/ { exit } flag' backend/app/Http/Controllers/Api/V1/AdminController.php"
+
+check \
+  "14a-1 memberCreditLogs data 直接由 \$logs->map 衍生（非包裝 array）" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep \"data.*->map(\"" \
+  "data.*->map"
+
+check \
+  "14a-2 memberCreditLogs 不存在 'logs' 包裝層退化" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep -c \"'logs' =>\" | tr -d ' '" \
+  "^0$"
+
+check \
+  "14b memberCreditLogs 使用 'change' 欄位（非 'delta'）" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep \"'change' =>\"" \
+  "'change' =>"
+
+check \
+  "14c memberCreditLogs 不使用 score_before / score_after 舊欄位名" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep -cE \"'score_before' =>|'score_after' =>\" | tr -d ' '" \
+  "^0$"
+
+check \
+  "14d memberCreditLogs operator 回傳物件（非 operator_id 整數）" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep -c \"'operator_id' =>\" | tr -d ' '" \
+  "^0$"
+
+check \
+  "14e memberCreditLogs 使用 with adminUser eager loading（防 N+1）" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep \"with.*adminUser\"" \
+  "adminUser"
+
+check \
+  "14f memberCreditLogs meta 使用 'page'（非 'current_page'，符合 API-002 §4.4）" \
+  "eval \"$CREDIT_LOG_SLICE\" | grep \"'page' =>\"" \
+  "'page' =>"
+
+check \
+  "14g MemberDetailPage scoreColumns operator 欄使用 optional chaining（防 runtime crash）" \
+  "grep \"op?\\.name\" admin/src/pages/members/MemberDetailPage.tsx" \
+  "op\\?\\."
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
