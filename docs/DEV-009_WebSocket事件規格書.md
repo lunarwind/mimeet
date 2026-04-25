@@ -375,7 +375,10 @@ interface OnlineUser {
 
 ---
 
-### 4.4 頻道：`private-anon-chat.{channelId}`（Phase 2）
+### 4.4 頻道：`private-anon-chat.{channelId}`（⏸️ Phase 4）
+
+> ⏸️ **實作狀態：Phase 4 — 營運穩定後實作**
+> WebSocket 頻道規格已設計完成，但相關 Controller / Service 尚未實作。
 
 #### Event: `AnonMessageReceived`（匿名聊天室新訊息）
 
