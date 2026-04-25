@@ -7,6 +7,7 @@ import {
 } from 'antd'
 import { ArrowLeftOutlined, CheckCircleOutlined, CloseCircleOutlined, SettingOutlined, EditOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg, type MemberDetail, type ScoreRecord } from '../../types/admin'
+import { getCreditScoreTypeMeta } from '../../constants/creditScoreTypes'
 import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -261,14 +262,24 @@ export default function MemberDetailPage() {
   }
 
   const scoreColumns = [
-    { title: '時間', dataIndex: 'created_at', key: 'created_at', render: (d: string) => dayjs(d).format('YYYY/MM/DD HH:mm') },
     {
-      title: '分數變化', dataIndex: 'change', key: 'change',
+      title: '時間', dataIndex: 'created_at', key: 'created_at', width: 160,
+      render: (d: string) => dayjs(d).format('YYYY/MM/DD HH:mm'),
+    },
+    {
+      title: '分數變化', dataIndex: 'change', key: 'change', width: 90,
       render: (d: number) => <Text style={{ color: d > 0 ? '#10B981' : '#EF4444', fontWeight: 700 }}>{d > 0 ? `+${d}` : d}</Text>,
     },
-    { title: '原因', dataIndex: 'reason', key: 'reason' },
     {
-      title: '操作者', dataIndex: 'operator', key: 'operator',
+      title: '類型', dataIndex: 'type', key: 'type', width: 130,
+      render: (t: string) => {
+        const meta = getCreditScoreTypeMeta(t)
+        return <Tag color={meta.color}>{meta.label}</Tag>
+      },
+    },
+    { title: '原因', dataIndex: 'reason', key: 'reason', ellipsis: true },
+    {
+      title: '操作者', dataIndex: 'operator', key: 'operator', width: 110,
       render: (op: ScoreRecord['operator']) => op?.name ?? '—',
     },
   ]

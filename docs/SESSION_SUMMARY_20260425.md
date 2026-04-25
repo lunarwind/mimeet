@@ -1,5 +1,34 @@
 # SESSION SUMMARY 2026-04-25
 
+## Admin 分數頁新增 type 欄位（Issue #5，2026-04-26）
+
+### 背景
+延伸 Issue #1（type 規格化）的 UX 兌現。P4 §A.4 因 type 不符規格暫緩，
+Issue #1 完成 14 個枚舉值對齊後，本次完成 scoreColumns type 欄與中文對照。
+
+### 改動範圍
+- `admin/src/constants/creditScoreTypes.ts`（新增）：14 個 type 的中文標籤與 Ant Design Tag 顏色，`getCreditScoreTypeMeta()` 含 console.warn fallback
+- `admin/src/types/admin.ts`：ScoreRecord.type 從 `string` 收緊為 `CreditScoreType` union
+- `admin/src/pages/members/MemberDetailPage.tsx`：scoreColumns 新增「類型」欄（位於「分數變化」與「原因」之間）
+- `docs/DEV-008_誠信分數系統規格書.md` §10.3：擴充中文標籤與 Tag 顏色欄位
+
+### 顏色語意設計
+- `green`：加分（系統自動）
+- `gold`：加分（管理員，區隔系統 vs 人為）
+- `blue`：中性退還（檢舉/申訴，非獎勵）
+- `red`：扣分（系統觸發）
+- `volcano`：扣分（管理員，深紅警示）
+
+### 未來新增 type 的維護程序
+1. 後端 `CreditScoreService::adjust()` 新增 type 字串
+2. `DEV-008 §10.3` 補充中文標籤與顏色
+3. `admin/src/constants/creditScoreTypes.ts` 新增對應條目（CreditScoreType union + CREDIT_SCORE_TYPE_META）
+4. TypeScript 的 Record exhaustiveness check 會在步驟 3 遺漏時編譯報錯
+
+若忘記步驟 3，前端 console.warn 提示但不 crash（fallback 顯示原始字串）。
+
+---
+
 ## CreditScoreHistory.type 欄位規格化（Issue #1）
 
 ### 背景

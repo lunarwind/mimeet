@@ -1,3 +1,5 @@
+import type { CreditScoreType } from '../constants/creditScoreTypes'
+
 export type AdminRole = 'super_admin' | 'admin' | 'cs'
 
 export interface AdminUser {
@@ -122,7 +124,7 @@ export interface ScoreRecord {
   change: number
   before: number
   after: number
-  type: string
+  type: CreditScoreType
   reason: string
   operator: { id: number; name: string } | null
   created_at: string
