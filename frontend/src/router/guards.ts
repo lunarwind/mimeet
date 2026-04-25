@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 const PUBLIC_ROUTE_NAMES = new Set([
   'landing', 'login', 'register', 'forgot-password', 'reset-password',
   'verify-email', 'privacy', 'terms', 'anti-fraud', 'go-redirect',
-  'dev-sprint-check', 'not-found',
+  'not-found',
 ])
 
 export function setupRouterGuards(router: Router) {
