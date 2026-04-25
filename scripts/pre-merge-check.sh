@@ -166,6 +166,20 @@ check \
   "op\\?\\."
 
 echo ""
+echo "-- Model datetime casts integrity (14h) --"
+
+# ============================================================
+# 第 14h 項：Model $casts datetime 完整性守護
+# ============================================================
+# 防止 $timestamps = false 的 model 在 fillable 有 datetime 欄位但缺 cast
+# 導致 controller 呼叫 ->toISOString() 等方法時 500
+
+check \
+  "14h DateInvitation created_at 有 datetime cast（\$timestamps=false model 守護）" \
+  "grep \"'created_at' => 'datetime'\" backend/app/Models/DateInvitation.php" \
+  "datetime"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

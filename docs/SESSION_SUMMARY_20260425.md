@@ -1,5 +1,34 @@
 # SESSION SUMMARY 2026-04-25
 
+## Model $casts 全面體檢（延伸 2026-04-25 CreditScoreHistory hotfix）
+
+### 背景
+CreditScoreHistory hotfix 後，對全部 28 個 model 進行同類體檢。
+聚焦 `$timestamps = false` 的 12 個 model（Eloquent 不自動 cast created_at），
+以及其他 model 的自訂 datetime 欄位（expires_at / paid_at 等）。
+
+### 體檢結果
+- **🔴 高風險（會 500）**：無
+- **🟠 中風險（格式不一致）**：DateInvitation.created_at（已修復）
+- **🟡 低風險（完整）**：其餘 27 個 model 全部 ✅
+
+### 補齊清單
+- `DateInvitation`：新增 `'created_at' => 'datetime'` cast
+  - 問題：`$timestamps = false`，`created_at` 在 `$fillable` 但不在 `$casts`
+  - 影響：`DateInvitationController.php:62,115` 和 `DateController.php:75` 回傳原始 MySQL 字串格式（`"2026-04-25 06:10:27"`）而非 ISO 8601
+  - 修復後：回傳 ISO 8601（`"2026-04-25T...Z"`），與其他 API 格式一致
+  - **行為變更**：僅影響 created_at 的序列化格式，前端若已用 dayjs/new Date 解析兩種格式均可接受
+
+### Pre-merge 守護
+新增 14h：靜態確認 DateInvitation 有 created_at datetime cast
+
+### 未處理項目（獨立追蹤）
+- $dates 舊寫法統一遷移到 $casts（Laravel 11 deprecated），28 個 model 中無使用 $dates
+- migration 中 timestamp 欄位 nullable 一致性（另立 issue）
+- Message.sent_at 等非 null-safe 的 toISOString() 呼叫（null-safety issue，非 cast issue）
+
+---
+
 ## Admin 會員分數頁 Crash 修復
 
 ### 問題
