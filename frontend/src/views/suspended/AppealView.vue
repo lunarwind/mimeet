@@ -31,11 +31,11 @@ async function handleSubmit() {
   step.value = 'submitting'
   submitError.value = null
   try {
-    const res = await submitAppeal({
-      reason: reason.value.trim(),
-      evidence: evidence.value.trim() || undefined,
-    })
-    ticketNumber.value = res.ticket_number
+    const combined = evidence.value.trim()
+      ? `${reason.value.trim()}\n\n佐證說明：${evidence.value.trim()}`
+      : reason.value.trim()
+    const res = await submitAppeal({ reason: combined })
+    ticketNumber.value = res.ticket_no
     step.value = 'success'
   } catch {
     submitError.value = '送出失敗，請稍後再試'
