@@ -1,5 +1,63 @@
 # SESSION SUMMARY 2026-04-25
 
+## CreditScoreHistory.type 欄位規格化（Issue #1）
+
+### 背景
+2026-04-25 admin 分數頁修復 P4 §A.2 發現 `credit_score_histories.type` 欄位的
+DB 實際值與 DEV-008 §10.3 規格定義不一致，本次對齊。
+
+### 最終 14 個枚舉值
+`email_verify` / `phone_verify` / `adv_verify_male` / `adv_verify_female` /
+`date_gps` / `date_no_gps` / `date_noshow` / `report_submit` /
+`report_result_refund` / `report_result_penalty`（新增）/ `admin_reward` /
+`admin_penalty` / `content_violation` / `appeal_refund`（新增）
+
+### 對照修改清單
+
+| 舊 type 值 | 新 type 值 | 是否可精準還原 | 說明 |
+|-----------|-----------|------------|------|
+| `email_verified` | `email_verify` | ✅ 精準 | 單純改名 |
+| `phone_verified` | `phone_verify` | ✅ 精準 | 單純改名 |
+| `date_verified` | `date_gps` / `date_no_gps` | ⚠️ 舊資料還原為 date_gps | A-1 依 GPS 分路 |
+| `admin_adjust` | `admin_reward` 或 `admin_penalty` | ⚠️ 合併 → admin_adjust | B-1 依 delta 符號分路 |
+| `admin_set` | 同上 | ⚠️ 合併 → admin_adjust | B-1 |
+| `report_filed` | `report_submit` | ⚠️ 合併 → report_filed | 合入，喪失提交者/被舉者區分 |
+| `report_received` | `report_submit` | ⚠️ 合併 → report_filed | 同上 |
+| `report_penalty` | `report_result_penalty` | ✅ 精準 | C-1 規格擴充，單純改名 |
+| `report_dismissed` | `report_result_refund` | ✅ 精準 | 語意改名 |
+| `report_cancelled` | `report_result_refund` | ⚠️ 合入 report_dismissed | C-2 合併，用戶自取消退分 |
+| `appeal_approved` | `appeal_refund` | ✅ 精準 | C-1 規格擴充，單純改名 |
+| `verification_approved` | `adv_verify_female` | ✅ 精準 | 單純改名 |
+
+### 決策論證
+
+**report_result_penalty（規格擴充，非合入）**：
+與 `report_result_refund` 對稱命名，保留「檢舉屬實額外處分」的語意獨立性。
+管理員在後台需要看到「因為什麼原因扣分」，若合入 `admin_penalty` 則稽核報告
+無法區分系統自動處分與管理員主動懲罰，對法遵追查有實質影響。
+
+**appeal_refund（規格擴充，非合入 admin_reward）**：
+申訴核准在業務流程中是一個「特定程序」，合入 `admin_reward` 會讓申訴核准
+與一般管理員獎勵無法在分數歷史中區分，影響停權/解停稽核流程的可追溯性。
+
+### 資訊遺失說明
+- `admin_adjust` / `admin_set` 合併：舊資料中的正向調整被還原為 admin_adjust，
+  未來應由 admin_reward/admin_penalty 分開語意。
+- `report_filed` / `report_received` 合併：提交者與被舉者的記錄統一為 report_submit，
+  reason 欄位仍保留「送出檢舉」vs「被他人檢舉」的文字區分，可用 reason 輔助判斷。
+
+### 補強項目
+- `score_delta` validate rule 補上 `not_in:0`（AdminController:331）
+- delta=0 在 adjust_score action 層已被 `not_in:0` 攔截，不會寫入 type 中性值
+
+### Pre-merge 守護
+新增 14i：靜態確認所有 adjust 呼叫不使用舊枚舉值
+
+### 解鎖後續
+Issue #5（scoreColumns 新增 type 欄 + 中文對照表）可以開工
+
+---
+
 ## Model $casts 全面體檢（延伸 2026-04-25 CreditScoreHistory hotfix）
 
 ### 背景

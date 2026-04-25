@@ -72,7 +72,7 @@ class TicketController extends Controller
             $restoreScore = (int) $request->input('restore_score');
 
             if ($user) {
-                CreditScoreService::adjust($user, $restoreScore, 'appeal_approved', $request->input('admin_reply'), $adminId);
+                CreditScoreService::adjust($user, $restoreScore, 'appeal_refund', $request->input('admin_reply'), $adminId);
                 // Observer will auto-restore if score >= 30
             }
 
