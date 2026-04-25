@@ -44,6 +44,122 @@
 6. Smoke Test：前台 200 / 後台 200 / API /api/v1/auth/me 401
 ```
 
+## API Contract 變更標準回滾流程
+
+> 適用情境：後端 API 回傳結構改變，前端必須同步更新。  
+> 此類改動為跨棧（atomic）commit，部署一旦失敗需要特殊回滾流程。
+
+### 觸發條件
+
+以下任一條件成立，本流程即適用：
+
+- 後端 API response 的 `data` 結構變動（陣列 ↔ 物件、欄位增刪、key 重命名）
+- 後端 API 的 `meta` / pagination 結構變動
+- 前端 TypeScript interface 對應修改（含 nullable 改動）
+- 後端新增或修改 model relation 影響 response 內容（如 N+1 修復）
+- 任何「不同時部署前後端會壞畫面」的改動
+
+### 部署前必要檢查
+
+- [ ] commit 切分採「止血 + atomic 完整修復」雙 commit 模式
+- [ ] 本地跑 `bash scripts/pre-merge-check.sh` 全部 pass
+- [ ] 後端 model 涉及 datetime 欄位時，確認 `$casts` 已宣告（避免 toISOString() on string 500）
+- [ ] 前端 render function 對 nullable 欄位使用 optional chaining（`?.name` 而非 `.name`）
+- [ ] 確認 git log 中前後端改動在同一個 commit（不可跨 commit）
+- [ ] DB 有對應的測試資料能驗證新結構（必要時用 tinker 產生）
+
+### 部署後監控項目（5 分鐘內必做）
+
+- [ ] Smoke test：前台、後台、API 三個 endpoint 都 200/401
+- [ ] 後端 log 觀察：`docker exec mimeet-app tail -50 storage/logs/laravel.log`
+- [ ] 打開受影響的後台頁面，確認不 crash
+- [ ] 檢查 nullable 邊界情境（如 `operator: null`）的渲染正確性
+
+### 出錯時的決策樹
+
+```
+頁面 crash 或 500
+  ├─ 前端 console error 明確指向某個 type 錯誤
+  │    → 緊急 hotfix（小改動 push，不 rollback）
+  └─ 後端錯誤或範圍模糊
+       → 立即 rollback（見下方完整腳本）
+
+頁面顯示異常但不 crash（空白、欄位錯位）
+  ├─ 時間充裕（< 100 用戶受影響）
+  │    → rollforward：寫補丁 PR，正常流程上線
+  └─ 影響擴大中
+       → rollback 後再從容修復
+
+效能問題（不影響功能）
+  → 不 rollback，另開 issue 優化
+```
+
+### 完整 Rollback 腳本（atomic commit 適用）
+
+```bash
+# Step 1：本機建立 revert commit 並推送
+git checkout main
+git pull origin main
+git revert <commit-hash> --no-edit
+# 對 merge commit：git revert <merge-hash> -m 1 --no-edit
+git push origin main
+
+# Step 2：Droplet 完整重建（與標準部署完全對稱）
+ssh root@188.166.229.100 '
+cd /var/www/mimeet && git pull origin main
+
+# ⚠️  rollback 不執行 migrate --force（前進指令，無法回滾 migration）
+# 若 rollback 對象含 migration，需手動評估：
+#   - 該 migration 是否可逆（有 down() 方法）
+#   - 是否需要 php artisan migrate:rollback --step=1（先執行，再 revert 程式碼）
+#   - 或保留新 schema、僅 revert 程式碼（需確認 schema 與舊程式碼相容）
+
+docker exec -u www-data mimeet-app php artisan config:cache
+docker exec -u www-data mimeet-app php artisan route:cache
+
+# 🔴 前後端必須一起重建（atomic commit 含跨棧改動）
+cd /var/www/mimeet/frontend && npm ci --prefer-offline 2>&1 | tail -3 && npm run build 2>&1 | tail -5
+cd /var/www/mimeet/admin && npm ci --prefer-offline 2>&1 | tail -3 && npm run build 2>&1 | tail -5
+
+supervisorctl status mimeet-worker:*
+echo "✅ Rollback 完成"
+'
+
+# Step 3：Smoke Test
+curl -s https://mimeet.online > /dev/null && echo "✅ 前台 OK" || echo "❌"
+curl -s https://admin.mimeet.online > /dev/null && echo "✅ 後台 OK" || echo "❌"
+curl -s https://api.mimeet.online/api/v1/auth/me 2>&1 | grep -q "401\|Unauthenticated" && echo "✅ API OK" || echo "❌"
+```
+
+### 常見錯誤與正解
+
+**錯誤 1：rollback 只跑後端 cache 不重建前端**  
+後果：前端仍是新版 build，讀取舊版後端結構，依舊 crash。  
+正解：rollback 必須完整跑一次部署腳本（含 npm run build），不能簡化。
+
+**錯誤 2：先 git revert 才 migrate:rollback**  
+後果：revert 後 migration class 不存在，`migrate:rollback` 找不到對應檔案。  
+正解：先 `migrate:rollback --step=N`，**再** `git revert`。
+
+**錯誤 3：對 merge commit 用 `git revert <hash>` 不加 `-m 1`**  
+後果：報錯 `commit X is a merge but no -m option was given`。  
+正解：merge commit 必須用 `git revert <merge-hash> -m 1 --no-edit`。
+
+**錯誤 4：rollback 後沒驗收就以為結束**  
+後果：可能 rollback 不完全（cache 沒清乾淨），問題仍在。  
+正解：每次 rollback 後跑 smoke test + 人工確認受影響頁面。
+
+**錯誤 5：`docker compose restart app` 取代 `up -d --force-recreate app`**  
+後果：新增的 volume mount（如 fpm-output-buffering.conf）不會生效，問題仍在。  
+正解：新增 volume mount 後必須用 `up -d --force-recreate app`，而非 restart。
+
+### 相關歷史紀錄
+
+- **2026-04-25**：admin 分數頁 crash 修復，本流程的草擬源頭（見 SESSION_SUMMARY_20260425 P4 §B.4）
+- 後續同類事件可在此處追加紀錄
+
+---
+
 ## 四項禁令
 
 1. **禁止**直接在 Droplet 上修改任何檔案
