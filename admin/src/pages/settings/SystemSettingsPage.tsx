@@ -36,11 +36,6 @@ const POINT_SETTING_META: Record<PointSettingKey, { label: string; suffix?: stri
 }
 
 function SystemParamsTab() {
-  const [qrGpsScore, setQrGpsScore] = useState(5)
-  const [qrNoGpsScore, setQrNoGpsScore] = useState(2)
-  const [reportDeduct, setReportDeduct] = useState(-15)
-  const [noShowDeduct, setNoShowDeduct] = useState(-10)
-  const [suspendThreshold, setSuspendThreshold] = useState(0)
   const [retentionDays, setRetentionDays] = useState(180)
   const [retentionSaving, setRetentionSaving] = useState(false)
 
@@ -84,17 +79,13 @@ function SystemParamsTab() {
 
   return (
     <div>
-      <Card title="誠信分數規則" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, maxWidth: 600 }}>
-          <div><Text>QR 約會 GPS 通過得分</Text><InputNumber value={qrGpsScore} onChange={(v) => setQrGpsScore(v || 0)} style={{ width: '100%', marginTop: 4 }} /></div>
-          <div><Text>QR 約會無 GPS 得分</Text><InputNumber value={qrNoGpsScore} onChange={(v) => setQrNoGpsScore(v || 0)} style={{ width: '100%', marginTop: 4 }} /></div>
-          <div><Text>被檢舉扣分</Text><InputNumber value={reportDeduct} onChange={(v) => setReportDeduct(v || 0)} style={{ width: '100%', marginTop: 4 }} max={0} /></div>
-          <div><Text>爽約扣分</Text><InputNumber value={noShowDeduct} onChange={(v) => setNoShowDeduct(v || 0)} style={{ width: '100%', marginTop: 4 }} max={0} /></div>
-          <div><Text>停權門檻</Text><InputNumber value={suspendThreshold} onChange={(v) => setSuspendThreshold(v || 0)} style={{ width: '100%', marginTop: 4 }} min={0} max={30} /></div>
-        </div>
-        <Divider />
-        <Button type="primary" icon={<SaveOutlined />} onClick={() => message.success('已儲存')}>儲存</Button>
-      </Card>
+      <Alert
+        type="info"
+        showIcon
+        message="誠信分數規則請至「⭐ 誠信分數配分」Tab 設定"
+        description="此處舊版「誠信分數規則」區塊已移除，因其為純前端假資料、按下儲存不會真正生效。所有誠信分數配分（GPS 得分、扣分等）的唯一調整入口為「⭐ 誠信分數配分」Tab。"
+        style={{ marginBottom: 24 }}
+      />
 
       <Card title="資料保留政策（Data Retention）" style={{ marginBottom: 24 }}>
         <Alert type="info" message="超過保留期限的軟刪除訊息、隔離區檔案與用戶活動日誌將被每日排程永久清除。" showIcon style={{ marginBottom: 16 }} />
