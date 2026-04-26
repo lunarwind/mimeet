@@ -332,6 +332,30 @@ check \
   "^0$"
 
 echo ""
+echo "-- Register payload guards (14ac-14ad) --"
+
+# ============================================================
+# 14ac：禁止 register 函數 hardcode 強制覆蓋勾選欄位
+# ============================================================
+# 2026-04-26 移除強制 terms_accepted/privacy_accepted/anti_fraud_read = true
+# 的 hardcode 邏輯，避免用戶未勾但被視為同意的法律風險。
+
+check \
+  "14ac auth.ts register 不 hardcode 勾選欄位為 true" \
+  "grep -cE 'terms_accepted: *true|privacy_accepted: *true|anti_fraud_read: *true' frontend/src/api/auth.ts 2>/dev/null | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14ad：RegisterPayload interface 必須含 password_confirmation
+# ============================================================
+# 防止 interface 退化為缺欄位的鬆散型別（造成 register 422 bug 復活）。
+
+check \
+  "14ad RegisterPayload 含 password_confirmation 欄位" \
+  "grep -c 'password_confirmation' frontend/src/api/auth.ts 2>/dev/null | tr -d ' '" \
+  "^[1-9]"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

@@ -97,12 +97,14 @@ async function submitStep2() {
     const res = await register({
       email: step2.email,
       password: step2.password,
+      password_confirmation: step2.passwordConfirm,
       nickname: step1.nickname.trim(),
       gender: step1.gender as 'male' | 'female',
       birth_date: birthDate,
-      terms_accepted: true,
-      privacy_accepted: true,
-      anti_fraud_read: true,
+      phone: step2.phone || undefined,
+      terms_accepted: step2.agreeTerms,
+      privacy_accepted: step2.agreeTerms,  // 同一個 checkbox 覆蓋 terms + privacy
+      anti_fraud_read: step2.agreeAge,
     })
     // Store token and user from registration response
     const token = res.data?.data?.token ?? res.data?.token ?? ''

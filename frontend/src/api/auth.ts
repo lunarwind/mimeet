@@ -57,21 +57,18 @@ export function resetPassword(payload: {
 export interface RegisterPayload {
   email: string
   password: string
+  password_confirmation: string  // 對應後端 confirmed rule
   nickname: string
   gender: 'male' | 'female'
   birth_date: string
-  terms_accepted: true
-  privacy_accepted: true
-  anti_fraud_read: true
+  phone?: string                 // optional（後端 nullable）
+  terms_accepted: boolean        // 接受真實 form 狀態，caller 負責傳正確值
+  privacy_accepted: boolean
+  anti_fraud_read: boolean
 }
 
 export function register(payload: RegisterPayload) {
-  return client.post('/auth/register', {
-    ...payload,
-    terms_accepted: true,
-    privacy_accepted: true,
-    anti_fraud_read: true,
-  })
+  return client.post('/auth/register', payload)
 }
 
 export function verifyEmail(payload: { verification_code: string; email: string }) {
