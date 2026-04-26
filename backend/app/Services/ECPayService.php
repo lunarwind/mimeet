@@ -295,20 +295,21 @@ class ECPayService
 
     private function invoiceMerchantId(): string
     {
-        return SystemSetting::get('ecpay.invoice.merchant_id')
-            ?? config('services.ecpay.invoice_merchant_id', '2000132');
+        // 新 key 格式（舊 ecpay.invoice.merchant_id 已在 migration 遷移並刪除）
+        return SystemSetting::get('ecpay_invoice_merchant_id',
+            config('services.ecpay.invoice_merchant_id', '2000132'));
     }
 
     private function invoiceHashKey(): string
     {
-        return SystemSetting::get('ecpay.invoice.hash_key')
-            ?? config('services.ecpay.invoice_hash_key', 'ejCk326UnaZWKisg');
+        return SystemSetting::get('ecpay_invoice_hash_key',
+            config('services.ecpay.invoice_hash_key', 'ejCk326UnaZWKisg'));
     }
 
     private function invoiceHashIv(): string
     {
-        return SystemSetting::get('ecpay.invoice.hash_iv')
-            ?? config('services.ecpay.invoice_hash_iv', 'q9jcZX8Ib9LM8wYk');
+        return SystemSetting::get('ecpay_invoice_hash_iv',
+            config('services.ecpay.invoice_hash_iv', 'q9jcZX8Ib9LM8wYk'));
     }
 
     private function aesEncrypt(string $plaintext, string $key, string $iv): string
@@ -373,7 +374,7 @@ class ECPayService
         if (!empty($orderData['donation'])) {
             $dataPayload['Donation'] = '1';
             $dataPayload['LoveCode'] = $orderData['love_code']
-                ?? SystemSetting::get('ecpay.invoice.donation_love_code', '168001');
+                ?? SystemSetting::get('ecpay_invoice_donation_love_code', '168001');
             $dataPayload['Print'] = '0';
         }
 

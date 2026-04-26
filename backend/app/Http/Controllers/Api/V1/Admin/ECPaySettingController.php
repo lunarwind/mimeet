@@ -51,9 +51,21 @@ class ECPaySettingController extends Controller
 
     /**
      * POST /api/v1/admin/settings/ecpay — update ECPay settings
+     *
+     * @deprecated 舊格式端點（ecpay.* dot-notation key）
+     *   新格式請使用 PUT /api/v1/admin/settings/payment
+     *   舊 key 已不再有效，寫入會被攔截並回 400。
      */
     public function update(Request $request): JsonResponse
     {
+        // 攔截所有舊格式寫入嘗試
+        return response()->json([
+            'success' => false,
+            'code'    => 'DEPRECATED_KEY_FORMAT',
+            'message' => '此端點已停用。請改用 PUT /api/v1/admin/settings/payment 設定金流憑證（新格式 ecpay_* key）。',
+        ], 400);
+
+        // 以下舊邏輯保留以供參考，不再執行：
         $request->validate([
             'settings' => 'required|array',
             'settings.*.key' => 'required|string|starts_with:ecpay.',

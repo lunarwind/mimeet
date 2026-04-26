@@ -14,8 +14,7 @@ class SystemSettingsSeeder extends Seeder
             ['key_name' => 'data_retention_days', 'value' => '365', 'value_type' => 'integer', 'description' => '用戶活動日誌保留天數'],
             ['key_name' => 'trial_plan_price',    'value' => '199', 'value_type' => 'integer', 'description' => '體驗方案價格'],
             ['key_name' => 'trial_plan_days',     'value' => '30',  'value_type' => 'integer', 'description' => '體驗方案天數'],
-            ['key_name' => 'ecpay_is_sandbox',    'value' => 'true','value_type' => 'boolean', 'description' => '綠界測試模式'],
-            ['key_name' => 'ecpay_merchant_id',   'value' => '3002607','value_type' => 'string','description' => '綠界商店代號'],
+            // 注意：ecpay_is_sandbox / ecpay_merchant_id 已由 PaymentSettingsTab 管理（新 key 格式），此處保留向下相容
             ['key_name' => 'app_mode',            'value' => 'normal','value_type' => 'string','description' => '系統運作模式'],
             ['key_name' => 'sms_provider',        'value' => 'disabled','value_type' => 'string','description' => 'SMS 服務提供者'],
         ];
@@ -67,6 +66,19 @@ class SystemSettingsSeeder extends Seeder
                     'description'=> $setting['description'],
                 ]
             );
+        }
+
+        // ─── 發票 key（新格式，舊 ecpay.invoice.* 已由 migration 遷移並刪除）
+        $invoiceDefaults = [
+            ['key_name' => 'ecpay_invoice_merchant_id',       'value' => '2000132',         'description' => '發票 MerchantID（預設 ECPay 測試帳號）'],
+            ['key_name' => 'ecpay_invoice_hash_key',          'value' => 'ejCk326UnaZWKisg', 'description' => '發票 HashKey'],
+            ['key_name' => 'ecpay_invoice_hash_iv',           'value' => 'q9jcZX8Ib9LM8wYk', 'description' => '發票 HashIV'],
+            ['key_name' => 'ecpay_invoice_donation_love_code','value' => '168001',            'description' => '發票愛心碼（公益捐贈）'],
+        ];
+        foreach ($invoiceDefaults as $s) {
+            SystemSetting::updateOrCreate(['key_name' => $s['key_name']], [
+                'value' => $s['value'], 'value_type' => 'string', 'description' => $s['description'],
+            ]);
         }
     }
 }

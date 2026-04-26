@@ -202,17 +202,15 @@ class ECPayServiceTest extends TestCase
     }
 
     /** @test */
-    public function new_key_format_takes_priority_over_old_dot_notation(): void
+    public function only_new_key_format_is_supported(): void
     {
-        // 新格式和舊格式都設定，新格式應優先
-        SystemSetting::updateOrCreate(['key_name' => 'ecpay_environment'],          ['value' => 'sandbox']);
-        SystemSetting::updateOrCreate(['key_name' => 'ecpay_sandbox_merchant_id'],  ['value' => '99999999']);
-        // 舊格式（應被忽略）
-        SystemSetting::updateOrCreate(['key_name' => 'ecpay.payment.merchant_id'],  ['value' => '11111111']);
+        // 舊 ecpay.* dot-notation key 已刪除（migration 清理），只有新 ecpay_* key 有效
+        SystemSetting::updateOrCreate(['key_name' => 'ecpay_environment'],         ['value' => 'sandbox']);
+        SystemSetting::updateOrCreate(['key_name' => 'ecpay_sandbox_merchant_id'], ['value' => '99999999']);
         Cache::flush();
 
         $service = app(ECPayService::class);
-        $this->assertSame('99999999', $service->getMerchantId(), '新格式 key 應優先於舊格式');
+        $this->assertSame('99999999', $service->getMerchantId(), '新格式 key 正確讀取');
     }
 
     /** @test */
