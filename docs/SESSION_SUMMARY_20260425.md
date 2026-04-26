@@ -1,5 +1,41 @@
 # SESSION SUMMARY 2026-04-25
 
+## 前台註冊 payload 治本（2026-04-26）
+
+### 起源
+截圖揭露前台註冊頁 422 "The password field confirmation does not match."
+兩邊密碼一樣卻被判不一致。
+
+### 三層真相
+1. **password_confirmation 沒送**：RegisterPayload interface 無此欄位，caller 自然漏傳
+2. **phone 也漏送**：同根因，interface 缺欄位，用戶填的手機號碼靜默遺失
+3. **terms/privacy/anti_fraud 強制覆蓋為 true**：auth.ts register 函數不管 caller 傳什麼
+   都覆蓋為 true，用戶沒勾也被視為同意（法律風險）
+
+client validation 已有守護（line 88：!agreeTerms || !agreeAge → 攔住未勾），屬情境 A。
+
+### 修法
+
+**frontend/src/api/auth.ts**：
+- RegisterPayload 補齊：`password_confirmation: string`、`phone?: string`、
+  三個 accepted 欄位從 `true` literal 改為 `boolean`
+- register function 移除強制覆蓋，改為純 pass-through：`client.post('/auth/register', payload)`
+
+**frontend/src/views/public/RegisterView.vue**：
+- register call 補齊 `password_confirmation: step2.passwordConfirm`、`phone: step2.phone || undefined`
+- 三個 accepted 傳真實 form 狀態：`terms_accepted: step2.agreeTerms`、
+  `privacy_accepted: step2.agreeTerms`（同一個 checkbox）、`anti_fraud_read: step2.agreeAge`
+
+### Pre-merge-check
+- 14ac：禁止 auth.ts register 函數 hardcode 勾選為 true
+- 14ad：RegisterPayload 必須含 password_confirmation
+
+### 不在本次範圍
+- 多語系 validation 訊息（後端 422 英文訊息）—— 觸發式 issue
+- `agreeAge`（年滿18歲）對應 `anti_fraud_read` 語意不完全精確，但 UI 只有兩個 checkbox
+
+---
+
 ## 三件事合併處理：subscriptions 404 + catch any 清理 + 14aa-14ab 守護（2026-04-26）
 
 ### 起源
