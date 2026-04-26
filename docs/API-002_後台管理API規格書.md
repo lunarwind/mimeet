@@ -325,6 +325,21 @@ GET /api/v1/admin/stats/server-metrics
 
 ### 4.1 取得會員列表
 
+> **會員計數口徑規範**
+>
+> `meta.total`（本端點）與 `GET /admin/stats/summary` 回傳的 `data.members.total` 在
+> **無篩選條件下數值必須完全一致**，計算口徑為：
+>
+> ```sql
+> SELECT COUNT(*) FROM users WHERE deleted_at IS NULL
+> ```
+>
+> 說明：
+> - 軟刪除（`deleted_at IS NOT NULL`）的用戶不計入
+> - Admin 帳號存於獨立 `admin_users` 表（Multi-Guard），不會出現在 `users` 表，無需額外排除
+> - 如 CI 測試 `StatsControllerTest::summary_total_equals_members_list_meta_total` 失敗，
+>   代表兩端口徑出現歧異，必須修正
+
 ```
 GET /api/v1/admin/members
 ```
