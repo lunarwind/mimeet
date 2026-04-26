@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\PointOrder;
 use App\Models\PointTransaction;
 use App\Models\User;
@@ -36,16 +37,23 @@ class StatsController extends Controller
                 ->count(),
         ];
 
+        // 改讀 payments 主表（金流 9 步後真實付款都在此）
+        // 排除 legacy 避免 mock 測試資料污染統計
+        $revenueBase = Payment::where('status', 'paid')
+            ->where('environment', '!=', 'legacy')
+            ->whereYear('paid_at', now()->year)
+            ->whereMonth('paid_at', now()->month);
+
         $revenue = [
-            'subscription_month' => (int) Order::where('status', 'paid')
-                ->whereMonth('paid_at', now()->month)
-                ->whereYear('paid_at', now()->year)
+            'subscription_month' => (int) (clone $revenueBase)
+                ->where('type', 'subscription')
                 ->sum('amount'),
-            'points_month' => (int) PointOrder::where('status', 'paid')
-                ->whereMonth('paid_at', now()->month)
-                ->whereYear('paid_at', now()->year)
+            'points_month' => (int) (clone $revenueBase)
+                ->where('type', 'points')
                 ->sum('amount'),
-            'points_today' => (int) PointOrder::where('status', 'paid')
+            'points_today' => (int) Payment::where('status', 'paid')
+                ->where('environment', '!=', 'legacy')
+                ->where('type', 'points')
                 ->whereDate('paid_at', today())
                 ->sum('amount'),
         ];
@@ -106,13 +114,17 @@ class StatsController extends Controller
             ->groupBy('date')
             ->pluck('count', 'date');
 
-        $subscriptionRevenue = Order::where('status', 'paid')
+        $subscriptionRevenue = Payment::where('status', 'paid')
+            ->where('environment', '!=', 'legacy')
+            ->where('type', 'subscription')
             ->where('paid_at', '>=', $start)
             ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
 
-        $pointRevenue = PointOrder::where('status', 'paid')
+        $pointRevenue = Payment::where('status', 'paid')
+            ->where('environment', '!=', 'legacy')
+            ->where('type', 'points')
             ->where('paid_at', '>=', $start)
             ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
             ->groupBy('date')
@@ -149,13 +161,17 @@ class StatsController extends Controller
             ->groupBy('date')
             ->pluck('count', 'date');
 
-        $subscriptionRevenue = Order::where('status', 'paid')
+        $subscriptionRevenue = Payment::where('status', 'paid')
+            ->where('environment', '!=', 'legacy')
+            ->where('type', 'subscription')
             ->where('paid_at', '>=', $start)
             ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
             ->groupBy('date')
             ->pluck('total', 'date');
 
-        $pointRevenue = PointOrder::where('status', 'paid')
+        $pointRevenue = Payment::where('status', 'paid')
+            ->where('environment', '!=', 'legacy')
+            ->where('type', 'points')
             ->where('paid_at', '>=', $start)
             ->selectRaw('DATE(paid_at) as date, SUM(amount) as total')
             ->groupBy('date')

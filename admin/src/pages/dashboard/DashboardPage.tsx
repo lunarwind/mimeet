@@ -88,57 +88,55 @@ export default function DashboardPage() {
           pending_verifications: d.pending_verifications ?? 0,
           consumption_by_feature: consumption,
         }))
+        return  // B1：summary 成功就結束，不覆蓋正確數字
       }
     } catch {
-      // fallback 下面的聚合
+      // summary 失敗 → 繼續走 fallback
     }
 
+    // Fallback（B2）：僅在 summary API 失敗時執行
+    // B2：解析路徑改用 Array.isArray() guard，兼容 pagination 統一後的直接陣列格式
     try {
-      // Fetch real data from multiple endpoints
-      const [membersRes, ticketsRes, paymentsRes] = await Promise.allSettled([
+      const [membersRes, ticketsRes] = await Promise.allSettled([
         apiClient.get('/admin/members', { params: { per_page: 1000 } }),
         apiClient.get('/admin/tickets', { params: { per_page: 100 } }),
-        apiClient.get('/admin/payments', { params: { per_page: 100 } }),
+        // payments fallback 移除：全是 legacy/refund_failed，無法計算真實收入
       ])
 
-      const members = membersRes.status === 'fulfilled' ? (membersRes.value.data?.data?.members ?? []) : []
-      const tickets = ticketsRes.status === 'fulfilled' ? (ticketsRes.value.data?.data?.tickets ?? []) : []
-      const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value.data?.data?.payments ?? []) : []
+      // B2：data 現在直接是陣列（pagination 統一後格式）
+      const members = membersRes.status === 'fulfilled'
+        ? (Array.isArray(membersRes.value.data?.data) ? membersRes.value.data.data : [])
+        : []
+      const tickets = ticketsRes.status === 'fulfilled'
+        ? (Array.isArray(ticketsRes.value.data?.data) ? ticketsRes.value.data.data : [])
+        : []
 
-      // Calculate stats from real data
-      const paidCount = Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0
+      const paidCount   = Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0
       const pendingCount = Array.isArray(tickets) ? tickets.filter((t: { status: string }) => t.status === 'pending').length : 0
-      const paidPayments = Array.isArray(payments) ? payments.filter((p: { status: string }) => p.status === 'paid') : []
-      const monthRevenue = paidPayments.reduce((sum: number, p: { amount: number }) => sum + (p.amount || 0), 0)
 
-      // Level distribution
-      const lvCounts = [0, 0, 0, 0] // Lv0, Lv1, Lv2, Lv3
+      const lvCounts = [0, 0, 0, 0]
       if (Array.isArray(members)) {
         members.forEach((m: { membership_level: number }) => {
-          const lv = Math.min(m.membership_level, 3)
-          lvCounts[lv]++
+          lvCounts[Math.min(Math.floor(m.membership_level), 3)]++
         })
       }
 
       setStats(prev => ({
         ...prev,
-        total_members: Array.isArray(members) ? members.length : 0,
-        month_revenue: monthRevenue,
-        paid_members: paidCount,
+        total_members:   Array.isArray(members) ? members.length : 0,
+        month_revenue:   0,  // fallback 不算收入（需真實付款資料）
+        paid_members:    paidCount,
         pending_tickets: pendingCount,
         level_distribution: [
-          { value: lvCounts[0], name: 'Lv0 未驗證', itemStyle: { color: '#9CA3AF' } },
-          { value: lvCounts[1], name: 'Lv1 Email驗證', itemStyle: { color: '#3B82F6' } },
-          { value: lvCounts[2], name: 'Lv2 進階驗證', itemStyle: { color: '#10B981' } },
-          { value: lvCounts[3], name: 'Lv3 付費會員', itemStyle: { color: '#F0294E' } },
+          { value: lvCounts[0], name: 'Lv0 未驗證',    itemStyle: { color: '#9CA3AF' } },
+          { value: lvCounts[1], name: 'Lv1 Email驗證',  itemStyle: { color: '#3B82F6' } },
+          { value: lvCounts[2], name: 'Lv2 進階驗證',  itemStyle: { color: '#10B981' } },
+          { value: lvCounts[3], name: 'Lv3 付費會員',  itemStyle: { color: '#F0294E' } },
         ],
         recent_tickets: Array.isArray(tickets) ? tickets.slice(0, 5).map((t: { id: number; type: string; created_at: string }) => ({
           id: `TK-${t.id}`, type: t.type, time: t.created_at ? new Date(t.created_at).toLocaleString('zh-TW') : '',
         })) : [],
-        recent_payments: Array.isArray(payments) ? paidPayments.slice(0, 5).map((p: { user?: { nickname: string }; plan_name?: string; amount: number; paid_at?: string }) => ({
-          user: p.user?.nickname || '—', plan: p.plan_name || '—', amount: p.amount,
-          time: p.paid_at ? new Date(p.paid_at).toLocaleString('zh-TW') : '',
-        })) : [],
+        recent_payments: [],  // fallback 無法提供正確最新付款列表
       }))
     } catch {
       // API unavailable — show zeros
