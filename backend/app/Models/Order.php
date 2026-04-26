@@ -30,4 +30,10 @@ class Order extends Model
     {
         return $this->belongsTo(SubscriptionPlan::class, 'plan_id');
     }
+
+    /** 對應 payments 主表記錄 */
+    public function payment(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'payment_id');
+    }
 }
