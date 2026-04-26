@@ -110,8 +110,9 @@ async function sendMessage() {
     if (conversationId) {
       router.push(`/app/messages/${conversationId}`)
     }
-  } catch (err: any) {
-    const msg = err.response?.data?.message ?? err.response?.data?.error?.message ?? '無法開啟對話'
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string; error?: { message?: string } } } }
+    const msg = e?.response?.data?.message ?? e?.response?.data?.error?.message ?? '無法開啟對話'
     const { useUiStore } = await import('@/stores/ui')
     useUiStore().showToast(msg, 'error')
   }
@@ -157,15 +158,15 @@ async function confirmSuperLike() {
     if (authStore.user) (authStore.user as any).points_balance = d.points_balance
     const { useUiStore } = await import('@/stores/ui')
     useUiStore().showToast('⭐ 超級讚已送出', 'success')
-  } catch (err: any) {
-    const resp = err.response?.data
-    const status = err.response?.status
+  } catch (err: unknown) {
+    const resp = (err as { response?: { status?: number; data?: { message?: string; data?: { required?: number; current_balance?: number } } } })?.response?.data
+    const status = (err as { response?: { status?: number } })?.response?.status
     const { useUiStore } = await import('@/stores/ui')
     if (status === 422 && resp?.message?.includes('24 小時')) {
       superLikeSent.value = true // 視為已發過
       useUiStore().showToast('24 小時內已對此用戶發送過超級讚', 'info')
     } else if (status === 422 && resp?.data?.required !== undefined) {
-      insufficientInfo.value = { required: resp.data.required, current: resp.data.current_balance }
+      insufficientInfo.value = { required: resp.data.required ?? 0, current: resp.data.current_balance ?? 0 }
       showInsufficientModal.value = true
     } else {
       useUiStore().showToast(resp?.message ?? '超級讚發送失敗', 'error')

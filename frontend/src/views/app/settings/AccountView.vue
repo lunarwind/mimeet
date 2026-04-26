@@ -278,8 +278,9 @@ async function handleCropConfirm(blob: Blob) {
     avatarSlots.value = res.data.data.slots ?? []
     avatarUrl.value = res.data.data.current_avatar
     uiStore.showToast('頭像已更新', 'success')
-  } catch (err: any) {
-    uiStore.showToast(err.response?.data?.error?.message ?? '上傳失敗', 'error')
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { error?: { message?: string } } } }
+    uiStore.showToast(e?.response?.data?.error?.message ?? '上傳失敗', 'error')
   }
 }
 
@@ -295,8 +296,9 @@ async function deleteAvatarSlot(url: string) {
     const res = await apiClient.delete('/users/me/avatars', { data: { url } })
     avatarSlots.value = res.data.data.slots ?? []
     avatarUrl.value = res.data.data.current_avatar
-  } catch (err: any) {
-    uiStore.showToast(err.response?.data?.error?.message ?? '刪除失敗', 'error')
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { error?: { message?: string } } } }
+    uiStore.showToast(e?.response?.data?.error?.message ?? '刪除失敗', 'error')
   }
 }
 

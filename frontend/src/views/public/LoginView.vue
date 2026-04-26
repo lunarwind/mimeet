@@ -75,12 +75,13 @@ async function handleLogin() {
     }
 
     router.push('/app/explore')
-  } catch (err: any) {
-    const code = err?.response?.data?.error?.code || err?.response?.status
+  } catch (err: unknown) {
+    const e = err as { response?: { status?: number; data?: { error?: { code?: string | number; type?: string }; user?: { status?: string } } } }
+    const code = e?.response?.data?.error?.code || e?.response?.status
 
-    if (code === 429 || err?.response?.data?.error?.type === 'too_many_attempts') {
+    if (code === 429 || e?.response?.data?.error?.type === 'too_many_attempts') {
       showToast('請稍後再試，您已嘗試過多次')
-    } else if (err?.response?.data?.user?.status === 'suspended') {
+    } else if (e?.response?.data?.user?.status === 'suspended') {
       router.push('/suspended')
     } else {
       showToast('Email 或密碼不正確')

@@ -150,8 +150,9 @@ async function handleFileChange(e: Event) {
     })
     photoUrl.value = res.data?.data?.photo?.url ?? res.data?.data?.url ?? ''
     if (!photoUrl.value) throw new Error('No URL returned')
-  } catch (err: any) {
-    const msg = err.response?.data?.message ?? '照片上傳失敗，請重試'
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    const msg = e?.response?.data?.message ?? '照片上傳失敗，請重試'
     advancedError.value = msg
   } finally {
     isUploading.value = false

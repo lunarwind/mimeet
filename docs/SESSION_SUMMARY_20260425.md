@@ -1,5 +1,35 @@
 # SESSION SUMMARY 2026-04-25
 
+## 三件事合併處理：subscriptions 404 + catch any 清理 + 14aa-14ab 守護（2026-04-26）
+
+### 起源
+資料庫設定 UI 治本後，截圖揭露兩個遺留議題：
+- subscriptions 端點 404（規格分裂：規格+前端有，後端無）
+- CreditScore type "test_null_op" warning（測試殘留，已自然消失）
+加上 frontend strict 評估發現 17 處 catch (err: any) 寬鬆寫法，合併處理。
+
+### 議題 B：subscriptions 404 修復
+**問題**：API-002 §13 + 前端 MemberDetailPage 均依賴 GET /admin/members/{id}/subscriptions，
+但後端無路由也無 method。
+
+**修法**：
+- 新增 AdminController::memberSubscriptions（with plan + order 關聯查詢）
+- 路由：Route::get('/members/{id}/subscriptions', ...)->middleware('admin.permission:members.view')
+- 欄位映射：plan.slug, plan.name, order.amount(→price_paid), order.ecpay_trade_no(→payment_no)
+
+### 議題 F：frontend catch (err: any) → unknown 統一（17 處 / 13 個檔案）
+統一改為 `catch (err: unknown)` + `const e = err as { response?: ... }` 型別保護。
+修改過程 vue-tsc strict 也暴露了 3 個額外邊界問題（noUncheckedIndexedAccess 觸發），一併修復：
+- ChatView.vue：`resp.data.point_cost ?? 0`（TS2322 number | undefined）
+- ProfileView.vue：`resp.data.required ?? 0`（同上）
+- RegisterView.vue：`errors.email[0] ?? ''`（陣列 index access）
+
+### 議題 A：預防性守護
+- 14aa：禁止 backend CreditScoreHistory.type 出現 test_* prefix
+- 14ab：禁止 frontend/ 出現 catch (err: any) 或 catch (e: any)
+
+---
+
 ## 資料庫設定 UI 改 read-only（治本，2026-04-26）
 
 ### 起源

@@ -61,9 +61,10 @@ async function confirmPointPurchase() {
     const res = await purchasePointPackage(selectedPointPackage.value.slug)
     showPointConfirm.value = false
     window.location.href = res.paymentUrl
-  } catch (err: any) {
+  } catch (err: unknown) {
     showPointConfirm.value = false
-    uiStore.showToast(err.response?.data?.error?.message ?? '建立點數訂單失敗', 'error')
+    const e = err as { response?: { data?: { error?: { message?: string } } } }
+    uiStore.showToast(e?.response?.data?.error?.message ?? '建立點數訂單失敗', 'error')
   } finally {
     isSubmitting.value = false
   }
@@ -147,9 +148,10 @@ async function confirmPurchase() {
 
     // External URL — use window.location.href (not Vue Router)
     window.location.href = paymentUrl
-  } catch (err: any) {
+  } catch (err: unknown) {
     showConfirmModal.value = false
-    const msg = err.response?.data?.message ?? '建立訂單失敗，請稍後再試'
+    const e = err as { response?: { data?: { message?: string } } }
+    const msg = e?.response?.data?.message ?? '建立訂單失敗，請稍後再試'
     uiStore.showToast(msg, 'error')
   } finally {
     isSubmitting.value = false

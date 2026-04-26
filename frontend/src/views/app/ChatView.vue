@@ -188,18 +188,18 @@ async function handleSend(content: string, usePoints = false) {
     chatStore.updateLastMessage(conversationId.value, content)
     pendingContent.value = ''
     pendingTempId.value = null
-  } catch (err: any) {
-    const resp = err.response?.data
-    const status = err.response?.status
+  } catch (err: unknown) {
+    const resp = (err as { response?: { status?: number; data?: { code?: string; message?: string; error?: { message?: string }; data?: { can_use_points?: boolean; point_cost?: number; current_balance?: number; can_afford?: boolean; required?: number } } } })?.response?.data
+    const status = (err as { response?: { status?: number } })?.response?.status
 
     // F40-b：分數不足，可用點數突破
     if (status === 403 && resp?.data?.can_use_points) {
       pendingContent.value = content
       pendingTempId.value = tempId
       reverseInfo.value = {
-        pointCost: resp.data.point_cost,
-        currentBalance: resp.data.current_balance,
-        canAfford: resp.data.can_afford,
+        pointCost: resp.data.point_cost ?? 0,
+        currentBalance: resp.data.current_balance ?? 0,
+        canAfford: resp.data.can_afford ?? false,
       }
       // 把 optimistic 訊息暫標 failed 以便辨識
       const idx = localMessages.value.findIndex(m => m.id === tempId)
@@ -293,11 +293,12 @@ async function handleSendImage(file: File) {
     }
     chatStore.updateLastMessage(conversationId.value, '[圖片]')
     URL.revokeObjectURL(previewUrl)
-  } catch (err: any) {
+  } catch (err: unknown) {
     const idx = localMessages.value.findIndex(m => m.id === tempId)
     const target = idx !== -1 ? localMessages.value[idx] : undefined
     if (target) target.status = 'failed'
-    const msg = err.response?.data?.error?.message ?? err.response?.data?.message ?? '圖片發送失敗'
+    const e = err as { response?: { data?: { error?: { message?: string }; message?: string } } }
+    const msg = e?.response?.data?.error?.message ?? e?.response?.data?.message ?? '圖片發送失敗'
     const { useUiStore } = await import('@/stores/ui')
     useUiStore().showToast(msg, 'error')
   } finally {
@@ -320,8 +321,9 @@ async function handleRecall(messageId: number) {
         status: 'recalled',
       }
     }
-  } catch (err: any) {
-    const msg = err.response?.data?.error?.message ?? '無法回收訊息'
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { error?: { message?: string } } } }
+    const msg = e?.response?.data?.error?.message ?? '無法回收訊息'
     const { useUiStore } = await import('@/stores/ui')
     useUiStore().showToast(msg, 'error')
   }
