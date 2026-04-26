@@ -260,6 +260,40 @@ check \
   "^0$"
 
 echo ""
+echo "-- Sensitive file guards (14w-14y) --"
+
+# ============================================================
+# 14w：禁止 service-account.json 在 git working tree
+# ============================================================
+# secret 檔案必須放在 ~/secrets/<project>/，不可在 repo 中
+# 詳見 CLAUDE.md「敏感檔案同步流程」段落。
+
+check \
+  "14w 禁止 service-account.json 在 git working tree" \
+  "git ls-files | grep -E '(service-account|firebase-credentials)' 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14x：.env.example 必須含 FIREBASE_CREDENTIALS_PATH
+# ============================================================
+# 防止 .env.example 被誤改回舊版 FCM_SERVER_KEY 或刪掉 FIREBASE 設定。
+
+check \
+  "14x .env.example 含 FIREBASE_CREDENTIALS_PATH 規範" \
+  "grep -c '^FIREBASE_CREDENTIALS_PATH=' backend/.env.example 2>/dev/null | tr -d ' '" \
+  "^1$"
+
+# ============================================================
+# 14y：.env.example 不含棄用 FCM_SERVER_KEY
+# ============================================================
+# FCM Legacy API（FCM_SERVER_KEY）2024-06-20 已停服。
+
+check \
+  "14y .env.example 不含棄用 FCM_SERVER_KEY" \
+  "grep -c '^FCM_SERVER_KEY' backend/.env.example 2>/dev/null | tr -d ' '" \
+  "^0$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

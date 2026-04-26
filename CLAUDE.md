@@ -200,6 +200,131 @@ Host mimeet-staging
   與三份規格書未同步，造成規格分裂達數月（見 SESSION_SUMMARY_20260425）
 - 2026-04-26：全系統 pagination 規格化執行，三方對齊（見 SESSION_SUMMARY_20260425「全系統 Pagination 規格化」段落）
 
+## 敏感檔案同步流程
+
+> 部分檔案因內含 secret 或環境特定設定，**不在 git 版控中**：
+> - `.env`（環境變數，含密碼/token）
+> - `docker-compose.staging.yml` / `docker-compose.yml`
+> - `backend/storage/firebase-service-account.json`（FCM credentials）
+> - 其他 `**/*-service-account.json` / `**/firebase-credentials.json`
+>
+> 這類檔案無法透過 `git push + git pull` 同步，**必須手動處理**。
+> 違反「四項禁令第一條」是合理例外，但必須走規範化流程。
+
+### 適用情境
+
+當需要新增或修改下列項目時：
+- Staging .env 環境變數
+- Service account credentials（FCM / Google Cloud / AWS / 其他第三方服務）
+- 環境特定的 docker-compose 設定
+- 任何含 secret 但又需要部署到 staging 的檔案
+
+### 標準流程
+
+#### Step 1：本機準備
+
+- 把 secret 檔案放在本機**不會被 git 追蹤**的位置（建議 `~/secrets/<project>/`）
+- 確認 .gitignore 規則涵蓋目標路徑（用 `git check-ignore -v <path>` 驗證）
+- 不要在本地 repo working tree 中留 secret 檔案
+
+#### Step 2：抽出 setup script
+
+- 建立 `scripts/staging-setup-<purpose>.sh`（如 `staging-setup-firebase.sh`）
+- Script 設計原則：
+  - 含完整 step 標記（`[1/N]`）
+  - `set -euo pipefail`（fail-loud）
+  - 失敗時清楚標示哪一步、tail log 50 行
+  - 可重複執行（idempotent）：已存在的設定跳過、不覆蓋
+  - 結尾跑驗證指令確認 setup 成功
+
+#### Step 3：本機 secret 上傳
+
+- 用 SSH alias（`mimeet-staging`），不寫死 IP
+- 用 `scp <file> mimeet-staging:<path>` 而非 `scp <file> root@IP:<path>`
+- 上傳後立即驗證：檔案大小、權限、內容開頭幾行（不要 cat 整份 secret）
+
+#### Step 4：staging .env 設定
+
+- 用 setup script 處理（不要手動編輯）
+- script 中用 `grep -q "<KEY>" .env || echo "<KEY>=..." >> .env` 模式
+- 已有設定時跳過，不覆蓋使用者既有 value
+- **順手清理過時設定**（如棄用的 API key）
+
+#### Step 5：cache 重建
+
+- `docker exec -u www-data mimeet-app php artisan config:cache`
+- Laravel config:cache 會把 .env 值快取進 PHP，必須重建才會生效
+
+#### Step 6：驗證
+
+- 跑對應的測試 script（如 `backend/scripts/test-fcm.php`）
+- 不要用 tinker --execute 多層轉義
+- 把測試 script 放在 `backend/scripts/` 下，可長期重複使用
+
+#### Step 7：紀錄
+
+- SESSION_SUMMARY 新條目，包含：
+  - 設定的目的（為什麼需要）
+  - secret 來源（從哪裡取得）
+  - 本機準備位置（不寫具體 secret 內容）
+  - staging 部署路徑
+  - 驗證方式
+
+### 換 credential 的處置（輪替 / 環境切換）
+
+當需要替換既有 credential 時（如 staging 帳號輪替、換 Firebase project、
+切到 production 等），重跑 setup script 雖然能覆蓋檔案，但**有三件事必須額外處理**：
+
+#### 1. 清理 cache 中的舊 access token
+
+許多 service 會把 OAuth access token 快取（如 FcmService 用 `Cache::remember('fcm_access_token', 3500, ...)`）。
+換 credential 後**舊 token 仍在 cache 中**，新推播會繼續用舊 token，直到 cache 自然過期（1 小時）。
+
+換 credential 時 setup script 必須執行：
+
+```bash
+docker exec -u www-data mimeet-app php artisan cache:forget <cache-key>
+```
+
+例：FCM 用 `cache:forget fcm_access_token`。staging-setup-firebase.sh 已內建此步。
+
+#### 2. 確認資料表中與舊 credential 綁定的資料是否需要清理
+
+某些 credential 換掉後，資料表中既有的 token / refresh-token 全部失效。
+
+例：FCM token 是用戶端用 Firebase config 產生的。換 Firebase project 後，
+fcm_tokens 表中的 token **全部失效**（Google 端會 404）。
+
+處置選項：
+- **保留**：FcmService 自動清理 404 token，前端登入後會重新註冊
+  （可能有 24-48 小時推播覆蓋率下降）
+- **預先清空**：`DELETE FROM fcm_tokens` 確保前端立刻重新註冊
+  （需要前端支援 token 重註冊邏輯）
+
+換 project 前必須先確認前端團隊知道這件事，避免靜默失敗。
+
+#### 3. 驗證新 credential 是否真的生效
+
+不要只看 setup script 的「✅ 上傳完成」訊息——必須**直接確認當前運作的 credential 是哪個**。
+
+驗證方式（FCM 例）：
+
+```bash
+ssh mimeet-staging 'docker exec mimeet-app php /var/www/html/scripts/test-fcm.php' | grep "project_id"
+```
+
+預期看到新 credential 的 `project_id`。如果看到舊的，可能：
+- config:cache 沒重建
+- access token cache 沒清
+- 上傳路徑與 .env 設定的路徑不一致
+
+### 違反此流程的歷史教訓
+
+- 2026-04-25：CLAUDE.md layer 2 整合中，docker-compose.staging.yml 改動「報告
+  ✅ 但實際沒套用」——因為該檔案在 .gitignore 中，git push 不會同步。教訓：
+  改動敏感檔案後必須直接 grep ground truth 驗證，不能只看「Claude Code 報告」
+- 2026-04-26：FCM 設定規範化執行（見 SESSION_SUMMARY_20260425「FCM 設定規範化」段落）
+
 ## API Contract 變更標準回滾流程
 
 > 適用情境：後端 API 回傳結構改變，前端必須同步更新。
