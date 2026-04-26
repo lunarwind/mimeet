@@ -27,9 +27,10 @@ async function fetchFavorites(loadMore = false) {
   try {
     const res = await client.get('/users/me/following', { params: { page: page.value, per_page: 20 } })
     const items = res.data.data ?? []
+    const meta = res.data.meta
     if (loadMore) users.value.push(...items)
     else users.value = items
-    hasMore.value = items.length >= 20
+    hasMore.value = !!(meta && meta.page < meta.last_page)
   } catch { /* ignore */ }
   isLoading.value = false
 }
