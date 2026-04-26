@@ -309,6 +309,29 @@ check \
   "^0$"
 
 echo ""
+echo "-- Code quality guards (14aa-14ab) --"
+
+# ============================================================
+# 14aa：禁止 CreditScoreHistory.type 出現 test_* prefix
+# ============================================================
+# 預防性守護：避免測試殘留進入 production code。
+
+check \
+  "14aa CreditScoreHistory.type 不使用 test_* prefix（預防測試殘留）" \
+  "grep -rnE \"CreditScoreService::adjust.*'test_|CreditScoreHistory::create.*'test_\" backend/app/ 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14ab：禁止 frontend/ 出現 catch (err: any) 或 catch (e: any)
+# ============================================================
+# 配合本次 17 處 catch any → unknown 統一，加此守護防退化。
+
+check \
+  "14ab frontend/ 不使用 catch (err: any) 或 catch (e: any)" \
+  "grep -rnE 'catch\s*\(\s*[a-z]+\s*:\s*any\s*\)' frontend/src --include='*.ts' --include='*.vue' 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

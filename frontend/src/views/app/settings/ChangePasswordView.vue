@@ -54,8 +54,9 @@ async function handleSubmit() {
     uiStore.showToast('密碼已更新，請以新密碼重新登入', 'success')
     authStore.logout()
     router.push('/login')
-  } catch (e: any) {
-    const code = e?.response?.data?.error?.code
+  } catch (e: unknown) {
+    const ex = e as { response?: { data?: { error?: { code?: string } } } }
+    const code = ex?.response?.data?.error?.code
     if (code === 'PASSWORD_INCORRECT') {
       errors.currentPassword = '目前密碼不正確'
     } else if (code === 'PASSWORD_SAME_AS_CURRENT') {

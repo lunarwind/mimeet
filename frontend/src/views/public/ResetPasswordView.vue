@@ -56,9 +56,10 @@ async function handleSubmit() {
       password_confirmation: form.passwordConfirm,
     })
     state.value = 'success'
-  } catch (err: any) {
-    const code = err?.response?.data?.error?.code
-    if (code === '1010' || err?.response?.status === 422) {
+  } catch (err: unknown) {
+    const e = err as { response?: { status?: number; data?: { error?: { code?: string } } } }
+    const code = e?.response?.data?.error?.code
+    if (code === '1010' || e?.response?.status === 422) {
       state.value = 'invalid'
     } else {
       errors.password = '重設失敗，請稍後再試'

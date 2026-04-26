@@ -262,6 +262,7 @@ Route::prefix('api/v1')->group(function () {
             Route::get('/members', [AdminController::class, 'members'])->middleware('admin.permission:members.view');
             Route::get('/members/{id}', [AdminController::class, 'memberDetail'])->middleware('admin.permission:members.view');
             Route::get('/members/{id}/credit-logs', [AdminController::class, 'memberCreditLogs'])->middleware('admin.permission:members.view');
+            Route::get('/members/{id}/subscriptions', [AdminController::class, 'memberSubscriptions'])->middleware('admin.permission:members.view');
             Route::patch('/members/{id}/actions', [AdminController::class, 'memberAction'])->middleware('admin.permission:members.edit');
             Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions'])->middleware('admin.permission:members.edit');
             Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile'])->middleware('admin.permission:members.edit');

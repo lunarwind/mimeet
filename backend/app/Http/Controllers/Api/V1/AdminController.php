@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminUser;
 use App\Models\Order;
 use App\Models\Report;
+use App\Models\Subscription;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -316,6 +317,39 @@ class AdminController extends Controller
                 'total' => $logs->total(),
                 'last_page' => $logs->lastPage(),
             ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/admin/members/{id}/subscriptions
+     * 取得會員訂閱紀錄（規格：API-002 §13）
+     */
+    public function memberSubscriptions(Request $request, int $id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'code' => 404, 'message' => '找不到此會員'], 404);
+        }
+
+        $subscriptions = Subscription::where('user_id', $id)
+            ->with(['plan:id,slug,name', 'order:id,amount,payment_method,ecpay_trade_no,order_number'])
+            ->orderByDesc('started_at')
+            ->get()
+            ->map(fn (Subscription $sub) => [
+                'id'             => $sub->id,
+                'plan'           => $sub->plan?->slug,
+                'plan_name'      => $sub->plan?->name ?? '未知方案',
+                'price_paid'     => $sub->order?->amount,
+                'started_at'     => $sub->started_at?->toISOString(),
+                'expires_at'     => $sub->expires_at?->toISOString(),
+                'status'         => $sub->status,
+                'payment_method' => $sub->order?->payment_method,
+                'payment_no'     => $sub->order?->ecpay_trade_no ?? $sub->order?->order_number,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $subscriptions,
         ]);
     }
 

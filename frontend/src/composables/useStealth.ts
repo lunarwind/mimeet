@@ -65,8 +65,8 @@ export function useStealth() {
         isVipFree: !!d.is_vip_free,
         stealthUntil: d.stealth_until,
       }
-    } catch (err: any) {
-      const resp = err?.response?.data
+    } catch (err: unknown) {
+      const resp = (err as { response?: { data?: { code?: string; message?: string; data?: { required?: number; current_balance?: number } } } })?.response?.data
       if (resp?.code === 'INSUFFICIENT_POINTS') {
         return {
           ok: false,

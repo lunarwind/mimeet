@@ -76,8 +76,9 @@ async function goPreview() {
       dailyRemaining: d.daily_remaining,
     }
     step.value = 3
-  } catch (err: any) {
-    alert(err.response?.data?.message ?? '預覽失敗')
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    alert(e?.response?.data?.message ?? '預覽失敗')
   } finally {
     isLoading.value = false
   }
@@ -98,8 +99,8 @@ async function confirmSend() {
       pointsBalance: d.points_balance,
     }
     emit('sent', d.broadcast_id)
-  } catch (err: any) {
-    const resp = err.response?.data
+  } catch (err: unknown) {
+    const resp = (err as { response?: { data?: { code?: string; message?: string } } })?.response?.data
     if (resp?.code === 'DAILY_LIMIT_EXCEEDED') {
       alert(resp.message ?? '今日已達廣播上限')
     } else if (resp?.code === 'INSUFFICIENT_POINTS') {
