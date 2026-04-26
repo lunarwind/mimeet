@@ -96,6 +96,18 @@ export default function PointTransactionsPage() {
       )},
     { title: '餘額', dataIndex: 'balance_after', key: 'balance_after', width: 80, align: 'right' as const },
     { title: '說明', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: '訂單', key: 'payment_link', width: 60,
+      render: (_: unknown, r: Txn) => r.type === 'purchase' && r.reference_id ? (
+        <a
+          href={`/payments?search=PTS`}
+          onClick={(e) => { e.preventDefault(); window.location.hash = `/payments` }}
+          style={{ fontSize: 12 }}
+          title={`reference_id=${r.reference_id}`}
+        >
+          💲
+        </a>
+      ) : null
+    },
   ]
 
   return (

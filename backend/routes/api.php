@@ -292,6 +292,7 @@ Route::prefix('api/v1')->group(function () {
             Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus'])->middleware('admin.permission:reports.process');
             Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])->middleware('admin.permission:reports.process');
             Route::get('/payments', [AdminController::class, 'payments'])->middleware('admin.permission:payments.view');
+            Route::post('/payments/{id}/refund', [AdminController::class, 'refundPayment'])->middleware('check.super_admin');
             Route::get('/settings', [AdminController::class, 'getSettings']);
             Route::patch('/settings', [AdminController::class, 'updateSettings']);
 
@@ -344,11 +345,7 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('/point-transactions', [AdminPointController::class, 'transactions']);
             });
             Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints'])->middleware('admin.permission:members.edit');
-            // Credit Card Verifications (admin)
-            Route::middleware('admin.permission:members.view')->group(function () {
-                Route::get('/credit-card-verifications', [\App\Http\Controllers\Api\V1\Admin\CreditCardVerificationController::class, 'index']);
-                Route::post('/credit-card-verifications/{id}/refund', [\App\Http\Controllers\Api\V1\Admin\CreditCardVerificationController::class, 'refund'])->middleware('admin.permission:members.edit');
-            });
+            // 信用卡驗證管理已整合至 /admin/payments（Step 9）
 
             // 誠信分數配分（super_admin only）
             Route::middleware('check.super_admin')->prefix('settings')->group(function () {
