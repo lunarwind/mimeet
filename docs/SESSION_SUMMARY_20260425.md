@@ -1,5 +1,70 @@
 # SESSION SUMMARY 2026-04-25
 
+## 全系統 Pagination 規格化 + Issue #2 合併處理（2026-04-26）
+
+### 起源
+4/25 admin 分數頁修復順手對齊 credit-logs 的 meta 結構為
+`{ page, per_page, total, last_page }`（API-002 §4.4），但發現：
+- API-002 規格書內部不一致（§4.4 用新格式，其他章節用舊格式）
+- API-001 全書用 `pagination + current_page + total_pages` + `has_next` 等死欄位
+- DEV-004 用 `meta + current_page + last_page` + `links` 物件
+- 三份規格書沒有任何兩份一致
+
+啟動全系統規格化評估，確認候選 X（精簡版）為最終格式。
+
+### 決策
+- 統一格式：`{ data, meta: { page, per_page, total, last_page } }`
+- 不保留死欄位：移除 `has_next` / `has_prev` / `next_url` / `prev_url` / `links`
+- 三方規格一致：DEV-004 = API-001 = API-002
+- 前後端實作一致：後端回傳 = 前後端讀取
+
+### 改動範圍
+
+**規格書（共 3 份）**：
+- DEV-004 line 427-433：`current_page` → `page`，移除 `links`
+- API-001 共 18 處：`pagination` → `meta`，欄位名統一，移除死欄位
+- API-002 line 2353（§13 broadcasts）：對齊新格式
+
+**後端（13 個 controller methods，含遺漏的 visitors + UserActivityLogController）**：
+- AdminController：members / tickets / payments（族 B nested）
+- Admin/AdminLogController：index（族 C）
+- Admin/BroadcastController：index（族 C）
+- Admin/VerificationController：pending + index（族 C，兩個 method）
+- Admin/UserActivityLogController：index（族 B nested，非原始評估列表）
+- UserController：search（族 C nested → meta 移至頂層）+ following（族 B）+ visitors（遺漏補入）
+- NotificationController：index（族 D）
+- ReportController：index（族 D）
+- DateInvitationController：index（族 D）
+
+**前端（8 處讀取點）**：
+- 後台 6 行（MembersPage / TicketsPage / PaymentsPage / ActivityLogsPage / UserActivityLogsPage / VerificationsPage）：
+  `.data.pagination?.total` → `.meta?.total`，data 讀取路徑同步更新
+- 前台 3 行：
+  - `frontend/src/types/explore.ts`：Pagination interface（current_page → page, total_pages → last_page）
+  - `frontend/src/api/users.ts`：inline interface + mapper return key/path（pagination → meta）
+  - `frontend/src/composables/useExplore.ts`：`page < last_page` 計算
+- `frontend/src/views/app/FavoritesView.vue`：`data?.users` → `data`（following endpoint 結構改變）
+
+### Issue #2 合併處理
+原 Issue #2「後台 4 個 API meta 統一」是本次「全系統規格化」的子集。Issue #2 自動完成。
+
+### CLAUDE.md 新增章節
+新增「API Contract 一致性原則」章節（在「API Contract 變更回滾流程」之前），
+含 Pagination 標準格式禁止清單與違反歷史教訓。
+
+### Pre-merge-check 新增守護
+- 14r：禁止後端用 `'pagination'` wrapper
+- 14s：禁止後端用 `'current_page'`
+- 14t：禁止後端用 `'total_pages'`
+- 14u：禁止前端讀 `.pagination.current_page`
+- 14v：禁止前端讀 `.pagination.total_pages`
+
+### 未預期發現（事後補修）
+- `UserController::visitors` 遺漏於原始評估列表，補入本次
+- `Admin/UserActivityLogController` 屬 nested tribe B 格式，補入本次
+
+---
+
 ## CLAUDE.md 整合重寫 Layer 2（2026-04-26）
 
 ### 背景

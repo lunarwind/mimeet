@@ -99,15 +99,11 @@ HTTP動詞：
       }
     ]
   },
-  "pagination": {
-    "current_page": 1,
+  "meta": {
+    "page": 1,
     "per_page": 20,
     "total": 156,
-    "total_pages": 8,
-    "has_next": true,
-    "has_prev": false,
-    "next_url": "/api/v1/users?page=2&per_page=20",
-    "prev_url": null
+    "last_page": 8
   }
 }
 ```
@@ -742,11 +738,11 @@ GET /api/v1/users/search?gender=male&age_min=25&age_max=40&location=台北市&cr
       }
     ]
   },
-  "pagination": {
-    "current_page": 1,
+  "meta": {
+    "page": 1,
     "per_page": 20,
     "total": 156,
-    "total_pages": 8
+    "last_page": 8
   }
 }
 ```
@@ -987,10 +983,11 @@ per_page: 20
       }
     ]
   },
-  "pagination": {
-    "current_page": 1,
+  "meta": {
+    "page": 1,
     "per_page": 20,
-    "total": 15
+    "total": 15,
+    "last_page": 1
   }
 }
 ```
@@ -1739,7 +1736,7 @@ Authorization: Bearer {access_token}
       }
     ]
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 7 }
+  "meta": { "page": 1, "per_page": 20, "total": 7, "last_page": 1 }
 }
 ```
 
@@ -2328,7 +2325,7 @@ sort_by:     created_at | last_login_at | credit_score （預設 created_at DESC
       }
     ]
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 1542, "total_pages": 78 }
+  "meta": { "page": 1, "per_page": 20, "total": 1542, "last_page": 78 }
 }
 ```
 
@@ -2408,7 +2405,7 @@ sort_by:      created_at_desc（預設）| updated_at_desc
       }
     ]
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 45 }
+  "meta": { "page": 1, "per_page": 20, "total": 45, "last_page": 3 }
 }
 ```
 
@@ -2788,7 +2785,7 @@ Authorization: Bearer {access_token}
       }
     ]
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 18 }
+  "meta": { "page": 1, "per_page": 20, "total": 18, "last_page": 1 }
 }
 ```
 
@@ -2821,7 +2818,7 @@ Authorization: Bearer {access_token}
     ],
     "total_visitors_90days": 156
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 42 }
+  "meta": { "page": 1, "per_page": 20, "total": 42, "last_page": 3 }
 }
 ```
 
@@ -3030,7 +3027,7 @@ Authorization: Bearer {access_token}
       }
     ]
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 18, "total_pages": 1 }
+  "meta": { "page": 1, "per_page": 20, "total": 18, "last_page": 1 }
 }
 ```
 
