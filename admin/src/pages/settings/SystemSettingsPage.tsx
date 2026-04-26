@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Switch, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm } from 'antd'
-import { SaveOutlined, DeleteOutlined, DatabaseOutlined, ReloadOutlined, PlusOutlined, DollarOutlined } from '@ant-design/icons'
+import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm } from 'antd'
+import { SaveOutlined, DeleteOutlined, DatabaseOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
 import AppModeTab from './tabs/AppModeTab'
@@ -498,157 +498,14 @@ function AdminsTab() {
   )
 }
 
-function ECPayTab() {
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [mode, setMode] = useState('sandbox')
-  const [payMid, setPayMid] = useState('')
-  const [payKey, setPayKey] = useState('')
-  const [payIv, setPayIv] = useState('')
-  const [invMid, setInvMid] = useState('')
-  const [invKey, setInvKey] = useState('')
-  const [invIv, setInvIv] = useState('')
-  const [invEnabled, setInvEnabled] = useState(false)
-  const [loveCode, setLoveCode] = useState('168001')
-
-  useEffect(() => {
-    setLoading(true)
-    apiClient.get('/admin/settings/ecpay')
-      .then(res => {
-        const s = res.data.data.settings
-        setMode(s['mode']?.value ?? 'sandbox')
-        setPayMid(s['payment.merchant_id']?.value ?? '')
-        setPayKey(s['payment.hash_key']?.value ?? '')
-        setPayIv(s['payment.hash_iv']?.value ?? '')
-        setInvMid(s['invoice.merchant_id']?.value ?? '')
-        setInvKey(s['invoice.hash_key']?.value ?? '')
-        setInvIv(s['invoice.hash_iv']?.value ?? '')
-        setInvEnabled(s['invoice.enabled']?.value === '1' || s['invoice.enabled']?.value === 'true')
-        setLoveCode(s['invoice.donation_love_code']?.value ?? '168001')
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
-
-  async function handleSave() {
-    setSaving(true)
-    try {
-      await apiClient.post('/admin/settings/ecpay', {
-        settings: [
-          { key: 'ecpay.mode', value: mode },
-          { key: 'ecpay.payment.merchant_id', value: payMid },
-          { key: 'ecpay.payment.hash_key', value: payKey },
-          { key: 'ecpay.payment.hash_iv', value: payIv },
-          { key: 'ecpay.invoice.merchant_id', value: invMid },
-          { key: 'ecpay.invoice.hash_key', value: invKey },
-          { key: 'ecpay.invoice.hash_iv', value: invIv },
-          { key: 'ecpay.invoice.enabled', value: invEnabled ? '1' : '0' },
-          { key: 'ecpay.invoice.donation_love_code', value: loveCode },
-        ],
-      })
-      message.success('綠界設定已儲存')
-    } catch {
-      message.error('儲存失敗')
-    }
-    setSaving(false)
-  }
-
-  if (loading) return <Card loading />
-
-  const isSandbox = mode === 'sandbox'
-
-  return (
-    <div>
-      {/* Mode switch */}
-      <Card
-        title={<Space><DollarOutlined />環境設定</Space>}
-        style={{ marginBottom: 24 }}
-      >
-        <Space size={16} align="center">
-          <Text strong>目前環境：</Text>
-          <Switch
-            checked={!isSandbox}
-            onChange={(v) => setMode(v ? 'production' : 'sandbox')}
-            checkedChildren="正式"
-            unCheckedChildren="測試"
-          />
-          {isSandbox ? (
-            <Tag color="warning" style={{ fontSize: 13 }}>測試環境 — 交易不會真正扣款</Tag>
-          ) : (
-            <Tag color="success" style={{ fontSize: 13 }}>正式環境</Tag>
-          )}
-        </Space>
-        {isSandbox && (
-          <Alert
-            type="warning"
-            message="目前使用綠界測試環境（Sandbox），所有付款與發票操作不會產生真實交易。切換至正式環境前，請確認已填入正式金鑰。"
-            showIcon
-            style={{ marginTop: 16 }}
-          />
-        )}
-      </Card>
-
-      {/* Payment credentials */}
-      <Card title="金流設定（全方位金流 API）" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, maxWidth: 900 }}>
-          <div>
-            <Text>MerchantID</Text>
-            <Input value={payMid} onChange={e => setPayMid(e.target.value)} style={{ marginTop: 4 }} placeholder="3002607" />
-          </div>
-          <div>
-            <Text>HashKey</Text>
-            <Input.Password value={payKey} onChange={e => setPayKey(e.target.value)} style={{ marginTop: 4 }} placeholder="HashKey" />
-          </div>
-          <div>
-            <Text>HashIV</Text>
-            <Input.Password value={payIv} onChange={e => setPayIv(e.target.value)} style={{ marginTop: 4 }} placeholder="HashIV" />
-          </div>
-        </div>
-      </Card>
-
-      {/* Invoice credentials */}
-      <Card
-        title={
-          <Space>
-            電子發票設定（B2C 發票 API）
-            <Switch size="small" checked={invEnabled} onChange={setInvEnabled} checkedChildren="啟用" unCheckedChildren="停用" />
-          </Space>
-        }
-        style={{ marginBottom: 24, opacity: invEnabled ? 1 : 0.6 }}
-      >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, maxWidth: 900 }}>
-          <div>
-            <Text>MerchantID（發票）</Text>
-            <Input value={invMid} onChange={e => setInvMid(e.target.value)} style={{ marginTop: 4 }} placeholder="2000132" disabled={!invEnabled} />
-          </div>
-          <div>
-            <Text>HashKey（發票）</Text>
-            <Input.Password value={invKey} onChange={e => setInvKey(e.target.value)} style={{ marginTop: 4 }} placeholder="HashKey" disabled={!invEnabled} />
-          </div>
-          <div>
-            <Text>HashIV（發票）</Text>
-            <Input.Password value={invIv} onChange={e => setInvIv(e.target.value)} style={{ marginTop: 4 }} placeholder="HashIV" disabled={!invEnabled} />
-          </div>
-        </div>
-        <Divider />
-        <div style={{ maxWidth: 300 }}>
-          <Text>預設捐贈碼（愛心碼）</Text>
-          <Input value={loveCode} onChange={e => setLoveCode(e.target.value)} style={{ marginTop: 4 }} placeholder="168001" disabled={!invEnabled} />
-        </div>
-      </Card>
-
-      <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving} size="large">
-        儲存綠界設定
-      </Button>
-    </div>
-  )
-}
+// 舊版 ECPayTab（dot-notation key 格式）已移除（Step cleanup）
+// 統一使用 PaymentSettingsTab（新格式 ecpay_* key）
 
 export default function SystemSettingsPage() {
   const user = useAuthStore((s) => s.user)
   const isSuperAdmin = user?.role === 'super_admin'
 
-  const superAdminTabs = ['mode', 'database', 'mail', 'sms', 'ecpay', 'credit-score', 'payment']
+  const superAdminTabs = ['mode', 'database', 'mail', 'sms', 'ecpay', 'credit-score']
 
   const allTabs = [
     { key: 'admins', label: '管理員帳號', children: <AdminsTab />, forceRender: true },
@@ -656,10 +513,10 @@ export default function SystemSettingsPage() {
     { key: 'database', label: '資料庫設定', children: <DatabaseTab />, forceRender: true },
     { key: 'mail', label: 'Email 設定', children: <MailTab />, forceRender: true },
     { key: 'sms', label: 'SMS 設定', children: <SmsTab />, forceRender: true },
-    { key: 'ecpay', label: '金流與發票', children: <ECPayTab />, forceRender: true },
+    // ecpay tab 現在使用新版 PaymentSettingsTab（移除舊 dot-notation 版本）
+    { key: 'ecpay', label: '💳 金流與發票', children: <PaymentSettingsTab />, forceRender: false },
     { key: 'params', label: '系統參數', children: <SystemParamsTab />, forceRender: true },
     { key: 'credit-score', label: '⭐ 誠信分數配分', children: <CreditScoreTab />, forceRender: false },
-    { key: 'payment', label: '💳 金流憑證', children: <PaymentSettingsTab />, forceRender: false },
   ].filter(tab => {
     if (superAdminTabs.includes(tab.key)) return isSuperAdmin
     return true
