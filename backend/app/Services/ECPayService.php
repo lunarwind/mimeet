@@ -6,28 +6,303 @@ use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * ECPay 金流服務
+ *
+ * ─ 環境切換：讀 system_settings 的 ecpay_environment（sandbox / production）
+ * ─ 憑證讀取：新格式 ecpay_{env}_merchant_id 優先，fallback 舊格式 ecpay.payment.*，
+ *             sandbox 留空時 fallback 到 ECPay 官方公開沙箱測試值
+ * ─ AIO 跳轉：buildAioParams() 回傳 form params 陣列，前端直接 POST 到 ECPay
+ *             ⚠️ 永遠跳轉到 payment(-stage).ecpay.com.tw，不使用自家 mock
+ *
+ * CheckMacValue 演算法（SHA256）：
+ *   1. 移除 CheckMacValue 欄位
+ *   2. 按 key 排序（SORT_FLAG_CASE 不區分大小寫）
+ *   3. 組合 HashKey=...&k=v...&HashIV=...
+ *   4. urlencode 整字串
+ *   5. .NET 相容替換 7 組（%2d→- 等）
+ *   6. 全小寫
+ *   7. SHA256
+ *   8. 全大寫
+ */
 class ECPayService
 {
-    // ─── Payment credentials ────────────────────────────────────────
-    private function paymentMerchantId(): string
+    // ─── 環境 ─────────────────────────────────────────────────────────
+
+    /**
+     * 取得目前環境（sandbox / production）
+     * 優先讀新 key ecpay_environment，fallback 舊 key ecpay.mode
+     */
+    public function getEnvironment(): string
     {
-        return SystemSetting::get('ecpay.payment.merchant_id')
-            ?? config('services.ecpay.merchant_id', '3002607');
+        $env = SystemSetting::get('ecpay_environment')
+            ?? SystemSetting::get('ecpay.mode')
+            ?? 'sandbox';
+        return in_array($env, ['sandbox', 'production']) ? $env : 'sandbox';
     }
 
-    private function paymentHashKey(): string
+    public function isSandbox(): bool
     {
-        return SystemSetting::get('ecpay.payment.hash_key')
-            ?? config('services.ecpay.hash_key', 'pwFHCqoQZGmho4w6');
+        return $this->getEnvironment() === 'sandbox';
     }
 
-    private function paymentHashIv(): string
+    // ─── 憑證 ─────────────────────────────────────────────────────────
+
+    public function getMerchantId(): string
     {
-        return SystemSetting::get('ecpay.payment.hash_iv')
-            ?? config('services.ecpay.hash_iv', 'EkRm7iFT261dpevs');
+        $env = $this->getEnvironment();
+        $val = SystemSetting::get("ecpay_{$env}_merchant_id")
+            ?? SystemSetting::get('ecpay.payment.merchant_id')
+            ?? config('services.ecpay.merchant_id');
+
+        if (!$val && $env === 'sandbox') {
+            return config('ecpay.sandbox_fallback.merchant_id', '2000132');
+        }
+        return (string) $val;
     }
 
-    // ─── Invoice credentials ────────────────────────────────────────
+    public function getHashKey(): string
+    {
+        $env = $this->getEnvironment();
+        $val = SystemSetting::get("ecpay_{$env}_hash_key")
+            ?? SystemSetting::get('ecpay.payment.hash_key')
+            ?? config('services.ecpay.hash_key');
+
+        if ((!$val || $val === '') && $env === 'sandbox') {
+            return config('ecpay.sandbox_fallback.hash_key', '5294y06JbISpM5x9');
+        }
+        return (string) $val;
+    }
+
+    public function getHashIV(): string
+    {
+        $env = $this->getEnvironment();
+        $val = SystemSetting::get("ecpay_{$env}_hash_iv")
+            ?? SystemSetting::get('ecpay.payment.hash_iv')
+            ?? config('services.ecpay.hash_iv');
+
+        if ((!$val || $val === '') && $env === 'sandbox') {
+            return config('ecpay.sandbox_fallback.hash_iv', 'v77hoKGq4kWxNNIS');
+        }
+        return (string) $val;
+    }
+
+    // ─── URL ──────────────────────────────────────────────────────────
+
+    public function getAioUrl(): string
+    {
+        return config('ecpay.urls.' . $this->getEnvironment() . '.aio');
+    }
+
+    public function getQueryUrl(): string
+    {
+        return config('ecpay.urls.' . $this->getEnvironment() . '.query');
+    }
+
+    public function getRefundUrl(): string
+    {
+        return config('ecpay.urls.' . $this->getEnvironment() . '.refund');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  CheckMacValue（SHA256）
+    //  Ref: https://developers.ecpay.com.tw/2902/
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * 產生 ECPay CheckMacValue。
+     *
+     * .NET 相容替換規則（7 組，少一組都會驗簽失敗）：
+     *   %2d → -    %5f → _    %2e → .    %21 → !
+     *   %2a → *    %28 → (    %29 → )
+     */
+    public function generateCheckMacValue(
+        array $params,
+        ?string $hashKey = null,
+        ?string $hashIv = null,
+    ): string {
+        unset($params['CheckMacValue']);
+
+        ksort($params, SORT_STRING | SORT_FLAG_CASE);
+
+        $str = 'HashKey=' . ($hashKey ?? $this->getHashKey());
+        foreach ($params as $key => $value) {
+            $str .= "&{$key}={$value}";
+        }
+        $str .= '&HashIV=' . ($hashIv ?? $this->getHashIV());
+
+        $str = urlencode($str);
+        $str = strtolower($str);
+
+        // .NET URL encoding compatibility — 7 groups, order matters
+        $str = str_replace(
+            ['%2d', '%5f', '%2e', '%21', '%2a', '%28', '%29'],
+            ['-',   '_',   '.',   '!',   '*',   '(',   ')'],
+            $str,
+        );
+
+        return strtoupper(hash('sha256', $str));
+    }
+
+    /**
+     * 驗證 ECPay callback CheckMacValue。
+     */
+    public function verifyCallback(array $data): bool
+    {
+        $receivedMac = $data['CheckMacValue'] ?? '';
+        $calculatedMac = $this->generateCheckMacValue($data);
+        return hash_equals($calculatedMac, strtoupper($receivedMac));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  AIO 付款跳轉
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * 建立 AIO 付款表單參數陣列（含 CheckMacValue）。
+     * 前端收到後直接 POST 到 getAioUrl()，不再走自家 mock。
+     *
+     * @param array{order_no: string, amount: int, item_name: string, description?: string} $data
+     * @return array<string, mixed>
+     */
+    public function buildAioParams(array $data): array
+    {
+        $params = [
+            'MerchantID'        => $this->getMerchantId(),
+            'MerchantTradeNo'   => $data['order_no'],
+            'MerchantTradeDate' => now()->format('Y/m/d H:i:s'),
+            'PaymentType'       => 'aio',
+            'TotalAmount'       => (int) $data['amount'],
+            'TradeDesc'         => urlencode(mb_substr($data['description'] ?? $data['item_name'], 0, 200)),
+            'ItemName'          => mb_substr($data['item_name'], 0, 200),
+            'ReturnURL'         => url('/api/v1/payments/callback'),
+            'OrderResultURL'    => url('/api/v1/payments/return'),
+            'ClientBackURL'     => config('app.frontend_url', env('FRONTEND_URL', 'https://mimeet.online')) . '/#/payment/result',
+            'ChoosePayment'     => 'Credit',
+            'EncryptType'       => 1,
+            'NeedExtraPaidInfo' => 'Y',
+            'IgnorePayment'     => 'ATM#CVS#BARCODE#WebATM',
+        ];
+
+        $params['CheckMacValue'] = $this->generateCheckMacValue($params);
+        return $params;
+    }
+
+    /**
+     * @deprecated 使用 buildAioParams() + getAioUrl()。
+     *             保留以相容舊有 CreditCardVerificationService / PaymentService 呼叫，
+     *             Step 5 統一更新 controller 後可移除。
+     */
+    public function getPaymentUrl(
+        string $merchantTradeNo,
+        int $amount,
+        string $itemName,
+        string $returnUrl,
+        string $notifyUrl,
+    ): string {
+        $params = $this->buildAioParams([
+            'order_no'  => $merchantTradeNo,
+            'amount'    => $amount,
+            'item_name' => $itemName,
+        ]);
+        // Override URLs per caller's explicit values
+        $params['ReturnURL']      = $notifyUrl;
+        $params['OrderResultURL'] = $returnUrl;
+        // Recompute CheckMacValue after override
+        unset($params['CheckMacValue']);
+        $params['CheckMacValue'] = $this->generateCheckMacValue($params);
+
+        // Build auto-submit form and cache it
+        $aioUrl = $this->getAioUrl();
+        $html = '<html><head><meta charset="UTF-8"></head><body>'
+              . '<form id="f" method="POST" action="' . e($aioUrl) . '" accept-charset="UTF-8">';
+        foreach ($params as $key => $value) {
+            $html .= '<input type="hidden" name="' . e($key) . '" value="' . e((string) $value) . '">';
+        }
+        $html .= '</form><script>document.getElementById("f").submit();</script></body></html>';
+
+        $token = bin2hex(random_bytes(16));
+        cache()->put("ecpay_form:{$token}", $html, 300);
+        return url("/api/v1/payments/ecpay/checkout/{$token}");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  退款
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * ECPay 信用卡退款 / 取消授權（DoAction）
+     * Action: R = 申請退款, C = 取消授權
+     */
+    public function doRefund(
+        string $merchantTradeNo,
+        string $ecpayTradeNo,
+        int $amount,
+        string $action = 'R',
+    ): array {
+        $params = [
+            'MerchantID'      => $this->getMerchantId(),
+            'MerchantTradeNo' => $merchantTradeNo,
+            'TradeNo'         => $ecpayTradeNo,
+            'Action'          => $action,
+            'TotalAmount'     => $amount,
+        ];
+        $params['CheckMacValue'] = $this->generateCheckMacValue($params);
+
+        try {
+            $response = Http::timeout(30)->asForm()->post($this->getRefundUrl(), $params);
+            $body = $response->body();
+            parse_str($body, $result);
+            $ok = ($result['RtnCode'] ?? '') === '1';
+
+            if ($ok) {
+                Log::info('[ECPay Refund] Success', compact('merchantTradeNo', 'action'));
+            } else {
+                Log::warning('[ECPay Refund] Failed', ['result' => $result, 'order' => $merchantTradeNo]);
+            }
+
+            return ['success' => $ok, 'result' => $result];
+        } catch (\Throwable $e) {
+            Log::error('[ECPay Refund] Exception', ['message' => $e->getMessage(), 'order' => $merchantTradeNo]);
+            return ['success' => false, 'result' => [], 'error' => $e->getMessage()];
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  查詢交易（對帳用）
+    // ═══════════════════════════════════════════════════════════════════
+
+    public function queryTradeInfo(string $merchantTradeNo): array
+    {
+        $params = [
+            'MerchantID'      => $this->getMerchantId(),
+            'MerchantTradeNo' => $merchantTradeNo,
+            'TimeStamp'       => (string) time(),
+        ];
+        $params['CheckMacValue'] = $this->generateCheckMacValue($params);
+
+        try {
+            $response = Http::timeout(15)->asForm()->post($this->getQueryUrl(), $params);
+            parse_str($response->body(), $result);
+            return $result;
+        } catch (\Throwable $e) {
+            Log::error('[ECPay Query] Exception', ['message' => $e->getMessage(), 'order' => $merchantTradeNo]);
+            return [];
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  發票（保留現狀，功能待啟用 ecpay_invoice_enabled=true）
+    //  Ref: https://developers.ecpay.com.tw/7896/
+    // ═══════════════════════════════════════════════════════════════════
+
+    public function isInvoiceEnabled(): bool
+    {
+        return (bool) SystemSetting::get('ecpay_invoice_enabled',
+            SystemSetting::get('ecpay.invoice.enabled', false)
+        );
+    }
+
     private function invoiceMerchantId(): string
     {
         return SystemSetting::get('ecpay.invoice.merchant_id')
@@ -46,152 +321,20 @@ class ECPayService
             ?? config('services.ecpay.invoice_hash_iv', 'q9jcZX8Ib9LM8wYk');
     }
 
-    private function isSandbox(): bool
-    {
-        $mode = SystemSetting::get('ecpay.mode', 'sandbox');
-        return $mode !== 'production';
-    }
-
-    private function isInvoiceEnabled(): bool
-    {
-        return (bool) SystemSetting::get('ecpay.invoice.enabled', false);
-    }
-
-    // ═════════════════════════════════════════════════════════════════
-    //  Payment — CheckMacValue (SHA256)
-    //  Ref: https://developers.ecpay.com.tw/2902/
-    // ═════════════════════════════════════════════════════════════════
-
-    /**
-     * Generate ECPay CheckMacValue (SHA256).
-     *
-     * Steps per official spec:
-     * 1. Sort params A→Z by key
-     * 2. Prepend HashKey=… & append &HashIV=…
-     * 3. URL-encode (RFC 1866)
-     * 4. .NET encoding compatibility replacements
-     * 5. Lowercase
-     * 6. SHA256
-     * 7. Uppercase
-     */
-    public function generateCheckMacValue(array $params, ?string $hashKey = null, ?string $hashIv = null): string
-    {
-        unset($params['CheckMacValue']);
-
-        ksort($params, SORT_STRING | SORT_FLAG_CASE);
-
-        $str = 'HashKey=' . ($hashKey ?? $this->paymentHashKey());
-        foreach ($params as $key => $value) {
-            $str .= "&{$key}={$value}";
-        }
-        $str .= '&HashIV=' . ($hashIv ?? $this->paymentHashIv());
-
-        $str = urlencode($str);
-        $str = strtolower($str);
-
-        // .NET URL encoding compatibility
-        $str = str_replace(
-            ['%2d', '%5f', '%2e', '%21', '%2a', '%28', '%29'],
-            ['-',   '_',   '.',   '!',   '*',   '(',   ')'],
-            $str,
-        );
-
-        return strtoupper(hash('sha256', $str));
-    }
-
-    /**
-     * Verify ECPay callback CheckMacValue.
-     */
-    public function verifyCallback(array $data): bool
-    {
-        $receivedMac = $data['CheckMacValue'] ?? '';
-        $calculatedMac = $this->generateCheckMacValue($data);
-        return strtoupper($receivedMac) === $calculatedMac;
-    }
-
-    // ═════════════════════════════════════════════════════════════════
-    //  Payment — Build payment form / URL
-    // ═════════════════════════════════════════════════════════════════
-
-    /**
-     * Get the payment URL (sandbox mock or real ECPay form redirect).
-     */
-    public function getPaymentUrl(string $merchantTradeNo, int $amount, string $itemName, string $returnUrl, string $notifyUrl): string
-    {
-        if ($this->isSandbox() && config('app.env') !== 'production') {
-            Log::info('[ECPay SANDBOX] Payment created', compact('merchantTradeNo', 'amount', 'itemName'));
-            return url("/api/v1/payments/ecpay/mock?trade_no={$merchantTradeNo}&amount={$amount}");
-        }
-
-        $baseUrl = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
-
-        $params = [
-            'MerchantID' => $this->paymentMerchantId(),
-            'MerchantTradeNo' => $merchantTradeNo,
-            'MerchantTradeDate' => now()->format('Y/m/d H:i:s'),
-            'PaymentType' => 'aio',
-            'TotalAmount' => $amount,
-            'TradeDesc' => 'MiMeet 訂閱方案',
-            'ItemName' => $itemName,
-            'ReturnURL' => $notifyUrl,
-            'OrderResultURL' => $returnUrl,
-            'ChoosePayment' => 'ALL',
-            'EncryptType' => 1,
-            'NeedExtraPaidInfo' => 'Y',
-        ];
-
-        $params['CheckMacValue'] = $this->generateCheckMacValue($params);
-
-        // Build auto-submit form and return as data URI (frontend will redirect)
-        $html = '<html><body><form id="f" method="POST" action="' . e($baseUrl) . '">';
-        foreach ($params as $key => $value) {
-            $html .= '<input type="hidden" name="' . e($key) . '" value="' . e($value) . '">';
-        }
-        $html .= '</form><script>document.getElementById("f").submit();</script></body></html>';
-
-        // In production mode, we store the form HTML and return a URL to serve it
-        $token = bin2hex(random_bytes(16));
-        cache()->put("ecpay_form:{$token}", $html, 300);
-
-        return url("/api/v1/payments/ecpay/checkout/{$token}");
-    }
-
-    // ═════════════════════════════════════════════════════════════════
-    //  Invoice — AES-128-CBC encryption/decryption
-    //  Ref: https://developers.ecpay.com.tw/7958/
-    // ═════════════════════════════════════════════════════════════════
-
-    /**
-     * AES-128-CBC encrypt: URLEncode → AES encrypt → Base64
-     */
     private function aesEncrypt(string $plaintext, string $key, string $iv): string
     {
         $encoded = urlencode($plaintext);
         $encrypted = openssl_encrypt($encoded, 'AES-128-CBC', $key, OPENSSL_RAW_DATA, $iv);
-        return base64_encode($encrypted);
+        return base64_encode((string) $encrypted);
     }
 
-    /**
-     * AES-128-CBC decrypt: Base64 → AES decrypt → URLDecode
-     */
     private function aesDecrypt(string $ciphertext, string $key, string $iv): string
     {
         $decoded = base64_decode($ciphertext);
         $decrypted = openssl_decrypt($decoded, 'AES-128-CBC', $key, OPENSSL_RAW_DATA, $iv);
-        return urldecode($decrypted);
+        return urldecode((string) $decrypted);
     }
 
-    // ═════════════════════════════════════════════════════════════════
-    //  Invoice — Issue B2C invoice
-    //  Ref: https://developers.ecpay.com.tw/7896/
-    // ═════════════════════════════════════════════════════════════════
-
-    /**
-     * Issue a B2C electronic invoice via ECPay API.
-     *
-     * @param array $orderData Must contain: relate_number, customer_email, items[], sales_amount
-     * @return array{invoice_no: string, invoice_date: string, random_number: string}|null
-     */
     public function issueInvoice(array $orderData): ?array
     {
         if (!$this->isInvoiceEnabled()) {
@@ -200,63 +343,59 @@ class ECPayService
         }
 
         $merchantId = $this->invoiceMerchantId();
-        $hashKey = $this->invoiceHashKey();
-        $hashIv = $this->invoiceHashIv();
-
-        $baseUrl = $this->isSandbox()
+        $hashKey    = $this->invoiceHashKey();
+        $hashIv     = $this->invoiceHashIv();
+        $baseUrl    = $this->isSandbox()
             ? 'https://einvoice-stage.ecpay.com.tw/B2CInvoice/Issue'
             : 'https://einvoice.ecpay.com.tw/B2CInvoice/Issue';
 
-        // Build inner Data payload
         $items = [];
         foreach ($orderData['items'] as $item) {
             $items[] = [
-                'ItemSeq' => $item['seq'] ?? 1,
-                'ItemName' => $item['name'],
-                'ItemCount' => $item['count'] ?? 1,
-                'ItemWord' => $item['word'] ?? '式',
-                'ItemPrice' => $item['price'],
+                'ItemSeq'    => $item['seq'] ?? 1,
+                'ItemName'   => $item['name'],
+                'ItemCount'  => $item['count'] ?? 1,
+                'ItemWord'   => $item['word'] ?? '式',
+                'ItemPrice'  => $item['price'],
                 'ItemAmount' => $item['amount'] ?? $item['price'] * ($item['count'] ?? 1),
             ];
         }
 
         $dataPayload = [
-            'MerchantID' => $merchantId,
-            'RelateNumber' => $orderData['relate_number'],
+            'MerchantID'    => $merchantId,
+            'RelateNumber'  => $orderData['relate_number'],
             'CustomerEmail' => $orderData['customer_email'] ?? '',
             'CustomerPhone' => $orderData['customer_phone'] ?? '',
-            'Print' => '0',
-            'Donation' => '0',
-            'TaxType' => '1',       // 應稅
-            'SalesAmount' => (int) $orderData['sales_amount'],
-            'InvType' => '07',      // 一般稅額
-            'vat' => '1',           // 含稅
-            'Items' => $items,
+            'Print'         => '0',
+            'Donation'      => '0',
+            'TaxType'       => '1',
+            'SalesAmount'   => (int) $orderData['sales_amount'],
+            'InvType'       => '07',
+            'vat'           => '1',
+            'Items'         => $items,
         ];
 
-        // Carrier (載具) — default to ECPay member carrier
         if (!empty($orderData['carrier_type'])) {
             $dataPayload['CarrierType'] = $orderData['carrier_type'];
-            $dataPayload['CarrierNum'] = $orderData['carrier_num'] ?? '';
+            $dataPayload['CarrierNum']  = $orderData['carrier_num'] ?? '';
         }
 
-        // Donation override
-        if (!empty($orderData['donation']) && $orderData['donation']) {
+        if (!empty($orderData['donation'])) {
             $dataPayload['Donation'] = '1';
             $dataPayload['LoveCode'] = $orderData['love_code']
                 ?? SystemSetting::get('ecpay.invoice.donation_love_code', '168001');
             $dataPayload['Print'] = '0';
         }
 
-        $dataJson = json_encode($dataPayload, JSON_UNESCAPED_UNICODE);
-        $encryptedData = $this->aesEncrypt($dataJson, $hashKey, $hashIv);
+        $encryptedData = $this->aesEncrypt(
+            json_encode($dataPayload, JSON_UNESCAPED_UNICODE),
+            $hashKey, $hashIv,
+        );
 
         $requestBody = [
             'MerchantID' => $merchantId,
-            'RqHeader' => [
-                'Timestamp' => (int) now()->timestamp,
-            ],
-            'Data' => $encryptedData,
+            'RqHeader'   => ['Timestamp' => (int) now()->timestamp],
+            'Data'       => $encryptedData,
         ];
 
         try {
@@ -265,88 +404,34 @@ class ECPayService
                 ->post($baseUrl, $requestBody);
 
             if (!$response->successful()) {
-                Log::error('[ECPay Invoice] HTTP error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
+                Log::error('[ECPay Invoice] HTTP error', ['status' => $response->status()]);
                 return null;
             }
 
             $result = $response->json();
-
             if (($result['TransCode'] ?? 0) !== 1) {
                 Log::error('[ECPay Invoice] TransCode error', $result);
                 return null;
             }
 
-            // Decrypt response Data
-            $decryptedJson = $this->aesDecrypt($result['Data'], $hashKey, $hashIv);
-            $invoiceResult = json_decode($decryptedJson, true);
+            $invoiceResult = json_decode(
+                $this->aesDecrypt($result['Data'], $hashKey, $hashIv),
+                true
+            );
 
             if (($invoiceResult['RtnCode'] ?? 0) !== 1) {
-                Log::error('[ECPay Invoice] RtnCode error', $invoiceResult);
+                Log::error('[ECPay Invoice] RtnCode error', $invoiceResult ?? []);
                 return null;
             }
 
-            Log::info('[ECPay Invoice] Issued successfully', [
-                'invoice_no' => $invoiceResult['InvoiceNo'] ?? '',
-            ]);
-
             return [
-                'invoice_no' => $invoiceResult['InvoiceNo'] ?? '',
-                'invoice_date' => $invoiceResult['InvoiceDate'] ?? '',
+                'invoice_no'    => $invoiceResult['InvoiceNo'] ?? '',
+                'invoice_date'  => $invoiceResult['InvoiceDate'] ?? '',
                 'random_number' => $invoiceResult['RandomNumber'] ?? '',
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('[ECPay Invoice] Exception', ['message' => $e->getMessage()]);
             return null;
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════════════
-    //  Credit card refund / cancel authorization
-    //  Ref: https://developers.ecpay.com.tw/ CreditDetail/DoAction
-    // ═════════════════════════════════════════════════════════════════
-
-    /**
-     * ECPay credit card refund/cancel authorization.
-     * Action: C = cancel authorization, R = refund after capture
-     */
-    public function doRefund(string $merchantTradeNo, string $ecpayTradeNo, int $amount, string $action = 'R'): array
-    {
-        $merchantId = $this->paymentMerchantId();
-        $hashKey = $this->paymentHashKey();
-        $hashIv = $this->paymentHashIv();
-
-        $baseUrl = $this->isSandbox()
-            ? 'https://payment-stage.ecpay.com.tw/CreditDetail/DoAction'
-            : 'https://payment.ecpay.com.tw/CreditDetail/DoAction';
-
-        $params = [
-            'MerchantID' => $merchantId,
-            'MerchantTradeNo' => $merchantTradeNo,
-            'TradeNo' => $ecpayTradeNo,
-            'Action' => $action,  // R = 申請退款, C = 取消授權
-            'TotalAmount' => $amount,
-        ];
-        $params['CheckMacValue'] = $this->generateCheckMacValue($params, $hashKey, $hashIv);
-
-        try {
-            $response = Http::timeout(30)
-                ->asForm()
-                ->post($baseUrl, $params);
-            $body = $response->body();
-            parse_str($body, $result);
-            $ok = ($result['RtnCode'] ?? '') === '1';
-            if (!$ok) {
-                Log::warning('[ECPay Refund] Failed', ['result' => $result, 'trade_no' => $merchantTradeNo]);
-            } else {
-                Log::info('[ECPay Refund] Success', ['trade_no' => $merchantTradeNo, 'action' => $action]);
-            }
-            return ['success' => $ok, 'result' => $result];
-        } catch (\Exception $e) {
-            Log::error('[ECPay Refund] Exception', ['message' => $e->getMessage(), 'trade_no' => $merchantTradeNo]);
-            return ['success' => false, 'result' => [], 'error' => $e->getMessage()];
         }
     }
 }
