@@ -395,8 +395,12 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('roles', [AdminCrudController::class, 'roles']);
 
                 // ECPay settings (Sprint 13)
+                // 舊格式（dot-notation key），保留向下相容
                 Route::get('ecpay', [ECPaySettingController::class, 'index']);
                 Route::post('ecpay', [ECPaySettingController::class, 'update']);
+                // 新格式（Step 6，加密儲存）
+                Route::get('payment', [\App\Http\Controllers\Api\V1\Admin\PaymentSettingsController::class, 'index']);
+                Route::put('payment', [\App\Http\Controllers\Api\V1\Admin\PaymentSettingsController::class, 'update']);
             });
         });
     });
