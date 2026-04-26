@@ -29,4 +29,10 @@ class PointOrder extends Model
     {
         return $this->belongsTo(PointPackage::class, 'package_id');
     }
+
+    /** 對應 payments 主表記錄 */
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'payment_id');
+    }
 }

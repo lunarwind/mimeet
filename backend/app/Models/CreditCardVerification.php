@@ -35,4 +35,10 @@ class CreditCardVerification extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /** 對應 payments 主表記錄 */
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'payment_id');
+    }
 }
