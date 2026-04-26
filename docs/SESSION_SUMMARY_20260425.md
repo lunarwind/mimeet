@@ -1,5 +1,69 @@
 # SESSION SUMMARY 2026-04-25
 
+## FCM 設定規範化（2026-04-26）
+
+### 起源
+既有 FCM 程式碼（FcmService 183 行 raw HTTP 自幹版、FcmTokenController、
+migration、API routes）已完整實作但從未部署到 staging。
+
+使用者準備了一份操作流程包含 SCP credential、改 .env、跑 tinker 測試，
+但對照 CLAUDE.md layer 2 規範有 7 個違反點：
+1. 用 root@IP 而非 mimeet-staging alias
+2. 直接修改 staging .env 但缺 SOP
+3. service-account.json 放 storage/app/（可能被 storage:link 暴露）
+4. 缺結構化驗證
+5. 規格文件未對齊
+6. 缺 pre-merge-check 守護
+7. Tinker 多層轉義難維護
+
+### 決策
+- 用「檔案路徑」模式（FIREBASE_CREDENTIALS_PATH）
+- 路徑：`backend/storage/firebase-service-account.json`（避開 storage/app/）
+- 本次只做 staging，production 待首次部署 issue
+- 順手清理 staging .env 中棄用的 FCM_SERVER_KEY（FCM Legacy API 2024-06 停服）
+
+### 改動範圍
+
+**規範文件**：
+- CLAUDE.md 新增「敏感檔案同步流程」段落（在「API Contract 一致性原則」之後）
+- 涵蓋 .env、docker-compose、service-account.json 等 .gitignore 內檔案的 SOP
+- 特別設計「換 credential 的處置」子段落（三件必做：清 cache、評估 token 失效、驗 project_id）
+
+**Scripts**：
+- `backend/scripts/test-fcm.php`：取代 tinker 多層轉義，含 credential 確認 +
+  project_id visual confirm（換帳號時用）+ 推播測試 + 退出代碼 0/1/2/3
+- `scripts/staging-setup-firebase.sh`：7 步驟 idempotent setup script：
+  1. 本機檔案驗證（含 git ls-files 防呆）
+  2. SCP 上傳（mimeet-staging alias）
+  3. staging 端驗證（chmod 600）
+  4. 清理 .env 棄用設定（FCM_SERVER_KEY）
+  5. 設定 .env FIREBASE_CREDENTIALS_PATH
+  6. config:cache 重建 + `cache:forget fcm_access_token`（換帳號必要）
+  7. git pull + 跑 test-fcm.php 驗證
+
+**Pre-merge-check 守護**：
+- 14w：禁止 service-account.json 在 git working tree
+- 14x：.env.example 必須含 FIREBASE_CREDENTIALS_PATH
+- 14y：禁止 .env.example 含棄用的 FCM_SERVER_KEY
+
+### 換帳號設計（一等公民）
+1. test-fcm.php 顯示 project_id：每次測試都能 visual confirm 在用哪個 Firebase project
+2. Step 6 含 cache:forget：換帳號後強制清舊 access token（FcmService 1 小時 Cache::remember）
+3. CLAUDE.md「換 credential 的處置」：規範 rotation / 環境切換的完整 SOP
+
+### 重要注意
+FcmService.php 含 stub 模式（APP_ENV != production 時只記 log 不真的發送）。
+Staging 的 APP_ENV=staging，test-fcm.php 的「成功」是 stub success，裝置不會收推播。
+前端整合完成後若要真實測試，需另行確認 FcmService 的 env 判斷邏輯。
+
+### 不在本次範圍
+- 前端 FCM 整合（前端 SDK 安裝、token 註冊邏輯）
+- 廣播系統 delivery_mode = fcm 整合
+- Production 部署流程
+- 既有 FcmService 程式碼（已完整不動）
+
+---
+
 ## 全系統 Pagination 規格化 + Issue #2 合併處理（2026-04-26）
 
 ### 起源
