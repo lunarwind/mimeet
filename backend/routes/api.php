@@ -157,9 +157,11 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── 統一金流 Callback（新 ECPay NotifyURL）──────────────────────
-    // ⚡ 所有新金流單一入口，配合 UnifiedPaymentService::handleCallback()
     Route::post('payments/callback', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'callback']);
     Route::get('payments/return',    [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
+    // 訂單查詢（前端結果頁 polling 用，需登入）
+    Route::get('payments/{order_no}', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'show'])
+         ->middleware('auth:sanctum');
 
     // ─── Alias 路由（過渡期保留，規劃兩週後砍掉）────────────────────
     // ECPay 後台 NotifyURL 改用 /api/v1/payments/callback 後可移除

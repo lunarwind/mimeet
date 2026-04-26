@@ -23,9 +23,27 @@ export interface CurrentSubscription {
   daysRemaining: number
 }
 
+/** ECPay AIO 跳轉回傳格式（Step 5 統一後）*/
+export interface EcpayAioResponse {
+  payment_id: number
+  aio_url: string
+  params: Record<string, string | number>
+  order?: {
+    id: number
+    order_number: string
+    amount: number
+    status: string
+    expires_at?: string
+  }
+}
+
+/** @deprecated 改用 EcpayAioResponse */
 export interface CreateOrderResponse {
   payment_url?: string
   orderUrl?: string
+  aio_url?: string
+  params?: Record<string, string | number>
+  payment_id?: number
   order?: {
     id: number
     order_number: string

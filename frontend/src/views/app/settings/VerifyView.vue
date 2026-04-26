@@ -6,6 +6,7 @@ import { sendPhoneCode, verifyPhoneCode } from '@/api/auth'
 import client from '@/api/client'
 import { requestVerificationCode, uploadVerificationPhoto, getVerificationStatus, initiateCreditCardVerification } from '@/api/verification'
 import type { VerificationStatusResponse } from '@/api/verification'
+import { redirectToECPay } from '@/utils/paymentRedirect'
 
 const router = useRouter()
 const route = useRoute()
@@ -146,7 +147,7 @@ async function initiateCreditCard() {
   creditCardError.value = null
   try {
     const data = await initiateCreditCardVerification()
-    window.location.href = data.payment_url
+    redirectToECPay(data.aio_url, data.params)
   } catch (err: unknown) {
     const e = err as { response?: { data?: { error?: { message?: string } } } }
     creditCardError.value = e?.response?.data?.error?.message ?? '無法發起驗證，請稍後再試'

@@ -123,4 +123,11 @@ export const appRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  // 付款結果頁（脫離 AppShell，獨立全螢幕）
+  {
+    path: '/payment/result',
+    name: 'payment-result',
+    component: () => import('@/views/payment/ResultView.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
