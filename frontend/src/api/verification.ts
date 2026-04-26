@@ -35,8 +35,9 @@ export async function getVerificationStatus(): Promise<VerificationStatusRespons
 // ── 信用卡驗證（男性進階驗證）──────────────────────────────
 
 export interface CreditCardVerificationInitResponse {
-  order_no: string
-  payment_url: string
+  payment_id: number
+  aio_url: string
+  params: Record<string, string | number>
 }
 
 export interface CreditCardVerificationStatus {

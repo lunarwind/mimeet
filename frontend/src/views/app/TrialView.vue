@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { usePayment } from '@/composables/usePayment'
+import { redirectToECPay } from '@/utils/paymentRedirect'
 import { useUiStore } from '@/stores/ui'
 
 const uiStore = useUiStore()
@@ -12,8 +13,11 @@ onMounted(() => { fetchTrialInfo() })
 async function handlePurchase() {
   const result = await purchaseTrial()
   if (result) {
-    const url = result.payment_url ?? result.orderUrl ?? ''
-    if (url) window.location.href = url
+    if (result.aio_url && result.params) {
+      redirectToECPay(result.aio_url, result.params)
+    } else if (result.payment_url ?? result.orderUrl) {
+      window.location.href = result.payment_url ?? result.orderUrl ?? ''
+    }
   } else {
     uiStore.showToast('購買失敗，請稍後再試', 'error')
   }

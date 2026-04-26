@@ -46,5 +46,6 @@ export interface PointPurchaseResponse {
     amount: number
     status: string
   }
-  paymentUrl: string
+  aioUrl: string
+  params: Record<string, string | number>
 }

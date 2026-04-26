@@ -91,7 +91,8 @@ export function usePoints() {
         amount: d.order?.amount,
         status: d.order?.status,
       },
-      paymentUrl: d.payment_url,
+      aioUrl: d.aio_url ?? '',
+      params: d.params ?? {},
     }
   }
 

@@ -7,6 +7,7 @@ import { usePoints } from '@/composables/usePoints'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import client from '@/api/client'
+import { redirectToECPay } from '@/utils/paymentRedirect'
 import type { SubscriptionPlan } from '@/types/payment'
 import type { PointPackage } from '@/types/points'
 
@@ -60,7 +61,7 @@ async function confirmPointPurchase() {
   try {
     const res = await purchasePointPackage(selectedPointPackage.value.slug)
     showPointConfirm.value = false
-    window.location.href = res.paymentUrl
+    redirectToECPay(res.aioUrl, res.params)
   } catch (err: unknown) {
     showPointConfirm.value = false
     const e = err as { response?: { data?: { error?: { message?: string } } } }
@@ -139,15 +140,15 @@ async function confirmPurchase() {
     showConfirmModal.value = false
 
     const data = res.data?.data ?? {}
-    const paymentUrl = data.payment_url ?? null
+    const aioUrl = data.aio_url ?? null
+    const params = data.params ?? null
 
-    if (!paymentUrl) {
+    if (!aioUrl || !params) {
       uiStore.showToast('無法取得付款連結，請稍後再試', 'error')
       return
     }
 
-    // External URL — use window.location.href (not Vue Router)
-    window.location.href = paymentUrl
+    redirectToECPay(aioUrl, params)
   } catch (err: unknown) {
     showConfirmModal.value = false
     const e = err as { response?: { data?: { message?: string } } }
