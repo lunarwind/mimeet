@@ -224,7 +224,7 @@ echo "-- Pagination unification guards (14r-14v) --"
 
 check \
   "14r 後端 list API 不使用 'pagination' wrapper key" \
-  "grep -rn \"'pagination'\\s*=>\" backend/app/Http/Controllers/Api/V1/ 2>/dev/null | wc -l | tr -d ' '" \
+  "grep -rn \"'pagination'\\s*=>\" backend/app/Http/Controllers/ 2>/dev/null | wc -l | tr -d ' '" \
   "^0$"
 
 # ============================================================
@@ -233,7 +233,7 @@ check \
 
 check \
   "14s 後端 list API 不使用 'current_page' 欄位" \
-  "grep -rn \"'current_page'\\s*=>\" backend/app/Http/Controllers/Api/V1/ 2>/dev/null | wc -l | tr -d ' '" \
+  "grep -rn \"'current_page'\\s*=>\" backend/app/Http/Controllers/ 2>/dev/null | wc -l | tr -d ' '" \
   "^0$"
 
 # ============================================================
@@ -242,7 +242,7 @@ check \
 
 check \
   "14t 後端 list API 不使用 'total_pages' 欄位" \
-  "grep -rn \"'total_pages'\\s*=>\" backend/app/Http/Controllers/Api/V1/ 2>/dev/null | wc -l | tr -d ' '" \
+  "grep -rn \"'total_pages'\\s*=>\" backend/app/Http/Controllers/ 2>/dev/null | wc -l | tr -d ' '" \
   "^0$"
 
 # ============================================================
