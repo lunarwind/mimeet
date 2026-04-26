@@ -144,6 +144,62 @@ Host mimeet-staging
 
 歷史案例：2026-04-24 新增 `fpm-output-buffering.conf` volume mount 後，誤用 `restart` 導致設定未套用，症狀為 `docker exec` 找不到掛載的檔案（NOT FOUND）。改用 `up -d --force-recreate app` 後正常。
 
+## API Contract 一致性原則
+
+> 所有 API 規格與實作必須三方一致：DEV-004（架構規範）= API-001（前台規格）
+> = API-002（後台規格），且後端實作 = 前後端讀取點。
+
+### 三方一致性
+
+新增或修改任何 API 時：
+
+- DEV-004 的通用模板若不適用，必須先修改 DEV-004 而不是繞過它
+- API-001 / API-002 的 endpoint 規格必須引用 DEV-004 的通用模板
+- 規格書之間不允許並存兩種「都對」的格式
+
+### 前後實作一致性
+
+- 前後台不允許共用同一 endpoint 但讀取不同欄位（例：前台讀 `current_page`、後台讀 `page`）
+- 前後台共享的 type definition 應放在共用位置或同步維護
+- 後端回傳結構 vs 前端讀取路徑必須完全對應
+
+### 測試階段的修復原則
+
+- 發現規格分裂時立即修正，不寫「未來再修」TODO
+- pre-merge-check 必須有對應守護，防止退化
+- 修正範圍跨棧時，套用「API Contract 變更標準回滾流程」（見下節）
+
+### Pagination 標準格式（依本原則確立）
+
+所有列表 API（前後台）必須使用以下統一結構：
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "page": 1,
+    "per_page": 20,
+    "total": 156,
+    "last_page": 8
+  }
+}
+```
+
+**禁止**：
+- `pagination` 包裝層（必須用 `meta`）
+- `current_page` 欄位名（必須用 `page`）
+- `total_pages` 欄位名（必須用 `last_page`）
+- `has_next` / `has_prev` / `next_url` / `prev_url` 等冗餘欄位（前端可用 `page < last_page` 計算）
+- `links` 物件（HATEOAS 風格未使用，移除）
+
+前端無限滾動需「下一頁判斷」時，用 `meta.page < meta.last_page` 自行計算。
+
+### 違反此原則的歷史教訓
+
+- 2026-04-25：admin 分數頁修復時順手對齊 credit-logs，但其他 19 個 endpoint
+  與三份規格書未同步，造成規格分裂達數月（見 SESSION_SUMMARY_20260425）
+- 2026-04-26：全系統 pagination 規格化執行，三方對齊（見 SESSION_SUMMARY_20260425「全系統 Pagination 規格化」段落）
+
 ## API Contract 變更標準回滾流程
 
 > 適用情境：後端 API 回傳結構改變，前端必須同步更新。

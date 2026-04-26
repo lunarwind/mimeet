@@ -26,12 +26,12 @@ class BroadcastController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => ['broadcasts' => $paginated->items()],
-            'pagination' => [
-                'current_page' => $paginated->currentPage(),
+            'data' => $paginated->items(),
+            'meta' => [
+                'page' => $paginated->currentPage(),
                 'per_page' => $paginated->perPage(),
                 'total' => $paginated->total(),
-                'total_pages' => $paginated->lastPage(),
+                'last_page' => $paginated->lastPage(),
             ],
         ]);
     }

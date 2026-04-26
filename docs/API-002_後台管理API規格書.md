@@ -2350,7 +2350,7 @@ GET /api/v1/admin/broadcasts
       }
     ]
   },
-  "pagination": { "current_page": 1, "per_page": 20, "total": 3, "total_pages": 1 }
+  "meta": { "page": 1, "per_page": 20, "total": 3, "last_page": 1 }
 }
 ```
 

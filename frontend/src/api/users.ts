@@ -35,20 +35,18 @@ export interface UserProfileData {
 export async function searchUsers(params: Record<string, unknown>): Promise<SearchUsersResponse> {
   const res = await client.get<{
     success: boolean
-    data: {
-      users: RawApiUser[]
-      pagination: {
-        current_page: number
-        per_page: number
-        total: number
-        total_pages: number
-      }
+    data: { users: RawApiUser[] }
+    meta: {
+      page: number
+      per_page: number
+      total: number
+      last_page: number
     }
   }>('/users/search', { params })
 
   return {
     users: res.data.data.users.map(transformUser),
-    pagination: res.data.data.pagination,
+    meta: res.data.meta,
   }
 }
 

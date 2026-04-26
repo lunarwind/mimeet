@@ -85,10 +85,11 @@ class ReportController extends Controller
                     'created_at' => $r->created_at->toISOString(),
                 ]),
             ],
-            'pagination' => [
-                'current_page' => $reports->currentPage(),
+            'meta' => [
+                'page' => $reports->currentPage(),
                 'per_page' => $reports->perPage(),
                 'total' => $reports->total(),
+                'last_page' => $reports->lastPage(),
             ],
         ]);
     }

@@ -37,23 +37,21 @@ class UserActivityLogController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'logs' => $logs->map(fn (UserActivityLog $log) => [
-                    'id' => $log->id,
-                    'user_id' => $log->user_id,
-                    'user_nickname' => $log->user?->nickname ?? '—',
-                    'user_email' => $log->user?->email ?? '—',
-                    'action' => $log->action,
-                    'metadata' => $log->metadata,
-                    'ip_address' => $log->ip_address,
-                    'created_at' => $log->created_at?->toISOString(),
-                ]),
-                'pagination' => [
-                    'current_page' => $logs->currentPage(),
-                    'per_page' => $logs->perPage(),
-                    'total' => $logs->total(),
-                    'last_page' => $logs->lastPage(),
-                ],
+            'data' => $logs->map(fn (UserActivityLog $log) => [
+                'id' => $log->id,
+                'user_id' => $log->user_id,
+                'user_nickname' => $log->user?->nickname ?? '—',
+                'user_email' => $log->user?->email ?? '—',
+                'action' => $log->action,
+                'metadata' => $log->metadata,
+                'ip_address' => $log->ip_address,
+                'created_at' => $log->created_at?->toISOString(),
+            ]),
+            'meta' => [
+                'page' => $logs->currentPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+                'last_page' => $logs->lastPage(),
             ],
         ]);
     }

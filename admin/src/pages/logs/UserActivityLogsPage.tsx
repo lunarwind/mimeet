@@ -43,8 +43,8 @@ export default function UserActivityLogsPage() {
       if (userId) params.user_id = userId
       if (actionFilter !== 'all') params.action = actionFilter
       const res = await apiClient.get('/admin/user-activity-logs', { params })
-      setLogs(res.data.data.logs ?? [])
-      setTotal(res.data.data.pagination?.total ?? 0)
+      setLogs(res.data.data ?? [])
+      setTotal(res.data.meta?.total ?? 0)
     } catch { setLogs([]) }
     setLoading(false)
   }

@@ -275,12 +275,12 @@ class UserController extends Controller
                         'is_favorited' => $favoritedIds->contains($u->id),
                     ];
                 }),
-                'pagination' => [
-                    'current_page' => $users->currentPage(),
-                    'per_page' => $users->perPage(),
-                    'total' => $users->total(),
-                    'total_pages' => $users->lastPage(),
-                ],
+            ],
+            'meta' => [
+                'page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+                'last_page' => $users->lastPage(),
             ],
         ]);
     }
@@ -576,9 +576,9 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true, 'code' => 'FOLLOWING_LIST', 'message' => 'OK',
-            'data' => ['users' => $paginated->items()],
-            'pagination' => [
-                'current_page' => $paginated->currentPage(),
+            'data' => $paginated->items(),
+            'meta' => [
+                'page' => $paginated->currentPage(),
                 'per_page' => $paginated->perPage(),
                 'total' => $paginated->total(),
                 'last_page' => $paginated->lastPage(),
@@ -641,8 +641,8 @@ class UserController extends Controller
                 'visitors' => $visitors,
                 'total_visitors_90days' => $totalDistinct,
             ],
-            'pagination' => [
-                'current_page' => $paginated->currentPage(),
+            'meta' => [
+                'page' => $paginated->currentPage(),
                 'per_page' => $paginated->perPage(),
                 'total' => $paginated->total(),
                 'last_page' => $paginated->lastPage(),

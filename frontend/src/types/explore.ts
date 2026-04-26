@@ -56,14 +56,14 @@ export interface ExploreFilter {
 
 /** API 分頁資訊 */
 export interface Pagination {
-  current_page: number
+  page: number
   per_page: number
   total: number
-  total_pages: number
+  last_page: number
 }
 
 /** searchUsers API 回傳格式 */
 export interface SearchUsersResponse {
   users: ExploreUser[]
-  pagination: Pagination
+  meta: Pagination
 }
