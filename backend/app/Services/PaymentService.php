@@ -140,8 +140,9 @@ class PaymentService
 
     /**
      * Activate subscription after successful payment.
+     * Changed to public so SubscriptionHandler can call it directly.
      */
-    private function activateSubscription(Order $order): void
+    public function activateSubscription(Order $order): void
     {
         DB::transaction(function () use ($order) {
             $order->update([
