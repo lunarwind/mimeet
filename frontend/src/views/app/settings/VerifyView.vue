@@ -90,6 +90,10 @@ const creditCardLoading = ref(false)
 const creditCardError = ref<string | null>(null)
 const creditCardResult = ref<'success' | 'failed' | null>(null)
 const creditCardVerified = computed(() => !!authStore.user?.credit_card_verified_at)
+// 男性 Lv0（手機未驗證）→ 顯示但 disable，提示先完成手機驗證
+const maleNeedsPhoneFirst = computed(() =>
+  !isFemale.value && !phoneVerified.value
+)
 
 // Check existing verification status on mount
 onMounted(async () => {
@@ -372,27 +376,38 @@ function goBack() {
 
         <!-- 男性：信用卡驗證 -->
         <template v-else>
+          <p class="verify-step__badge">🔒 僅限男性會員</p>
+
+          <!-- Lv0：手機未驗證時顯示前置提醒 -->
+          <div v-if="maleNeedsPhoneFirst" class="verify-result verify-result--info">
+            <span>⚠️ 請先完成手機驗證（Lv1），才可進行信用卡驗證</span>
+          </div>
+
           <!-- 驗證成功後返回的提示 -->
-          <div v-if="creditCardResult === 'success'" class="verify-result verify-result--success">
+          <div v-else-if="creditCardResult === 'success'" class="verify-result verify-result--success">
             <span>✅ 信用卡驗證成功！誠信分數已 +15</span>
           </div>
           <div v-else-if="creditCardResult === 'failed'" class="verify-result verify-result--failed">
             <span>❌ 付款未完成，請重試</span>
           </div>
+
           <p class="verify-step__desc">透過信用卡小額驗證（NT$100）確認您的真實身份</p>
           <ul class="verify-rules">
             <li>💰 預授權 NT$100（非實際扣款）</li>
             <li>⏰ 驗證完成後 3-5 個工作日內自動退還</li>
-            <li>🇹🇼 僅支援台灣發行之信用卡 / 簽帳卡</li>
+            <li>🇹🇼 僅支援台灣發行之信用卡 / 簽帳卡（男性專屬驗證項目）</li>
             <li>⭐ 驗證完成後誠信分數 +15</li>
           </ul>
           <p v-if="creditCardError" class="verify-error">{{ creditCardError }}</p>
           <button
             class="verify-submit"
-            :disabled="creditCardLoading || creditCardVerified"
+            :disabled="creditCardLoading || creditCardVerified || maleNeedsPhoneFirst"
             @click="initiateCreditCard"
           >
-            {{ creditCardLoading ? '處理中…' : creditCardVerified ? '已完成驗證' : '前往付款驗證' }}
+            <template v-if="creditCardLoading">處理中…</template>
+            <template v-else-if="creditCardVerified">已完成驗證</template>
+            <template v-else-if="maleNeedsPhoneFirst">請先完成手機驗證</template>
+            <template v-else>前往付款驗證</template>
           </button>
         </template>
 

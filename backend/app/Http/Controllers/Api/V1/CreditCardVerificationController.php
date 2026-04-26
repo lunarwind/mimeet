@@ -25,26 +25,39 @@ class CreditCardVerificationController extends Controller
     {
         $user = $request->user();
 
+        // 性別守門：僅限男性
         if ($user->gender !== 'male') {
-            return response()->json([
-                'success' => false,
-                'error' => ['code' => 'NOT_MALE', 'message' => '僅限男性使用者'],
-            ], 403);
+            return response()->json(['success' => false, 'error' => [
+                'code' => 'NOT_MALE', 'message' => '信用卡驗證為男性專屬功能',
+            ]], 403);
         }
 
+        // 等級前置：須完成手機驗證（Lv1）
+        if (((float) $user->membership_level) < 1) {
+            return response()->json(['success' => false, 'error' => [
+                'code' => 'LEVEL_REQUIRED', 'message' => '請先完成手機驗證（Lv1）才可發起信用卡驗證',
+            ]], 422);
+        }
+
+        // 已驗證守門
         if ($user->credit_card_verified_at) {
-            return response()->json([
-                'success' => false,
-                'error' => ['code' => 'ALREADY_VERIFIED', 'message' => '您已完成信用卡驗證'],
-            ], 422);
+            return response()->json(['success' => false, 'error' => [
+                'code' => 'ALREADY_VERIFIED', 'message' => '您已完成信用卡驗證',
+            ]], 422);
         }
 
-        $result = $this->service->initiate($user);
+        try {
+            $result = $this->service->initiate($user);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'error' => [
+                'code' => 'DOMAIN_ERROR', 'message' => $e->getMessage(),
+            ]], 422);
+        }
+
         if (!$result) {
-            return response()->json([
-                'success' => false,
-                'error' => ['code' => 'ALREADY_VERIFIED', 'message' => '您已完成信用卡驗證'],
-            ], 422);
+            return response()->json(['success' => false, 'error' => [
+                'code' => 'ALREADY_VERIFIED', 'message' => '您已完成信用卡驗證',
+            ]], 422);
         }
 
         return response()->json([

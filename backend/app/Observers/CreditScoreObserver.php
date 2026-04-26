@@ -34,8 +34,10 @@ class CreditScoreObserver
             }
         }
 
-        // Auto-restore: score reached 30+ while auto-suspended
-        if ($newScore >= 30 && $user->status === 'auto_suspended') {
+        // Auto-restore: score reached unblock threshold while auto-suspended
+        // Threshold from system_settings (default 30, configurable via admin panel)
+        $unblockThreshold = (int) \App\Models\SystemSetting::get('credit_score_unblock_threshold', 30);
+        if ($newScore >= $unblockThreshold && $user->status === 'auto_suspended') {
             DB::table('users')->where('id', $user->id)->update(['status' => 'active']);
             Cache::forget("suspended_user:{$user->id}");
             Log::info("[AutoRestore] user #{$user->id} restored, score={$newScore}");

@@ -341,6 +341,13 @@ Route::prefix('api/v1')->group(function () {
                 Route::post('/credit-card-verifications/{id}/refund', [\App\Http\Controllers\Api\V1\Admin\CreditCardVerificationController::class, 'refund'])->middleware('admin.permission:members.edit');
             });
 
+            // 誠信分數配分（super_admin only）
+            Route::middleware('check.super_admin')->prefix('settings')->group(function () {
+                Route::get('credit-score', [\App\Http\Controllers\Api\V1\AdminController::class, 'getCreditScoreSettings']);
+                Route::put('credit-score', [\App\Http\Controllers\Api\V1\AdminController::class, 'updateCreditScoreSettings']);
+                Route::post('credit-score/reset', [\App\Http\Controllers\Api\V1\AdminController::class, 'resetCreditScoreSettings']);
+            });
+
             // System Control (super_admin only)
             Route::middleware('check.super_admin')->prefix('settings')->group(function () {
                 Route::get('system-control', [SystemControlController::class, 'index']);
