@@ -1787,39 +1787,6 @@ POST /api/v1/admin/settings/sms/test
 
 ---
 
-### 10.12 更新資料庫連線設定
-
-```
-PATCH /api/v1/admin/settings/database
-```
-
-> 所需權限：`super_admin`
-> ⚠️ 高風險操作，需再次輸入管理員密碼確認
-
-**請求參數：**
-```json
-{
-  "host": "mimeet_mysql",
-  "port": 3306,
-  "database": "mimeet",
-  "username": "mimeet_user",
-  "password": "新密碼（選填）",
-  "confirm_password": "管理員當前登入密碼（必填）"
-}
-```
-
-**行為：** 儲存前先以新設定測試連線（失敗則 422 不儲存）。⚠️ 變更後需重啟容器。
-
-**成功 200：**
-```json
-{
-  "success": true,
-  "data": { "message": "資料庫設定已更新。注意：完整生效需重啟應用容器", "restart_required": true }
-}
-```
-
----
-
 ### 10.12.1 測試資料庫連線
 
 ```
@@ -2607,7 +2574,6 @@ GET /api/v1/admin/settings/system/app-mode
 | 發送測試信 | `/settings/mail/test` | POST | super_admin |
 | SMS 設定 | `/settings/sms` | PATCH | super_admin |
 | 發送測試簡訊 | `/settings/sms/test` | POST | super_admin |
-| 資料庫設定 | `/settings/database` | PATCH | super_admin |
 | 測試 DB 連線 | `/settings/database/test` | POST | super_admin |
 | app.mode 狀態 | `/settings/system/app-mode` | GET | super_admin |
 | **Sprint 11 新增** | | | |

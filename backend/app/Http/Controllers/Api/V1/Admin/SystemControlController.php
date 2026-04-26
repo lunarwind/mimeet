@@ -340,52 +340,6 @@ class SystemControlController extends Controller
         ], $result['success'] ? 200 : 422);
     }
 
-    public function updateDatabase(Request $request): JsonResponse
-    {
-        $request->validate([
-            'host' => 'sometimes|string|max:255',
-            'port' => 'sometimes|integer',
-            'database' => 'sometimes|string|max:100',
-            'username' => 'sometimes|string|max:100',
-            'password' => 'sometimes|nullable|string',
-            'confirm_password' => 'required|string',
-        ]);
-
-        if (!Hash::check($request->confirm_password, $request->user()->password)) {
-            return response()->json(['success' => false, 'error' => [
-                'code' => 'PASSWORD_INCORRECT', 'message' => '密碼驗證失敗',
-            ]], 422);
-        }
-
-        // Test connection first
-        $h = $request->input('host', env('DB_HOST'));
-        $p = $request->input('port', env('DB_PORT'));
-        $d = $request->input('database', env('DB_DATABASE'));
-        $u = $request->input('username', env('DB_USERNAME'));
-        $pw = $request->filled('password') ? $request->password : env('DB_PASSWORD');
-
-        try {
-            new \PDO("mysql:host={$h};port={$p};dbname={$d}", $u, $pw, [\PDO::ATTR_TIMEOUT => 5]);
-        } catch (\PDOException $e) {
-            return response()->json(['success' => false, 'error' => [
-                'code' => 'DB_CONNECTION_FAILED', 'message' => '連線測試失敗：' . $e->getMessage(),
-            ]], 422);
-        }
-
-        if ($request->has('host')) $this->writeEnv('DB_HOST', $h);
-        if ($request->has('port')) $this->writeEnv('DB_PORT', (string) $p);
-        if ($request->has('database')) $this->writeEnv('DB_DATABASE', $d);
-        if ($request->has('username')) $this->writeEnv('DB_USERNAME', $u);
-        if ($request->filled('password')) $this->writeEnv('DB_PASSWORD', $pw);
-
-        Log::info("[SystemControl] DB settings updated by admin #{$request->user()->id}");
-
-        return response()->json(['success' => true, 'data' => [
-            'message' => '資料庫設定已更新。注意：完整生效需重啟應用容器（約 30 秒）',
-            'restart_required' => true,
-        ]]);
-    }
-
     public function testDatabase(Request $request): JsonResponse
     {
         $request->validate([
@@ -423,21 +377,6 @@ class SystemControlController extends Controller
         } catch (\Exception) {
             return false;
         }
-    }
-
-    private function writeEnv(string $key, string $value): void
-    {
-        $envPath = base_path('.env');
-        if (!file_exists($envPath)) return;
-        $content = file_get_contents($envPath);
-        $pattern = "/^{$key}=.*/m";
-        $replacement = "{$key}={$value}";
-        if (preg_match($pattern, $content)) {
-            $content = preg_replace($pattern, $replacement, $content);
-        } else {
-            $content .= "\n{$key}={$value}";
-        }
-        file_put_contents($envPath, $content);
     }
 
     /**

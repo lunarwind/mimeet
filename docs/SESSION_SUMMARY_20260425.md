@@ -1,5 +1,56 @@
 # SESSION SUMMARY 2026-04-25
 
+## 資料庫設定 UI 改 read-only（治本，2026-04-26）
+
+### 起源
+admin 後台「資料庫設定」儲存反覆出現 500 Internal Server Error。
+診斷：SystemControlController->updateDatabase 呼叫 writeEnv 五次，
+每次 file_put_contents('/var/www/html/.env')，但 .env ownership 是 root
+（每次 setup script 用 root 身分執行後重置），PHP（www-data）寫不進去。
+
+過去多次手動 chown www-data 治標，下次又重置——反覆發生。
+
+### 治本決策
+移除 PATCH /database endpoint，UI 改 read-only。
+
+理由：
+1. 改 DB 連線不該透過 web UI（誤改一次全網癱瘓）
+2. docker-compose 環境變數覆蓋 .env，UI 改了沒實際效果
+3. PRD-001 沒規範這個 UI，是非核心需求
+4. 治標的修權限方案反覆需要維護，治本一勞永逸
+
+已驗證：writeEnv 只被 updateDatabase 一個 method 呼叫，其他 settings 安全。
+
+### 改動範圍
+
+**後端**：
+- 移除 SystemControlController::updateDatabase method
+- 移除 SystemControlController::writeEnv private method
+- 移除 routes/api.php 中 `PATCH /admin/settings/database`
+- 保留 testDatabase / exportDatabase（無寫入問題）
+
+**前端**：
+- admin/src/pages/settings/tabs/DatabaseTab.tsx：
+  - 所有 input 加 disabled
+  - 移除「儲存設定」按鈕 + handleSave handler + saveLoading state
+  - 加 Alert 說明唯讀原因及修改方式
+  - 保留「測試連線」與「資料庫匯出」按鈕
+
+**規格文件**：
+- API-002：移除「更新資料庫連線設定」章節（§10.12），保留 §10.12.1/§10.12.2
+- UI-001：更新 Tab 3 說明為唯讀
+- CLAUDE.md「敏感檔案同步流程 → 歷史教訓」加入此事件
+
+**Pre-merge-check 守護**：
+- 14z：禁止 SystemControlController.php 重新出現 writeEnv method 或 .env 寫入
+
+### 不在本次範圍
+- updateMail / updateSms / updateTracking 等 method 不寫 .env（已驗證），保留
+- staging .env 權限管理：治本後不需要修權限
+- 截圖揭露的另兩個 issue（subscriptions 404 + test_null_op regression）另立 issue
+
+---
+
 ## FCM 設定規範化（2026-04-26）
 
 ### 起源
