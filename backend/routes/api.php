@@ -156,15 +156,22 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/verify', [DateController::class, 'verify']);
     });
 
-    // ─── Payment Callbacks (public — ECPay server-to-server) ──────────
+    // ─── 統一金流 Callback（新 ECPay NotifyURL）──────────────────────
+    // ⚡ 所有新金流單一入口，配合 UnifiedPaymentService::handleCallback()
+    Route::post('payments/callback', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'callback']);
+    Route::get('payments/return',    [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
+
+    // ─── Alias 路由（過渡期保留，規劃兩週後砍掉）────────────────────
+    // ECPay 後台 NotifyURL 改用 /api/v1/payments/callback 後可移除
     Route::prefix('payments/ecpay')->group(function () {
-        Route::post('/notify', [PaymentCallbackController::class, 'notify']);
-        Route::get('/return', [PaymentCallbackController::class, 'returnUrl']);
+        // Alias: 訂閱 callback → 統一入口
+        Route::post('/notify', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'callback']);
+        Route::get('/return',  [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
+        // checkout/{token} 保留（getPaymentUrl @deprecated 仍使用）
         Route::get('/checkout/{token}', [PaymentCallbackController::class, 'checkout']);
-        // Mock endpoint — only available in non-production environments
+        // Mock 端點（sandbox 測試用，兩週後一起砍）
         if (config('app.env') !== 'production') {
-            Route::get('/mock', [PaymentCallbackController::class, 'mock']);
-            // F40 點數購買 mock（和訂閱 mock 分開，避免互相干擾）
+            Route::get('/mock',       [PaymentCallbackController::class, 'mock']);
             Route::get('/point-mock', [PaymentCallbackController::class, 'pointMock']);
         }
     });

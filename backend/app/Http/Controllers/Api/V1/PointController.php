@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PointOrder;
 use App\Models\PointPackage;
 use App\Services\PointService;
+use App\Services\UnifiedPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,14 +14,15 @@ use Illuminate\Support\Str;
 /**
  * F40 前台點數 API
  *  GET  /points/packages — 列出啟用方案
- *  POST /points/purchase — 產生訂單 + 回傳綠界付款 URL
+ *  POST /points/purchase — 產生訂單 + 回傳 ECPay AIO 參數
  *  GET  /points/balance  — 餘額
  *  GET  /points/history  — 交易紀錄（分頁）
  */
 class PointController extends Controller
 {
     public function __construct(
-        private readonly PointService $pointService,
+        private readonly PointService          $pointService,
+        private readonly UnifiedPaymentService $unifiedPayment,
     ) {}
 
     public function packages(): JsonResponse
@@ -63,47 +65,42 @@ class PointController extends Controller
             ], 422);
         }
 
-        // 產生內部訂單（trade_no 使用 PTS_ 前綴以和訂閱 SUB_ 區分）
-        $tradeNo = 'PTS_' . date('YmdHis') . strtoupper(Str::random(6));
+        // 產生訂單號（PTS + 14 碼日期 + 3 碼亂數 = 20 chars，符合 ECPay 限制）
+        $tradeNo = $this->unifiedPayment->generateOrderNo('points');
 
         $order = PointOrder::create([
-            'uuid' => (string) Str::uuid(),
-            'user_id' => $user->id,
-            'package_id' => $package->id,
-            'points' => $package->total_points,
-            'amount' => $package->price,
+            'uuid'           => (string) Str::uuid(),
+            'user_id'        => $user->id,
+            'package_id'     => $package->id,
+            'points'         => $package->total_points,
+            'amount'         => $package->price,
             'payment_method' => $validated['payment_method'] ?? 'credit_card',
-            'trade_no' => $tradeNo,
-            'status' => 'pending',
+            'trade_no'       => $tradeNo,
+            'status'         => 'pending',
         ]);
 
-        // Sandbox / 本地：走 mock 流程；正式：走真實 ECPay checkout
-        $isSandbox = (string) \App\Models\SystemSetting::get('ecpay_is_sandbox', 'true') !== 'false';
-
-        if ($isSandbox || app()->environment(['local', 'testing', 'staging'])) {
-            $paymentUrl = url('/api/v1/payments/ecpay/point-mock')
-                . '?trade_no=' . urlencode($tradeNo)
-                . '&amount=' . $package->price;
-        } else {
-            // 真實 ECPay 流程留待 Phase 2 完整整合；目前 staging/production 都走 mock
-            $paymentUrl = url('/api/v1/payments/ecpay/point-mock')
-                . '?trade_no=' . urlencode($tradeNo)
-                . '&amount=' . $package->price;
-        }
+        $result = $this->unifiedPayment->initiate('points', $user, [
+            'item_name'    => "MiMeet 點數 {$package->total_points} 點",
+            'amount'       => $package->price,
+            'reference_id' => $order->id,
+        ]);
 
         return response()->json([
             'success' => true,
-            'code' => 201,
+            'code'    => 201,
             'message' => '點數訂單已建立',
-            'data' => [
-                'order' => [
-                    'id' => $order->id,
+            'data'    => [
+                'payment_id' => $result['payment']->id,
+                'aio_url'    => $result['aio_url'],
+                'params'     => $result['params'],
+                // 保留向下相容欄位
+                'order'      => [
+                    'id'       => $order->id,
                     'trade_no' => $order->trade_no,
-                    'points' => $order->points,
-                    'amount' => $order->amount,
-                    'status' => $order->status,
+                    'points'   => $order->points,
+                    'amount'   => $order->amount,
+                    'status'   => $order->status,
                 ],
-                'payment_url' => $paymentUrl,
             ],
         ], 201);
     }

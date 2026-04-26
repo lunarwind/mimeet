@@ -71,6 +71,43 @@ class PaymentService
     }
 
     /**
+     * Create an Order record only (no payment URL).
+     * Used by SubscriptionController when integrating with UnifiedPaymentService.
+     *
+     * @throws \Exception TRIAL_ALREADY_USED
+     */
+    public function createOrderRecord(
+        User   $user,
+        string $planSlug,
+        string $orderNo,
+        string $paymentMethod = 'credit_card',
+    ): Order {
+        $plan = SubscriptionPlan::where('slug', $planSlug)->where('is_active', true)->firstOrFail();
+
+        if ($plan->is_trial) {
+            $alreadyUsed = Order::where('user_id', $user->id)
+                ->whereHas('plan', fn ($q) => $q->where('is_trial', true))
+                ->where('status', 'paid')
+                ->exists();
+            if ($alreadyUsed) {
+                throw new \Exception('TRIAL_ALREADY_USED');
+            }
+        }
+
+        return Order::create([
+            'order_number'            => $orderNo,
+            'user_id'                 => $user->id,
+            'plan_id'                 => $plan->id,
+            'amount'                  => $plan->price,
+            'currency'                => $plan->currency,
+            'payment_method'          => $paymentMethod,
+            'status'                  => 'pending',
+            'ecpay_merchant_trade_no' => $orderNo,
+            'expires_at'              => now()->addMinutes(30),
+        ]);
+    }
+
+    /**
      * Handle ECPay payment callback (notify).
      * Stores reconciliation fields and issues invoice on success.
      */

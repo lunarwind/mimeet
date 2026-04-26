@@ -182,19 +182,26 @@ class UnifiedPaymentService
     /**
      * 生成訂單號（≤ 20 chars，符合 ECPay MerchantTradeNo 限制）
      *
-     * 格式範例：
-     *   verification → CCV_20260426160341XN  (20 chars)
-     *   subscription → MM20260426160341XNWM  (20 chars)
-     *   points       → PTS_20260426160341XN  (20 chars)
+     * 格式規則（無底線，純英數符合 ECPay 規範）：
+     *   verification → CCV + YmdHis(14) + 3 random = 20 chars
+     *   subscription → MM  + YmdHis(14) + 4 random = 20 chars
+     *   points       → PTS + YmdHis(14) + 3 random = 20 chars
+     *
+     * 範例：
+     *   CCV202604261822ABCD3  (verification)
+     *   MM202604261822ABCD4X  (subscription, 既有格式不變)
+     *   PTS202604261822ABCD3  (points)
+     *
+     * 注意：legacy 資料（CCV_/PTS_ 含底線）已 cancelled，不影響新流程。
      */
     public function generateOrderNo(string $type): string
     {
         $dateTime = now()->format('YmdHis'); // 14 chars
 
         return match ($type) {
-            'verification' => 'CCV_' . $dateTime . strtoupper(Str::random(2)), // 4+14+2=20
-            'subscription' => 'MM'   . $dateTime . strtoupper(Str::random(4)), // 2+14+4=20
-            'points'       => 'PTS_' . $dateTime . strtoupper(Str::random(2)), // 4+14+2=20
+            'verification' => 'CCV' . $dateTime . strtoupper(Str::random(3)), // 3+14+3=20
+            'subscription' => 'MM'  . $dateTime . strtoupper(Str::random(4)), // 2+14+4=20
+            'points'       => 'PTS' . $dateTime . strtoupper(Str::random(3)), // 3+14+3=20
             default        => throw new \InvalidArgumentException("Unknown payment type: {$type}"),
         };
     }

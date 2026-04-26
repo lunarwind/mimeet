@@ -6,13 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Services\PaymentService;
+use App\Services\UnifiedPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
     public function __construct(
-        private readonly PaymentService $paymentService,
+        private readonly PaymentService        $paymentService,
+        private readonly UnifiedPaymentService $unifiedPayment,
     ) {}
 
     /**
@@ -77,32 +79,52 @@ class SubscriptionController extends Controller
     public function createOrder(Request $request): JsonResponse
     {
         $request->validate([
-            'plan_id' => 'required|string',
+            'plan_id'        => 'required|string',
             'payment_method' => 'sometimes|string|in:credit_card,atm,cvs',
         ]);
 
+        $user   = $request->user();
+        $planId = $request->input('plan_id');
+        $method = $request->input('payment_method', 'credit_card');
+
         try {
-            $result = $this->paymentService->createOrder(
-                $request->user(),
-                $request->input('plan_id'),
-                $request->input('payment_method', 'credit_card'),
-            );
+            $orderNo = $this->unifiedPayment->generateOrderNo('subscription');
+            $order   = $this->paymentService->createOrderRecord($user, $planId, $orderNo, $method);
         } catch (\Exception $e) {
             if ($e->getMessage() === 'TRIAL_ALREADY_USED') {
                 return response()->json([
                     'success' => false,
-                    'code' => 422,
+                    'code'    => 422,
                     'message' => '您已使用過體驗方案',
                 ], 422);
             }
             throw $e;
         }
 
+        $plan   = $order->plan;
+        $result = $this->unifiedPayment->initiate('subscription', $user, [
+            'item_name'    => "MiMeet {$plan->name}",
+            'amount'       => $order->amount,
+            'reference_id' => $order->id,
+        ]);
+
         return response()->json([
             'success' => true,
-            'code' => 201,
+            'code'    => 201,
             'message' => '訂單已建立',
-            'data' => $result,
+            'data'    => [
+                'payment_id' => $result['payment']->id,
+                'aio_url'    => $result['aio_url'],
+                'params'     => $result['params'],
+                // 保留向下相容欄位
+                'order'      => [
+                    'id'           => $order->id,
+                    'order_number' => $order->order_number,
+                    'amount'       => $order->amount,
+                    'status'       => $order->status,
+                    'expires_at'   => $order->expires_at->toISOString(),
+                ],
+            ],
         ], 201);
     }
 
@@ -196,30 +218,38 @@ class SubscriptionController extends Controller
      */
     public function trialPurchase(Request $request): JsonResponse
     {
+        $user      = $request->user();
         $trialPlan = SubscriptionPlan::where('is_trial', true)->where('is_active', true)->firstOrFail();
 
         try {
-            $result = $this->paymentService->createOrder(
-                $request->user(),
-                $trialPlan->slug,
-                $request->input('payment_method', 'credit_card'),
-            );
+            $orderNo = $this->unifiedPayment->generateOrderNo('subscription');
+            $order   = $this->paymentService->createOrderRecord($user, $trialPlan->slug, $orderNo);
         } catch (\Exception $e) {
             if ($e->getMessage() === 'TRIAL_ALREADY_USED') {
                 return response()->json([
                     'success' => false,
-                    'code' => 422,
+                    'code'    => 422,
                     'message' => '您已使用過體驗方案',
                 ], 422);
             }
             throw $e;
         }
 
+        $result = $this->unifiedPayment->initiate('subscription', $user, [
+            'item_name'    => "MiMeet {$trialPlan->name}",
+            'amount'       => $order->amount,
+            'reference_id' => $order->id,
+        ]);
+
         return response()->json([
             'success' => true,
-            'code' => 201,
+            'code'    => 201,
             'message' => '體驗方案訂單已建立',
-            'data' => $result,
+            'data'    => [
+                'payment_id' => $result['payment']->id,
+                'aio_url'    => $result['aio_url'],
+                'params'     => $result['params'],
+            ],
         ], 201);
     }
 }

@@ -14,8 +14,46 @@ class CreditCardVerificationService
     ) {}
 
     /**
+     * 建立或重用 CreditCardVerification 紀錄（不產生付款 URL）。
+     * 供 UnifiedPaymentService 流程使用，order_no 由外部傳入。
+     *
+     * @return CreditCardVerification|null  null = 已驗證
+     */
+    public function createRecord(User $user, string $orderNo): ?CreditCardVerification
+    {
+        if ($user->credit_card_verified_at) {
+            return null;
+        }
+
+        // 清理 1 小時前的 stale pending
+        CreditCardVerification::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('created_at', '<=', now()->subHour())
+            ->update(['status' => 'failed', 'failure_reason' => 'expired']);
+
+        // 重用 1 小時內的 pending（冪等）
+        $existing = CreditCardVerification::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('created_at', '>', now()->subHour())
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return CreditCardVerification::create([
+            'user_id'  => $user->id,
+            'order_no' => $orderNo,
+            'amount'   => 100,
+            'status'   => 'pending',
+        ]);
+    }
+
+    /**
      * Create a new verification record and return ECPay payment URL.
      * Returns null if user already verified.
+     *
+     * @deprecated 使用 createRecord() + UnifiedPaymentService::initiate()
      */
     public function initiate(User $user): ?array
     {
