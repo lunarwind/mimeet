@@ -115,10 +115,11 @@ class DateInvitationController extends Controller
                     'created_at' => $inv->created_at,
                 ]),
             ],
-            'pagination' => [
-                'current_page' => $invitations->currentPage(),
+            'meta' => [
+                'page' => $invitations->currentPage(),
                 'per_page' => $invitations->perPage(),
                 'total' => $invitations->total(),
+                'last_page' => $invitations->lastPage(),
             ],
         ]);
     }

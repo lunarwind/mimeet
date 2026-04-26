@@ -44,8 +44,8 @@ export default function MembersPage() {
       if (datingBudgetFilter) params.dating_budget = datingBudgetFilter
       if (styleFilter) params.style = styleFilter
       const res = await apiClient.get('/admin/members', { params })
-      setMembers(res.data?.data?.members ?? [])
-      setTotal(res.data?.data?.pagination?.total ?? 0)
+      setMembers(res.data?.data ?? [])
+      setTotal(res.data?.meta?.total ?? 0)
     } catch {
       setMembers([])
     }

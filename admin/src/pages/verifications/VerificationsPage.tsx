@@ -81,12 +81,12 @@ export default function VerificationsPage() {
     try {
       if (activeTab === 'pending') {
         const res = await apiClient.get('/admin/verifications/pending', { params: { page, per_page: 20 } })
-        setRecords(res.data.data.verifications ?? res.data.data ?? [])
-        setTotal(res.data.data.pagination?.total ?? res.data.pagination?.total ?? 0)
+        setRecords(res.data.data ?? [])
+        setTotal(res.data.meta?.total ?? 0)
       } else {
         const res = await apiClient.get('/admin/verifications', { params: { status: processedStatus, page, per_page: 20 } })
-        setRecords(res.data.data.verifications ?? res.data.data ?? [])
-        setTotal(res.data.data.pagination?.total ?? res.data.pagination?.total ?? 0)
+        setRecords(res.data.data ?? [])
+        setTotal(res.data.meta?.total ?? 0)
       }
     } catch {
       setRecords([])

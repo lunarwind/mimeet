@@ -57,8 +57,8 @@ export default function TicketsPage() {
       if (statusFilter !== 'all') params.status = statusFilter
       if (typeFilter !== 'all') params.type = typeFilter
       const res = await apiClient.get('/admin/tickets', { params })
-      setTickets(res.data.data.tickets ?? [])
-      setTotal(res.data.data.pagination?.total ?? 0)
+      setTickets(res.data.data ?? [])
+      setTotal(res.data.meta?.total ?? 0)
     } catch { setTickets([]) }
     setLoading(false)
   }

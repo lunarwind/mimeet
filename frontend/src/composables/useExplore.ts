@@ -15,7 +15,7 @@ export function useExplore(filters: Ref<ExploreFilter> | ComputedRef<ExploreFilt
       const result = await searchUsers(buildParams(page))
       return {
         data: result.users,
-        hasMore: result.pagination.current_page < result.pagination.total_pages,
+        hasMore: result.meta.page < result.meta.last_page,
       }
     },
   })

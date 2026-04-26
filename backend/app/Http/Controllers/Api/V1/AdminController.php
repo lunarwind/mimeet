@@ -123,24 +123,22 @@ class AdminController extends Controller
 
         return response()->json([
             'success' => true, 'code' => 'MEMBERS_LIST', 'message' => 'OK',
-            'data' => [
-                'members' => $members->map(fn (User $u) => [
-                    'id' => $u->id,
-                    'email' => $u->email ?? '',
-                    'nickname' => $u->nickname,
-                    'gender' => $u->gender,
-                    'avatar_url' => $u->avatar_url,
-                    'membership_level' => $u->membership_level ?? 0,
-                    'credit_score' => $u->credit_score ?? 60,
-                    'status' => $u->status ?? 'active',
-                    'email_verified' => (bool) ($u->email_verified ?? false),
-                    'phone_verified' => (bool) ($u->phone_verified ?? false),
-                    'created_at' => $u->created_at?->toISOString(),
-                ]),
-                'pagination' => [
-                    'current_page' => $members->currentPage(), 'per_page' => $members->perPage(),
-                    'total' => $members->total(), 'last_page' => $members->lastPage(),
-                ],
+            'data' => $members->map(fn (User $u) => [
+                'id' => $u->id,
+                'email' => $u->email ?? '',
+                'nickname' => $u->nickname,
+                'gender' => $u->gender,
+                'avatar_url' => $u->avatar_url,
+                'membership_level' => $u->membership_level ?? 0,
+                'credit_score' => $u->credit_score ?? 60,
+                'status' => $u->status ?? 'active',
+                'email_verified' => (bool) ($u->email_verified ?? false),
+                'phone_verified' => (bool) ($u->phone_verified ?? false),
+                'created_at' => $u->created_at?->toISOString(),
+            ]),
+            'meta' => [
+                'page' => $members->currentPage(), 'per_page' => $members->perPage(),
+                'total' => $members->total(), 'last_page' => $members->lastPage(),
             ],
         ]);
     }
@@ -682,18 +680,16 @@ class AdminController extends Controller
 
         return response()->json([
             'success' => true, 'code' => 'TICKETS_LIST', 'message' => 'OK',
-            'data' => [
-                'tickets' => $tickets->map(fn (Report $r) => [
-                    'id' => $r->id, 'uuid' => $r->uuid, 'type' => $r->type, 'status' => $r->status,
-                    'description' => $r->description,
-                    'reporter' => $r->reporter ? ['id' => $r->reporter->id, 'nickname' => $r->reporter->nickname] : null,
-                    'reported_user' => $r->reportedUser ? ['id' => $r->reportedUser->id, 'nickname' => $r->reportedUser->nickname] : null,
-                    'created_at' => $r->created_at?->toISOString(),
-                ]),
-                'pagination' => [
-                    'current_page' => $tickets->currentPage(), 'per_page' => $tickets->perPage(),
-                    'total' => $tickets->total(), 'last_page' => $tickets->lastPage(),
-                ],
+            'data' => $tickets->map(fn (Report $r) => [
+                'id' => $r->id, 'uuid' => $r->uuid, 'type' => $r->type, 'status' => $r->status,
+                'description' => $r->description,
+                'reporter' => $r->reporter ? ['id' => $r->reporter->id, 'nickname' => $r->reporter->nickname] : null,
+                'reported_user' => $r->reportedUser ? ['id' => $r->reportedUser->id, 'nickname' => $r->reportedUser->nickname] : null,
+                'created_at' => $r->created_at?->toISOString(),
+            ]),
+            'meta' => [
+                'page' => $tickets->currentPage(), 'per_page' => $tickets->perPage(),
+                'total' => $tickets->total(), 'last_page' => $tickets->lastPage(),
             ],
         ]);
     }
@@ -748,24 +744,22 @@ class AdminController extends Controller
 
         return response()->json([
             'success' => true, 'code' => 'PAYMENTS_LIST', 'message' => 'OK',
-            'data' => [
-                'payments' => $payments->map(fn (Order $o) => [
-                    'id' => $o->id, 'order_number' => $o->order_number,
-                    'user' => $o->user ? ['id' => $o->user->id, 'nickname' => $o->user->nickname] : null,
-                    'plan_name' => $o->plan?->name, 'amount' => $o->amount,
-                    'payment_method' => $o->payment_method,
-                    'status' => $o->status, 'paid_at' => $o->paid_at?->toISOString(),
-                    'ecpay_trade_no' => $o->ecpay_trade_no,
-                    'ecpay_payment_date' => $o->ecpay_payment_date,
-                    'ecpay_payment_type' => $o->ecpay_payment_type,
-                    'invoice_no' => $o->invoice_no,
-                    'invoice_date' => $o->invoice_date,
-                    'created_at' => $o->created_at?->toISOString(),
-                ]),
-                'pagination' => [
-                    'current_page' => $payments->currentPage(), 'per_page' => $payments->perPage(),
-                    'total' => $payments->total(), 'last_page' => $payments->lastPage(),
-                ],
+            'data' => $payments->map(fn (Order $o) => [
+                'id' => $o->id, 'order_number' => $o->order_number,
+                'user' => $o->user ? ['id' => $o->user->id, 'nickname' => $o->user->nickname] : null,
+                'plan_name' => $o->plan?->name, 'amount' => $o->amount,
+                'payment_method' => $o->payment_method,
+                'status' => $o->status, 'paid_at' => $o->paid_at?->toISOString(),
+                'ecpay_trade_no' => $o->ecpay_trade_no,
+                'ecpay_payment_date' => $o->ecpay_payment_date,
+                'ecpay_payment_type' => $o->ecpay_payment_type,
+                'invoice_no' => $o->invoice_no,
+                'invoice_date' => $o->invoice_date,
+                'created_at' => $o->created_at?->toISOString(),
+            ]),
+            'meta' => [
+                'page' => $payments->currentPage(), 'per_page' => $payments->perPage(),
+                'total' => $payments->total(), 'last_page' => $payments->lastPage(),
             ],
         ]);
     }

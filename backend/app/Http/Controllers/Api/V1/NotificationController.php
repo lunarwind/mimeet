@@ -40,10 +40,11 @@ class NotificationController extends Controller
                     'created_at' => $n->created_at?->toISOString(),
                 ]),
             ],
-            'pagination' => [
-                'current_page' => $notifications->currentPage(),
+            'meta' => [
+                'page' => $notifications->currentPage(),
                 'per_page' => $notifications->perPage(),
                 'total' => $notifications->total(),
+                'last_page' => $notifications->lastPage(),
             ],
         ]);
     }

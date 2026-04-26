@@ -50,12 +50,12 @@ class AdminLogController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => ['logs' => $logs],
-            'pagination' => [
-                'current_page' => $paginated->currentPage(),
+            'data' => $logs,
+            'meta' => [
+                'page' => $paginated->currentPage(),
                 'per_page' => $paginated->perPage(),
                 'total' => $paginated->total(),
-                'total_pages' => $paginated->lastPage(),
+                'last_page' => $paginated->lastPage(),
             ],
         ]);
     }

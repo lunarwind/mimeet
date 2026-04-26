@@ -43,8 +43,8 @@ export default function PaymentsPage() {
       const params: Record<string, string | number> = { page, per_page: 20 }
       if (statusFilter !== 'all') params.status = statusFilter
       const res = await apiClient.get('/admin/payments', { params })
-      setPayments(res.data.data.payments ?? [])
-      setTotal(res.data.data.pagination?.total ?? 0)
+      setPayments(res.data.data ?? [])
+      setTotal(res.data.meta?.total ?? 0)
     } catch { setPayments([]) }
     setLoading(false)
   }

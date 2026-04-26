@@ -214,6 +214,52 @@ check \
   "^1$"
 
 echo ""
+echo "-- Pagination unification guards (14r-14v) --"
+
+# ============================================================
+# 14r：後端 list API 不使用 'pagination' wrapper key
+# ============================================================
+# 全系統 pagination 規格化（2026-04-26）後的退化防護。
+# 所有 list API 必須使用 meta wrapper。
+
+check \
+  "14r 後端 list API 不使用 'pagination' wrapper key" \
+  "grep -rn \"'pagination'\\s*=>\" backend/app/Http/Controllers/Api/V1/ 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14s：後端 list API 不使用 'current_page' 欄位名
+# ============================================================
+
+check \
+  "14s 後端 list API 不使用 'current_page' 欄位" \
+  "grep -rn \"'current_page'\\s*=>\" backend/app/Http/Controllers/Api/V1/ 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14t：後端 list API 不使用 'total_pages' 欄位名
+# ============================================================
+
+check \
+  "14t 後端 list API 不使用 'total_pages' 欄位" \
+  "grep -rn \"'total_pages'\\s*=>\" backend/app/Http/Controllers/Api/V1/ 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14u/14v：前端不使用 .pagination.current_page / .pagination.total_pages
+# ============================================================
+
+check \
+  "14u 前端不讀 .pagination.current_page" \
+  "grep -rn '\\.pagination\\.current_page' frontend/src/ admin/src/ 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+check \
+  "14v 前端不讀 .pagination.total_pages" \
+  "grep -rn '\\.pagination\\.total_pages' frontend/src/ admin/src/ 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
