@@ -324,6 +324,12 @@ ssh mimeet-staging 'docker exec mimeet-app php /var/www/html/scripts/test-fcm.ph
   ✅ 但實際沒套用」——因為該檔案在 .gitignore 中，git push 不會同步。教訓：
   改動敏感檔案後必須直接 grep ground truth 驗證，不能只看「Claude Code 報告」
 - 2026-04-26：FCM 設定規範化執行（見 SESSION_SUMMARY_20260425「FCM 設定規範化」段落）
+- 2026-04-26：admin「資料庫設定」UI 反覆出現 500——根因是 PHP（www-data）
+  嘗試 file_put_contents .env 但檔案 ownership 是 root（每次 root 身分執行
+  setup script 後重置）。治本方案：移除危險的 PATCH /database endpoint，
+  保留 read-only UI + 測試連線 + 匯出功能。教訓：透過 web UI 改基礎設施
+  設定（DB / Redis / 第三方 service URL）天生有風險，應透過 setup 腳本
+  + 直接編輯 .env 處理（見「敏感檔案同步流程」）。
 
 ## API Contract 變更標準回滾流程
 

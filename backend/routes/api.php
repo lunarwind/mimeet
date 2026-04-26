@@ -337,7 +337,6 @@ Route::prefix('api/v1')->group(function () {
                 Route::post('sms/test', [SystemControlController::class, 'testSms']);
                 Route::get('tracking', [SystemControlController::class, 'getTracking']);
                 Route::patch('tracking', [SystemControlController::class, 'updateTracking']);
-                Route::patch('database', [SystemControlController::class, 'updateDatabase']);
                 Route::post('database/test', [SystemControlController::class, 'testDatabase']);
                 Route::get('database/export', [SystemControlController::class, 'exportDatabase']);
 

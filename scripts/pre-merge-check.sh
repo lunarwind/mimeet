@@ -294,6 +294,21 @@ check \
   "^0$"
 
 echo ""
+echo "-- DB write guard (14z) --"
+
+# ============================================================
+# 14z：禁止 SystemControlController 重新出現 writeEnv 或寫 .env
+# ============================================================
+# 2026-04-26 移除後守護退化。admin「資料庫設定」UI 已改 read-only，
+# 不應透過 web UI 寫 .env。反覆 500（www-data 無法寫 root 擁有的 .env）
+# 的根本治療。詳見 CLAUDE.md「敏感檔案同步流程 → 歷史教訓」。
+
+check \
+  "14z SystemControlController 不應有 writeEnv 或 file_put_contents .env" \
+  "grep -cE 'function writeEnv|file_put_contents.*\.env' backend/app/Http/Controllers/Api/V1/Admin/SystemControlController.php 2>/dev/null | tr -d ' '" \
+  "^0$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
