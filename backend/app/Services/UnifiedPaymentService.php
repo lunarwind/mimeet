@@ -47,6 +47,36 @@ class UnifiedPaymentService
      */
     public function initiate(string $type, User $user, array $data): array
     {
+        // ── 雷點 1 防護：5 分鐘內同 user 同 type 已有 pending → 重用 ──
+        $existing = Payment::where('user_id', $user->id)
+            ->where('type', $type)
+            ->where('status', 'pending')
+            ->where('created_at', '>', now()->subMinutes(5))
+            ->latest()
+            ->first();
+
+        if ($existing) {
+            Log::info('[UnifiedPayment] Reusing pending payment', [
+                'payment_id' => $existing->id,
+                'order_no'   => $existing->order_no,
+            ]);
+
+            // 重算 params（MerchantTradeDate 更新為現在，CheckMacValue 重算）
+            $params = $this->ecpay->buildAioParams([
+                'order_no'    => $existing->order_no,
+                'amount'      => $existing->amount,
+                'item_name'   => $existing->item_name ?? $data['item_name'],
+                'description' => $data['description'] ?? $data['item_name'],
+            ]);
+
+            return [
+                'payment' => $existing,
+                'aio_url' => $this->ecpay->getAioUrl(),
+                'params'  => $params,
+            ];
+        }
+
+        // ── 建立新 Payment 紀錄 ───────────────────────────────────────
         $orderNo = $this->generateOrderNo($type);
 
         $payment = Payment::create([
@@ -144,7 +174,7 @@ class UnifiedPaymentService
                     'raw_callback'      => $params,
                     'paid_at'           => now(),
                 ]);
-                \App\Jobs\RefundCreditCardVerificationJob::dispatch($payment->id);
+                \App\Jobs\RefundPaymentJob::dispatch($payment->id);
                 Log::warning('[UnifiedPayment] Non-TW card refund triggered', [
                     'order_no' => $payment->order_no,
                     'country'  => $cardCountry,
