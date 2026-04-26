@@ -242,6 +242,15 @@ Route::prefix('api/v1')->group(function () {
         Route::get('me/verification-photo/status', [VerificationPhotoController::class, 'status']);
     });
 
+    // ─── Credit Card Verification (男性進階驗證) ──────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('verification/credit-card/initiate', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'initiate']);
+        Route::get('verification/credit-card/status', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'status']);
+    });
+    // Public callbacks (ECPay server-to-server + browser return)
+    Route::post('verification/credit-card/callback', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'callback']);
+    Route::get('verification/credit-card/return', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'returnUrl']);
+
     // ─── Notifications (authenticated) ───────────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('notifications', [NotificationController::class, 'index']);
@@ -326,6 +335,11 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('/point-transactions', [AdminPointController::class, 'transactions']);
             });
             Route::post('/members/{id}/points', [AdminPointController::class, 'adjustPoints'])->middleware('admin.permission:members.edit');
+            // Credit Card Verifications (admin)
+            Route::middleware('admin.permission:members.view')->group(function () {
+                Route::get('/credit-card-verifications', [\App\Http\Controllers\Api\V1\Admin\CreditCardVerificationController::class, 'index']);
+                Route::post('/credit-card-verifications/{id}/refund', [\App\Http\Controllers\Api\V1\Admin\CreditCardVerificationController::class, 'refund'])->middleware('admin.permission:members.edit');
+            });
 
             // System Control (super_admin only)
             Route::middleware('check.super_admin')->prefix('settings')->group(function () {

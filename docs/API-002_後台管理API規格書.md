@@ -2595,4 +2595,73 @@ GET /api/v1/admin/settings/system/app-mode
 
 ---
 
-*本文件涵蓋後台所有 API 端點（共 74 個）。前台用戶 API 請參閱 API-001。*
+## §14 信用卡驗證管理（2026-04-26）
+
+> 男性進階驗證（信用卡 NT$100）的後台管理端點。
+
+### 14.1 查詢信用卡驗證列表
+
+```
+GET /api/v1/admin/credit-card-verifications
+```
+
+所需權限：`members.view`
+
+**查詢參數：**
+```
+status: pending | paid | refunded | failed | refund_failed（選填）
+user_id: 整數（選填）
+page: 分頁
+per_page: 每頁筆數（預設 20）
+```
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "user": { "id": 123, "nickname": "測試用戶", "email": "..." },
+      "order_no": "CCV_20260426200000_000123",
+      "amount": 100,
+      "status": "paid",
+      "gateway_trade_no": "2026042612345678",
+      "card_last4": "1234",
+      "paid_at": "2026-04-26T12:00:00Z",
+      "refunded_at": null,
+      "created_at": "2026-04-26T11:59:00Z"
+    }
+  ],
+  "meta": { "page": 1, "per_page": 20, "total": 5, "last_page": 1 }
+}
+```
+
+### 14.2 手動觸發退款
+
+```
+POST /api/v1/admin/credit-card-verifications/{id}/refund
+```
+
+所需權限：`members.edit`
+
+> 僅限 `status = paid` 的紀錄可退款。退款失敗時狀態改為 `refund_failed`。
+
+**成功回應 (200)：**
+```json
+{ "success": true, "message": "退款成功" }
+```
+
+**失敗回應 (422)：**
+```json
+{ "success": false, "message": "退款失敗，請查看系統日誌" }
+```
+
+| 功能 | 路徑 | 方法 | 權限 |
+|---|---|---|---|
+| 信用卡驗證列表 | `/credit-card-verifications` | GET | members.view |
+| 手動退款 | `/credit-card-verifications/{id}/refund` | POST | members.edit |
+
+---
+
+*本文件涵蓋後台所有 API 端點。前台用戶 API 請參閱 API-001。*

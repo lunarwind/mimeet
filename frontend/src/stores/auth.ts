@@ -13,6 +13,7 @@ export interface AuthUser {
   membership_level: number
   email_verified: boolean
   phone_verified: boolean
+  credit_card_verified_at?: string | null  // 男性信用卡驗證
   // F40
   points_balance?: number
   stealth_until?: string | null

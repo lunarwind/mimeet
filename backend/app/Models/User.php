@@ -100,6 +100,7 @@ class User extends Authenticatable
         'interests' => 'array',
         'avatar_slots' => 'array',
         // privacy_settings handled by custom accessor (getPrivacySettingsAttribute)
+        'credit_card_verified_at' => 'datetime',
         'last_active_at' => 'datetime',
         'suspended_at' => 'datetime',
         'delete_requested_at' => 'datetime',

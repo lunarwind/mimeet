@@ -17,6 +17,7 @@ import SeoPage from './pages/seo/SeoPage'
 import AnnouncementsPage from './pages/announcements/AnnouncementsPage'
 import PointTransactionsPage from './pages/points/PointTransactionsPage'
 import PlanSettingsPage from './pages/plans/PlanSettingsPage'
+import CreditCardVerificationsPage from './pages/creditcard/CreditCardVerificationsPage'
 import { useAuthStore } from './stores/authStore'
 import { useIdleTimeout } from './hooks/useIdleTimeout'
 
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="plans" element={<PlanSettingsPage />} />
         <Route path="logs" element={<ActivityLogsPage />} />
         <Route path="user-activity-logs" element={<UserActivityLogsPage />} />
+        <Route path="credit-card-verifications" element={<CreditCardVerificationsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

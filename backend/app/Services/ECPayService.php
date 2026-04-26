@@ -302,4 +302,51 @@ class ECPayService
             return null;
         }
     }
+
+    // ═════════════════════════════════════════════════════════════════
+    //  Credit card refund / cancel authorization
+    //  Ref: https://developers.ecpay.com.tw/ CreditDetail/DoAction
+    // ═════════════════════════════════════════════════════════════════
+
+    /**
+     * ECPay credit card refund/cancel authorization.
+     * Action: C = cancel authorization, R = refund after capture
+     */
+    public function doRefund(string $merchantTradeNo, string $ecpayTradeNo, int $amount, string $action = 'R'): array
+    {
+        $merchantId = $this->paymentMerchantId();
+        $hashKey = $this->paymentHashKey();
+        $hashIv = $this->paymentHashIv();
+
+        $baseUrl = $this->isSandbox()
+            ? 'https://payment-stage.ecpay.com.tw/CreditDetail/DoAction'
+            : 'https://payment.ecpay.com.tw/CreditDetail/DoAction';
+
+        $params = [
+            'MerchantID' => $merchantId,
+            'MerchantTradeNo' => $merchantTradeNo,
+            'TradeNo' => $ecpayTradeNo,
+            'Action' => $action,  // R = 申請退款, C = 取消授權
+            'TotalAmount' => $amount,
+        ];
+        $params['CheckMacValue'] = $this->generateCheckMacValue($params, $hashKey, $hashIv);
+
+        try {
+            $response = Http::timeout(30)
+                ->asForm()
+                ->post($baseUrl, $params);
+            $body = $response->body();
+            parse_str($body, $result);
+            $ok = ($result['RtnCode'] ?? '') === '1';
+            if (!$ok) {
+                Log::warning('[ECPay Refund] Failed', ['result' => $result, 'trade_no' => $merchantTradeNo]);
+            } else {
+                Log::info('[ECPay Refund] Success', ['trade_no' => $merchantTradeNo, 'action' => $action]);
+            }
+            return ['success' => $ok, 'result' => $result];
+        } catch (\Exception $e) {
+            Log::error('[ECPay Refund] Exception', ['message' => $e->getMessage(), 'trade_no' => $merchantTradeNo]);
+            return ['success' => false, 'result' => [], 'error' => $e->getMessage()];
+        }
+    }
 }

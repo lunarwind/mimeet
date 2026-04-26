@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { sendPhoneCode, verifyPhoneCode } from '@/api/auth'
 import client from '@/api/client'
-import { requestVerificationCode, uploadVerificationPhoto, getVerificationStatus } from '@/api/verification'
+import { requestVerificationCode, uploadVerificationPhoto, getVerificationStatus, initiateCreditCardVerification } from '@/api/verification'
 import type { VerificationStatusResponse } from '@/api/verification'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // ── 狀態 ──────────────────────────────────────────────────
@@ -26,7 +27,9 @@ const smsCooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | undefined
 
 const phoneVerified = computed(() => authStore.user?.phone_verified ?? false)
-const advancedVerified = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
+const advancedVerified = computed(() =>
+  (authStore.user?.membership_level ?? 0) >= 2 || !!authStore.user?.credit_card_verified_at
+)
 
 const phoneValid = computed(() => /^09\d{8}$/.test(phone.value))
 
@@ -82,6 +85,11 @@ const verificationRejectReason = ref<string | null>(null)
 
 const isFemale = computed(() => authStore.user?.gender === 'female')
 const lv15Verified = computed(() => (authStore.user?.membership_level ?? 0) >= 1.5)
+// 男性信用卡驗證
+const creditCardLoading = ref(false)
+const creditCardError = ref<string | null>(null)
+const creditCardResult = ref<'success' | 'failed' | null>(null)
+const creditCardVerified = computed(() => !!authStore.user?.credit_card_verified_at)
 
 // Check existing verification status on mount
 onMounted(async () => {
@@ -96,9 +104,24 @@ onMounted(async () => {
       }
     } catch { /* ignore */ }
   }
+
+  // Handle ECPay return for credit card verification
+  const ccResult = route.query.credit_card as string | undefined
+  if (ccResult === 'success' || ccResult === 'failed') {
+    creditCardResult.value = ccResult
+    currentStep.value = 'advanced-guide'
+    if (ccResult === 'success') {
+      // Refresh user data to reflect new membership_level and credit_card_verified_at
+      try { await authStore.initialize() } catch { /* ignore */ }
+    }
+    // Clean up URL query params
+    router.replace({ query: {} })
+  }
 })
 
 async function startAdvancedVerification() {
+  creditCardResult.value = null
+  creditCardError.value = null
   if (isFemale.value) {
     currentStep.value = 'advanced-guide'
     try {
@@ -110,6 +133,21 @@ async function startAdvancedVerification() {
     }
   } else {
     currentStep.value = 'advanced-guide'
+  }
+}
+
+async function initiateCreditCard() {
+  if (creditCardLoading.value) return
+  creditCardLoading.value = true
+  creditCardError.value = null
+  try {
+    const data = await initiateCreditCardVerification()
+    window.location.href = data.payment_url
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { error?: { message?: string } } } }
+    creditCardError.value = e?.response?.data?.error?.message ?? '無法發起驗證，請稍後再試'
+  } finally {
+    creditCardLoading.value = false
   }
 }
 
@@ -334,17 +372,27 @@ function goBack() {
 
         <!-- 男性：信用卡驗證 -->
         <template v-else>
-          <p class="verify-step__desc">透過信用卡小額驗證（NT$100）確認您的身份，款項將於驗證完成後退還。</p>
+          <!-- 驗證成功後返回的提示 -->
+          <div v-if="creditCardResult === 'success'" class="verify-result verify-result--success">
+            <span>✅ 信用卡驗證成功！誠信分數已 +15</span>
+          </div>
+          <div v-else-if="creditCardResult === 'failed'" class="verify-result verify-result--failed">
+            <span>❌ 付款未完成，請重試</span>
+          </div>
+          <p class="verify-step__desc">透過信用卡小額驗證（NT$100）確認您的真實身份</p>
           <ul class="verify-rules">
-            <li>僅支援台灣發行之信用卡 / 簽帳卡</li>
-            <li>驗證金額 NT$100 會在 3-5 個工作日內退還</li>
-            <li>驗證完成後誠信分數 +15</li>
+            <li>💰 預授權 NT$100（非實際扣款）</li>
+            <li>⏰ 驗證完成後 3-5 個工作日內自動退還</li>
+            <li>🇹🇼 僅支援台灣發行之信用卡 / 簽帳卡</li>
+            <li>⭐ 驗證完成後誠信分數 +15</li>
           </ul>
+          <p v-if="creditCardError" class="verify-error">{{ creditCardError }}</p>
           <button
             class="verify-submit"
-            @click="() => {}"
+            :disabled="creditCardLoading || creditCardVerified"
+            @click="initiateCreditCard"
           >
-            前往付款驗證
+            {{ creditCardLoading ? '處理中…' : creditCardVerified ? '已完成驗證' : '前往付款驗證' }}
           </button>
         </template>
 
