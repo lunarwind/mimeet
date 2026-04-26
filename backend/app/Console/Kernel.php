@@ -10,8 +10,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->command('gdpr:process-deletions')->dailyAt('03:00');
-        $schedule->command('credit-card:auto-refund')->dailyAt('03:00');       // 舊流程（credit_card_verifications 表）
-        $schedule->command('payments:auto-refund-verifications')->dailyAt('03:00'); // 新流程（payments 主表）
+        $schedule->command('payments:auto-refund-verifications')->dailyAt('03:00');
+        $schedule->command('payments:reconcile-ecpay')->everyFifteenMinutes();
     }
 
     protected function commands(): void

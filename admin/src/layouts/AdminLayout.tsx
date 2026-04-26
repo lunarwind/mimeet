@@ -18,7 +18,6 @@ import {
   LinkOutlined,
   SoundOutlined,
   GiftOutlined,
-  CreditCardOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import MiMeetLogo from '../components/MiMeetLogo'
@@ -42,7 +41,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/tickets', roles: ['super_admin', 'admin', 'cs'] },
   { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/payments', roles: ['super_admin', 'admin'] },
   { key: 'verifications', icon: <SafetyCertificateOutlined />, label: '驗證審核', path: '/verifications', roles: ['super_admin', 'admin'] },
-  { key: 'credit-card-verifications', icon: <CreditCardOutlined />, label: '信用卡驗證', path: '/credit-card-verifications', roles: ['super_admin', 'admin'] },
+  // 信用卡驗證管理已整合至「💲 支付記錄」頁（Step 9）
   { key: 'broadcasts', icon: <NotificationOutlined />, label: '廣播訊息', path: '/broadcasts', roles: ['super_admin', 'admin'] },
   { key: 'seo', icon: <LinkOutlined />, label: 'SEO Meta 管理', path: '/seo', roles: ['super_admin', 'admin'] },
   { key: 'announcements', icon: <SoundOutlined />, label: '系統公告', path: '/announcements', roles: ['super_admin', 'admin'] },

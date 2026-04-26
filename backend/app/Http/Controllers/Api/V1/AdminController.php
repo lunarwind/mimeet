@@ -773,36 +773,93 @@ class AdminController extends Controller
     public function payments(Request $request): JsonResponse
     {
         $request->validate([
-            'page' => 'sometimes|integer|min:1',
-            'per_page' => 'sometimes|integer|min:1|max:1000',
-            'status' => 'sometimes|string|in:completed,pending,failed,refunded',
+            'page'        => 'sometimes|integer|min:1',
+            'per_page'    => 'sometimes|integer|min:1|max:1000',
+            'status'      => 'sometimes|string',
+            'type'        => 'sometimes|string|in:verification,subscription,points',
+            'environment' => 'sometimes|string|in:sandbox,production,legacy',
+            'search'      => 'sometimes|string|max:100',
+            'date_from'   => 'sometimes|date',
+            'date_to'     => 'sometimes|date',
         ]);
 
-        $query = Order::with(['user:id,nickname', 'plan:id,name']);
-        if ($request->filled('status')) $query->where('status', $request->input('status'));
-        $perPage = (int) $request->input('per_page', 20);
-        $payments = $query->orderByDesc('created_at')->paginate($perPage);
+        // 預設隱藏 legacy（避免 mock 7 筆干擾真實統計）
+        $query = \App\Models\Payment::with('user:id,nickname,email')
+            ->when(!$request->filled('environment'), fn ($q) => $q->where('environment', '!=', 'legacy'))
+            ->when($request->filled('status'),      fn ($q) => $q->where('status', $request->input('status')))
+            ->when($request->filled('type'),        fn ($q) => $q->where('type', $request->input('type')))
+            ->when($request->filled('environment'), fn ($q) => $q->where('environment', $request->input('environment')))
+            ->when($request->filled('date_from'),   fn ($q) => $q->whereDate('created_at', '>=', $request->input('date_from')))
+            ->when($request->filled('date_to'),     fn ($q) => $q->whereDate('created_at', '<=', $request->input('date_to')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $s = $request->input('search');
+                $q->where(fn ($inner) => $inner
+                    ->where('order_no', 'like', "%{$s}%")
+                    ->orWhere('gateway_trade_no', 'like', "%{$s}%")
+                    ->orWhereHas('user', fn ($u) => $u->where('email', 'like', "%{$s}%"))
+                );
+            })
+            ->orderByDesc('created_at');
+
+        $perPage  = (int) $request->input('per_page', 20);
+        $paginated = $query->paginate($perPage);
+
+        // 統計：只算非 legacy 的真實交易
+        $stats = \App\Models\Payment::where('environment', '!=', 'legacy');
+        $totalRevenue = (clone $stats)->where('status', 'paid')->sum('amount');
+        $totalPaid    = (clone $stats)->where('status', 'paid')->count();
+        $totalOrders  = (clone $stats)->count();
 
         return response()->json([
             'success' => true, 'code' => 'PAYMENTS_LIST', 'message' => 'OK',
-            'data' => $payments->map(fn (Order $o) => [
-                'id' => $o->id, 'order_number' => $o->order_number,
-                'user' => $o->user ? ['id' => $o->user->id, 'nickname' => $o->user->nickname] : null,
-                'plan_name' => $o->plan?->name, 'amount' => $o->amount,
-                'payment_method' => $o->payment_method,
-                'status' => $o->status, 'paid_at' => $o->paid_at?->toISOString(),
-                'ecpay_trade_no' => $o->ecpay_trade_no,
-                'ecpay_payment_date' => $o->ecpay_payment_date,
-                'ecpay_payment_type' => $o->ecpay_payment_type,
-                'invoice_no' => $o->invoice_no,
-                'invoice_date' => $o->invoice_date,
-                'created_at' => $o->created_at?->toISOString(),
+            'data' => $paginated->map(fn (\App\Models\Payment $p) => [
+                'id'                     => $p->id,
+                'order_number'           => $p->order_no,   // 向下相容欄位名
+                'order_no'               => $p->order_no,
+                'type'                   => $p->type,
+                'environment'            => $p->environment,
+                'user'                   => $p->user ? ['id' => $p->user->id, 'nickname' => $p->user->nickname] : null,
+                'amount'                 => $p->amount,
+                'status'                 => $p->status,
+                'gateway_trade_no'       => $p->gateway_trade_no,
+                'payment_method'         => $p->payment_method,
+                'paid_at'                => $p->paid_at?->toISOString(),
+                'refunded_at'            => $p->refunded_at?->toISOString(),
+                'requires_manual_review' => (bool) $p->requires_manual_review,
+                'invoice_no'             => $p->invoice_no,
+                'raw_callback'           => $p->raw_callback,
+                'created_at'             => $p->created_at?->toISOString(),
+                // 向下相容（舊 PaymentsPage 讀的欄位）
+                'ecpay_trade_no'         => $p->gateway_trade_no,
+                'ecpay_payment_type'     => $p->payment_method,
             ]),
             'meta' => [
-                'page' => $payments->currentPage(), 'per_page' => $payments->perPage(),
-                'total' => $payments->total(), 'last_page' => $payments->lastPage(),
+                'page'          => $paginated->currentPage(),
+                'per_page'      => $paginated->perPage(),
+                'total'         => $paginated->total(),
+                'last_page'     => $paginated->lastPage(),
+                'total_revenue' => (int) $totalRevenue,
+                'total_paid'    => $totalPaid,
+                'total_orders'  => $totalOrders,
             ],
         ]);
+    }
+
+    /**
+     * POST /admin/payments/{id}/refund
+     * 手動觸發退款（super_admin only，Step 9）
+     */
+    public function refundPayment(Request $request, int $id): JsonResponse
+    {
+        $payment = \App\Models\Payment::findOrFail($id);
+
+        if ($payment->status !== 'paid' || $payment->refunded_at !== null) {
+            return response()->json(['success' => false, 'message' => '此筆付款無法退款（狀態不符或已退款）'], 422);
+        }
+
+        \App\Jobs\RefundPaymentJob::dispatch($payment->id);
+
+        return response()->json(['success' => true, 'message' => '退款已排入 Queue，請稍後查看狀態']);
     }
 
     /**
