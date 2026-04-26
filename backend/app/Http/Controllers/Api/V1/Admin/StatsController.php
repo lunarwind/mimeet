@@ -20,9 +20,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class StatsController extends Controller
 {
+    /**
+     * 統一「會員」定義：deleted_at IS NULL。
+     *
+     * 設計原則：
+     * - 與 AdminController::members() 的 GET /admin/members 列表口徑完全一致
+     * - Admin 帳號存於獨立 admin_users 表（Multi-Guard），不在 users 表，無需排除
+     * - 後續若需調整口徑（如排除特定 status），只改此一處
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<User>
+     */
+    private function memberBaseQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return User::whereNull('deleted_at');
+    }
+
     public function summary(): JsonResponse
     {
-        $memberBase = User::where('id', '>', 1)->whereNull('deleted_at');
+        $memberBase = $this->memberBaseQuery();
 
         $members = [
             'total' => (clone $memberBase)->count(),
@@ -31,7 +46,8 @@ class StatsController extends Controller
                 ->whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
                 ->count(),
-            'paid' => User::where('membership_level', '>=', 3)->count(),
+            // 繼承 memberBase：排除軟刪除的付費會員
+            'paid' => (clone $memberBase)->where('membership_level', '>=', 3)->count(),
             'active' => (clone $memberBase)
                 ->where('last_active_at', '>=', now()->subDays(7))
                 ->count(),
@@ -107,8 +123,7 @@ class StatsController extends Controller
         $days = min((int) $request->input('days', 30), 90);
         $start = now()->subDays($days - 1)->startOfDay();
 
-        $newMembers = User::where('id', '>', 1)
-            ->whereNull('deleted_at')
+        $newMembers = $this->memberBaseQuery()
             ->where('created_at', '>=', $start)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
@@ -154,8 +169,7 @@ class StatsController extends Controller
         $days = min((int) $request->input('days', 30), 90);
         $start = now()->subDays($days - 1)->startOfDay();
 
-        $newMembers = User::where('id', '>', 1)
-            ->whereNull('deleted_at')
+        $newMembers = $this->memberBaseQuery()
             ->where('created_at', '>=', $start)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
