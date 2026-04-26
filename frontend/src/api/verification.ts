@@ -40,18 +40,10 @@ export interface CreditCardVerificationInitResponse {
   params: Record<string, string | number>
 }
 
-export interface CreditCardVerificationStatus {
-  verified: boolean
-  verified_at: string | null
-  latest: { status: string; created_at: string } | null
-}
-
 export async function initiateCreditCardVerification(): Promise<CreditCardVerificationInitResponse> {
   const res = await apiClient.post('/verification/credit-card/initiate')
   return res.data.data
 }
 
-export async function getCreditCardVerificationStatus(): Promise<CreditCardVerificationStatus> {
-  const res = await apiClient.get('/verification/credit-card/status')
-  return res.data.data
-}
+// getCreditCardVerificationStatus 已移除（dead code，無前端呼叫端）
+// 後端端點 GET /verification/credit-card/status 仍保留，未來需要時再接
