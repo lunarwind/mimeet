@@ -31,13 +31,11 @@ class ECPayService
 
     /**
      * 取得目前環境（sandbox / production）
-     * 優先讀新 key ecpay_environment，fallback 舊 key ecpay.mode
+     * 從 ecpay_environment 讀取（Step 6 後統一新 key，舊 ecpay.mode 已透過 migration 遷移）
      */
     public function getEnvironment(): string
     {
-        $env = SystemSetting::get('ecpay_environment')
-            ?? SystemSetting::get('ecpay.mode')
-            ?? 'sandbox';
+        $env = SystemSetting::get('ecpay_environment', 'sandbox');
         return in_array($env, ['sandbox', 'production']) ? $env : 'sandbox';
     }
 
@@ -51,11 +49,9 @@ class ECPayService
     public function getMerchantId(): string
     {
         $env = $this->getEnvironment();
-        $val = SystemSetting::get("ecpay_{$env}_merchant_id")
-            ?? SystemSetting::get('ecpay.payment.merchant_id')
-            ?? config('services.ecpay.merchant_id');
+        $val = SystemSetting::get("ecpay_{$env}_merchant_id", '');
 
-        if (!$val && $env === 'sandbox') {
+        if ($val === '' && $env === 'sandbox') {
             return config('ecpay.sandbox_fallback.merchant_id', '2000132');
         }
         return (string) $val;
@@ -64,11 +60,9 @@ class ECPayService
     public function getHashKey(): string
     {
         $env = $this->getEnvironment();
-        $val = SystemSetting::get("ecpay_{$env}_hash_key")
-            ?? SystemSetting::get('ecpay.payment.hash_key')
-            ?? config('services.ecpay.hash_key');
+        $val = SystemSetting::get("ecpay_{$env}_hash_key", '');
 
-        if ((!$val || $val === '') && $env === 'sandbox') {
+        if ($val === '' && $env === 'sandbox') {
             return config('ecpay.sandbox_fallback.hash_key', '5294y06JbISpM5x9');
         }
         return (string) $val;
@@ -77,11 +71,9 @@ class ECPayService
     public function getHashIV(): string
     {
         $env = $this->getEnvironment();
-        $val = SystemSetting::get("ecpay_{$env}_hash_iv")
-            ?? SystemSetting::get('ecpay.payment.hash_iv')
-            ?? config('services.ecpay.hash_iv');
+        $val = SystemSetting::get("ecpay_{$env}_hash_iv", '');
 
-        if ((!$val || $val === '') && $env === 'sandbox') {
+        if ($val === '' && $env === 'sandbox') {
             return config('ecpay.sandbox_fallback.hash_iv', 'v77hoKGq4kWxNNIS');
         }
         return (string) $val;
@@ -298,9 +290,7 @@ class ECPayService
 
     public function isInvoiceEnabled(): bool
     {
-        return (bool) SystemSetting::get('ecpay_invoice_enabled',
-            SystemSetting::get('ecpay.invoice.enabled', false)
-        );
+        return (bool) SystemSetting::get('ecpay_invoice_enabled', false);
     }
 
     private function invoiceMerchantId(): string

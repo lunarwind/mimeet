@@ -8,6 +8,7 @@ import DatabaseTab from './tabs/DatabaseTab'
 import MailTab from './tabs/MailTab'
 import SmsTab from './tabs/SmsTab'
 import CreditScoreTab from './tabs/CreditScoreTab'
+import PaymentSettingsTab from './tabs/PaymentSettingsTab'
 
 const { Title, Text } = Typography
 
@@ -647,7 +648,7 @@ export default function SystemSettingsPage() {
   const user = useAuthStore((s) => s.user)
   const isSuperAdmin = user?.role === 'super_admin'
 
-  const superAdminTabs = ['mode', 'database', 'mail', 'sms', 'ecpay', 'credit-score']
+  const superAdminTabs = ['mode', 'database', 'mail', 'sms', 'ecpay', 'credit-score', 'payment']
 
   const allTabs = [
     { key: 'admins', label: '管理員帳號', children: <AdminsTab />, forceRender: true },
@@ -658,6 +659,7 @@ export default function SystemSettingsPage() {
     { key: 'ecpay', label: '金流與發票', children: <ECPayTab />, forceRender: true },
     { key: 'params', label: '系統參數', children: <SystemParamsTab />, forceRender: true },
     { key: 'credit-score', label: '⭐ 誠信分數配分', children: <CreditScoreTab />, forceRender: false },
+    { key: 'payment', label: '💳 金流憑證', children: <PaymentSettingsTab />, forceRender: false },
   ].filter(tab => {
     if (superAdminTabs.includes(tab.key)) return isSuperAdmin
     return true
