@@ -310,6 +310,7 @@ class AuthController extends Controller
                 'membership_level' => $user->membership_level,
                 'email_verified' => (bool) $user->email_verified,
                 'phone_verified' => (bool) $user->phone_verified,
+                'credit_card_verified_at' => $user->credit_card_verified_at?->toISOString(),
                 'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
                 // F40
                 'points_balance' => (int) ($user->points_balance ?? 0),

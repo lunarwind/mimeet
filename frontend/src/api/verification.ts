@@ -31,3 +31,26 @@ export async function getVerificationStatus(): Promise<VerificationStatusRespons
   const res = await apiClient.get('/me/verification-photo/status')
   return res.data.data
 }
+
+// ── 信用卡驗證（男性進階驗證）──────────────────────────────
+
+export interface CreditCardVerificationInitResponse {
+  order_no: string
+  payment_url: string
+}
+
+export interface CreditCardVerificationStatus {
+  verified: boolean
+  verified_at: string | null
+  latest: { status: string; created_at: string } | null
+}
+
+export async function initiateCreditCardVerification(): Promise<CreditCardVerificationInitResponse> {
+  const res = await apiClient.post('/verification/credit-card/initiate')
+  return res.data.data
+}
+
+export async function getCreditCardVerificationStatus(): Promise<CreditCardVerificationStatus> {
+  const res = await apiClient.get('/verification/credit-card/status')
+  return res.data.data
+}

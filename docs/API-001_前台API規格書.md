@@ -373,11 +373,64 @@ Content-Type: multipart/form-data
 verification_photo: {file}
 ```
 
-#### 2.2.4 信用卡驗證（男性進階驗證）[未實作，Phase 2]
+#### 2.2.4 信用卡驗證（男性進階驗證）
 
-> **狀態：Phase 2 待實作**
-> 目前男性進階驗證機制尚未建立。實作時路徑應對齊女性驗證模式，
-> 使用 /me/credit-card-verification/* 而非 /auth/ 前綴。
+> **狀態：已實作**（2026-04-26）
+> 金流商：綠界科技 (ECPay)，NT$100 預授權，驗證後 3-5 個工作日自動退還。
+> 完成後 membership_level = 2，誠信分數 +15（`adv_verify_male`）。
+
+##### 發起驗證（取得付款 URL）
+
+```http
+POST /api/v1/verification/credit-card/initiate
+Authorization: Bearer {access_token}
+```
+
+> 限制：僅限 `gender=male` 且尚未驗證（`credit_card_verified_at = null`）的用戶。
+
+**成功回應 (200)：**
+
+```json
+{
+  "success": true,
+  "data": {
+    "order_no": "CCV_20260426200000_000123",
+    "payment_url": "https://payment-stage.ecpay.com.tw/..."
+  }
+}
+```
+
+前端收到 `payment_url` 後 `window.location.href = paymentUrl` 跳轉。
+付款完成後 ECPay 將瀏覽器導回 `GET /api/v1/verification/credit-card/return?credit_card=success`，
+後端再 redirect 到 `/#/app/settings/verify?credit_card=success`。
+
+##### 查詢驗證狀態
+
+```http
+GET /api/v1/verification/credit-card/status
+Authorization: Bearer {access_token}
+```
+
+**成功回應 (200)：**
+
+```json
+{
+  "success": true,
+  "data": {
+    "verified": true,
+    "verified_at": "2026-04-26T12:00:00Z",
+    "latest": { "status": "refunded", "created_at": "2026-04-26T..." }
+  }
+}
+```
+
+##### ECPay Server Callback（系統用）
+
+```http
+POST /api/v1/verification/credit-card/callback
+```
+
+ECPay 伺服器端呼叫，驗證 CheckMacValue 後更新訂單狀態、授予分數。
 
 ### 2.3 密碼重設
 
