@@ -22,6 +22,7 @@ class Payment extends Model
         'reference_id', 'gateway_trade_no', 'card_country', 'payment_method',
         'paid_at', 'refund_scheduled_at', 'refunded_at',
         'refund_trade_no', 'refund_failure_reason',
+        'refund_attempts', 'requires_manual_review',
         'invoice_no', 'invoice_issued_at',
         'failure_reason', 'raw_callback',
     ];
