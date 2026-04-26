@@ -10,7 +10,6 @@ export default function DatabaseTab() {
   const [connStatus, setConnStatus] = useState<string>('unknown')
   const [testResult, setTestResult] = useState<string>('')
   const [testLoading, setTestLoading] = useState(false)
-  const [saveLoading, setSaveLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
@@ -35,56 +34,34 @@ export default function DatabaseTab() {
     setTestLoading(false)
   }
 
-  async function handleSave() {
-    Modal.confirm({
-      title: '確認變更資料庫設定',
-      content: (
-        <div>
-          <Alert type="warning" message="變更後需重啟容器才完全生效（約 30 秒）" style={{ marginBottom: 12 }} showIcon />
-          <Text>請輸入管理員密碼確認：</Text>
-          <Input.Password id="db-confirm-pw" style={{ marginTop: 8 }} placeholder="登入密碼" />
-        </div>
-      ),
-      onOk: async () => {
-        const pw = (document.getElementById('db-confirm-pw') as HTMLInputElement)?.value
-        if (!pw) { message.error('請輸入密碼'); return }
-        setSaveLoading(true)
-        try {
-          const vals = form.getFieldsValue()
-          await apiClient.patch('/admin/settings/database', { ...vals, confirm_password: pw })
-          message.success('資料庫設定已更新，請重啟容器')
-        } catch (err: unknown) {
-          const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '儲存失敗'
-          message.error(msg)
-        }
-        setSaveLoading(false)
-      },
-    })
-  }
-
   return (
     <Card>
+      <Alert
+        type="info"
+        message="資料庫設定為唯讀"
+        description="此頁面僅供查看當前設定。如需修改資料庫連線，請透過 SSH 直接編輯 backend/.env，或建立對應的 staging-setup-*.sh 腳本（詳見 CLAUDE.md「敏感檔案同步流程」）。"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         <Text strong>連線狀態：</Text>
         <Tag color={connStatus === 'connected' ? 'green' : 'red'}>{connStatus === 'connected' ? '已連線' : '錯誤'}</Tag>
       </div>
 
       <Form form={form} layout="vertical" style={{ maxWidth: 500 }}>
-        <Form.Item label="主機" name="host"><Input /></Form.Item>
-        <Form.Item label="Port" name="port"><InputNumber style={{ width: '100%' }} /></Form.Item>
-        <Form.Item label="資料庫名" name="database"><Input /></Form.Item>
-        <Form.Item label="使用者名稱" name="username"><Input /></Form.Item>
-        <Form.Item label="密碼" name="password"><Input.Password placeholder="留空保留現有密碼" /></Form.Item>
+        <Form.Item label="主機" name="host"><Input disabled /></Form.Item>
+        <Form.Item label="Port" name="port"><InputNumber disabled style={{ width: '100%' }} /></Form.Item>
+        <Form.Item label="資料庫名" name="database"><Input disabled /></Form.Item>
+        <Form.Item label="使用者名稱" name="username"><Input disabled /></Form.Item>
+        <Form.Item label="密碼（測試連線用）" name="password"><Input.Password placeholder="輸入密碼以測試連線" /></Form.Item>
       </Form>
 
       {testResult && <Alert message={testResult} type={testResult.startsWith('✅') ? 'success' : 'error'} style={{ marginBottom: 16 }} />}
 
       <Space>
         <Button onClick={handleTest} loading={testLoading}>🔌 測試連線</Button>
-        <Button type="primary" onClick={handleSave} loading={saveLoading}>儲存設定</Button>
       </Space>
-
-      <Alert type="warning" message="⚠️ 變更資料庫設定後需重啟應用容器才完全生效" style={{ marginTop: 16 }} showIcon />
 
       <Divider />
 
