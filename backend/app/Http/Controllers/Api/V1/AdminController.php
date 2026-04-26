@@ -358,13 +358,20 @@ class AdminController extends Controller
      */
     public function memberAction(Request $request, int $id): JsonResponse
     {
+        $rewardMax  = (int) \App\Models\SystemSetting::get('credit_admin_reward_max',  20);
+        $penaltyMax = (int) \App\Models\SystemSetting::get('credit_admin_penalty_max', 20);
+
         $request->validate([
             'action'      => 'required|string|in:adjust_score,suspend,unsuspend,verify_phone,unverify_phone,verify_advanced,unverify_advanced,set_level,require_reverify,add_note',
-            'score_delta' => 'required_if:action,adjust_score|integer|min:-50|max:50|not_in:0',
+            'score_delta' => ['required_if:action,adjust_score', 'integer', "min:-{$penaltyMax}", "max:{$rewardMax}", 'not_in:0'],
             'reason'      => 'sometimes|string|max:500',
             'level'       => 'required_if:action,set_level|numeric|in:0,1,1.5,2,3',
             'verify_type' => 'required_if:action,require_reverify|in:phone,advanced',
             'note'        => 'required_if:action,add_note|string|max:500',
+        ], [
+            'score_delta.min'    => "扣分不可超過 {$penaltyMax} 分",
+            'score_delta.max'    => "獎勵不可超過 {$rewardMax} 分",
+            'score_delta.not_in' => '調整值不可為 0',
         ]);
 
         $user = User::findOrFail($id);
@@ -806,21 +813,27 @@ class AdminController extends Controller
         $defaults = [
             // 誠信分數基準（DEV-008 §3）
             'credit_score_initial'           => '60',
-            'credit_score_suspend_threshold' => '0',
-            // 加分 key（DEV-008 §4）
+            'credit_score_unblock_threshold' => '30',
+            // 加分 key（DEV-008 §3.2）
             'credit_add_email_verify'        => '5',
             'credit_add_phone_verify'        => '5',
             'credit_add_adv_verify_male'     => '15',
             'credit_add_adv_verify_female'   => '15',
             'credit_add_date_gps'            => '5',
             'credit_add_date_no_gps'         => '2',
-            // 扣分 key（DEV-008 §5，負值）
-            'credit_sub_date_noshow'         => '-10',
-            'credit_sub_report_user'         => '-10',
-            'credit_sub_report_anon'         => '-5',
-            'credit_sub_bad_content'         => '-5',
-            'credit_sub_harassment'          => '-20',
-            'credit_sub_additional_penalty'  => '-5',
+            'credit_add_report_refund'       => '10',
+            // 扣分 key（DEV-008 §3.3，正值！Service 內轉負）
+            'credit_sub_date_noshow'         => '10',
+            'credit_sub_report_user'         => '10',
+            'credit_sub_report_anon'         => '5',
+            'credit_sub_report_penalty'      => '5',
+            'credit_sub_bad_content'         => '5',
+            'credit_sub_harassment'          => '20',
+            // 管理員裁量範圍（對稱 ±20）
+            'credit_admin_reward_min'        => '1',
+            'credit_admin_reward_max'        => '20',
+            'credit_admin_penalty_min'       => '1',
+            'credit_admin_penalty_max'       => '20',
             // 其他設定
             'max_photos_per_user'            => '6',
             'image_moderation_enabled'       => '0',
@@ -847,21 +860,27 @@ class AdminController extends Controller
         $request->validate([
             // 誠信分數基準
             'credit_score_initial'           => 'sometimes|integer|min:0|max:100',
-            'credit_score_suspend_threshold' => 'sometimes|integer|min:0|max:100',
-            // 加分 key（DEV-008 §4）
+            'credit_score_unblock_threshold' => 'sometimes|integer|min:0|max:100',
+            // 加分 key（DEV-008 §3.2）
             'credit_add_email_verify'        => 'sometimes|integer|min:0|max:50',
             'credit_add_phone_verify'        => 'sometimes|integer|min:0|max:50',
             'credit_add_adv_verify_male'     => 'sometimes|integer|min:0|max:50',
             'credit_add_adv_verify_female'   => 'sometimes|integer|min:0|max:50',
             'credit_add_date_gps'            => 'sometimes|integer|min:0|max:50',
             'credit_add_date_no_gps'         => 'sometimes|integer|min:0|max:50',
-            // 扣分 key（DEV-008 §5，負值）
-            'credit_sub_date_noshow'         => 'sometimes|integer|min:-100|max:0',
-            'credit_sub_report_user'         => 'sometimes|integer|min:-100|max:0',
-            'credit_sub_report_anon'         => 'sometimes|integer|min:-100|max:0',
-            'credit_sub_bad_content'         => 'sometimes|integer|min:-100|max:0',
-            'credit_sub_harassment'          => 'sometimes|integer|min:-100|max:0',
-            'credit_sub_additional_penalty'  => 'sometimes|integer|min:-100|max:0',
+            'credit_add_report_refund'       => 'sometimes|integer|min:0|max:50',
+            // 扣分 key（DEV-008 §3.3，正值！UI 輸正數，Service 內轉負）
+            'credit_sub_date_noshow'         => 'sometimes|integer|min:0|max:100',
+            'credit_sub_report_user'         => 'sometimes|integer|min:0|max:100',
+            'credit_sub_report_anon'         => 'sometimes|integer|min:0|max:100',
+            'credit_sub_report_penalty'      => 'sometimes|integer|min:0|max:100',
+            'credit_sub_bad_content'         => 'sometimes|integer|min:0|max:100',
+            'credit_sub_harassment'          => 'sometimes|integer|min:0|max:100',
+            // 管理員裁量範圍
+            'credit_admin_reward_min'        => 'sometimes|integer|min:1|max:50',
+            'credit_admin_reward_max'        => 'sometimes|integer|min:1|max:50',
+            'credit_admin_penalty_min'       => 'sometimes|integer|min:1|max:50',
+            'credit_admin_penalty_max'       => 'sometimes|integer|min:1|max:50',
             // 其他設定
             'max_photos_per_user'            => 'sometimes|integer|min:1|max:20',
             'image_moderation_enabled'       => 'sometimes|boolean',
@@ -872,12 +891,146 @@ class AdminController extends Controller
         $admin = $request->user();
         foreach ($request->except(['_token']) as $key => $value) {
             SystemSetting::set($key, $value, $admin?->id);
+            // 雙層快取清除：SystemSetting 已清 "sys:{$key}"，
+            // 這裡額外清 CreditScoreService::getConfig 的 "setting:{$key}" 層（TTL 300s）
+            \Illuminate\Support\Facades\Cache::forget("setting:{$key}");
         }
 
         return response()->json([
             'success' => true,
             'code' => 'SETTINGS_UPDATED',
             'message' => '系統設定已更新。',
+        ]);
+    }
+
+    // ─── 誠信分數配分管理 API ────────────────────────────────────────
+
+    /** 規格預設值（雙保險 default，與 seeder + DEV-008 三方一致）*/
+    private const CREDIT_SCORE_SPEC_DEFAULTS = [
+        'credit_score_initial'           => 60,
+        'credit_score_unblock_threshold' => 30,
+        'credit_add_email_verify'        => 5,
+        'credit_add_phone_verify'        => 5,
+        'credit_add_adv_verify_male'     => 15,
+        'credit_add_adv_verify_female'   => 15,
+        'credit_add_date_gps'            => 5,
+        'credit_add_date_no_gps'         => 2,
+        'credit_add_report_refund'       => 10,
+        'credit_sub_date_noshow'         => 10,
+        'credit_sub_report_user'         => 10,
+        'credit_sub_report_anon'         => 5,
+        'credit_sub_report_penalty'      => 5,
+        'credit_sub_bad_content'         => 5,
+        'credit_sub_harassment'          => 20,
+        'credit_admin_reward_min'        => 1,
+        'credit_admin_reward_max'        => 20,
+        'credit_admin_penalty_min'       => 1,
+        'credit_admin_penalty_max'       => 20,
+    ];
+
+    /**
+     * GET /api/v1/admin/settings/credit-score
+     */
+    public function getCreditScoreSettings(): JsonResponse
+    {
+        $result = [];
+        foreach (self::CREDIT_SCORE_SPEC_DEFAULTS as $key => $specDefault) {
+            $dbRow = SystemSetting::where('key_name', $key)->first();
+            $result[] = [
+                'key'         => $key,
+                'value'       => $dbRow ? (int) $dbRow->value : $specDefault,
+                'spec_default'=> $specDefault,
+                'description' => $dbRow?->description ?? '',
+            ];
+        }
+
+        return response()->json(['success' => true, 'data' => $result]);
+    }
+
+    /**
+     * PUT /api/v1/admin/settings/credit-score
+     * Body: { "settings": [{"key": "credit_add_email_verify", "value": 6}, ...] }
+     */
+    public function updateCreditScoreSettings(Request $request): JsonResponse
+    {
+        $request->validate([
+            'settings'              => 'required|array',
+            'settings.*.key'        => 'required|string',
+            'settings.*.value'      => 'required|integer|min:0|max:100',
+        ]);
+
+        $admin = $request->user();
+        $allowed = array_keys(self::CREDIT_SCORE_SPEC_DEFAULTS);
+
+        foreach ($request->input('settings') as $item) {
+            $key   = $item['key'];
+            $value = (int) $item['value'];
+
+            if (!in_array($key, $allowed)) {
+                continue; // 跳過非白名單 key
+            }
+
+            $old = SystemSetting::where('key_name', $key)->value('value') ?? 'null';
+            SystemSetting::updateOrCreate(
+                ['key_name' => $key],
+                ['value' => (string) $value, 'updated_by' => $admin?->id]
+            );
+            // 雙層快取清除
+            \Illuminate\Support\Facades\Cache::forget("sys:{$key}");
+            \Illuminate\Support\Facades\Cache::forget("setting:{$key}");
+
+            // Audit log
+            \App\Models\AdminOperationLog::create([
+                'admin_id'        => $admin?->id,
+                'action'          => 'update_credit_setting',
+                'resource_type'   => 'system_setting',
+                'resource_id'     => 0,
+                'description'     => "誠信分數配分更新：{$key} {$old} → {$value}",
+                'ip_address'      => $request->ip(),
+                'user_agent'      => substr((string) $request->userAgent(), 0, 500),
+                'request_summary' => ['key' => $key, 'old' => $old, 'new' => $value],
+                'created_at'      => now(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => '誠信分數配分已更新，下一筆觸發即生效。',
+        ]);
+    }
+
+    /**
+     * POST /api/v1/admin/settings/credit-score/reset
+     * 還原全部 key 為規格預設值。
+     */
+    public function resetCreditScoreSettings(Request $request): JsonResponse
+    {
+        $admin = $request->user();
+
+        foreach (self::CREDIT_SCORE_SPEC_DEFAULTS as $key => $specDefault) {
+            SystemSetting::updateOrCreate(
+                ['key_name' => $key],
+                ['value' => (string) $specDefault, 'updated_by' => $admin?->id]
+            );
+            \Illuminate\Support\Facades\Cache::forget("sys:{$key}");
+            \Illuminate\Support\Facades\Cache::forget("setting:{$key}");
+        }
+
+        \App\Models\AdminOperationLog::create([
+            'admin_id'        => $admin?->id,
+            'action'          => 'reset_credit_settings',
+            'resource_type'   => 'system_setting',
+            'resource_id'     => 0,
+            'description'     => '誠信分數配分已全部還原為規格預設值',
+            'ip_address'      => $request->ip(),
+            'user_agent'      => substr((string) $request->userAgent(), 0, 500),
+            'request_summary' => [],
+            'created_at'      => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '所有誠信分數配分已還原為規格預設值。',
         ]);
     }
 }

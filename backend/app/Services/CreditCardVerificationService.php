@@ -19,6 +19,13 @@ class CreditCardVerificationService
      */
     public function initiate(User $user): ?array
     {
+        // Defense-in-depth: service層也守門，避免繞過 controller 直接呼叫
+        if ($user->gender !== 'male') {
+            throw new \DomainException('信用卡驗證為男性專屬功能');
+        }
+        if (((float) $user->membership_level) < 1) {
+            throw new \DomainException('請先完成手機驗證（Lv1）才可發起信用卡驗證');
+        }
         if ($user->credit_card_verified_at) {
             return null; // already verified
         }
