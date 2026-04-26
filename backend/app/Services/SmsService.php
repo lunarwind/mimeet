@@ -14,7 +14,7 @@ class SmsService
 {
     public function sendOtp(string $phone, string $code): bool
     {
-        $body = "【MiMeet】您的驗證碼為 {$code}，10 分鐘內有效，請勿洩漏。";
+        $body = "【MiMeet】您的驗證碼為 {$code}，5 分鐘內有效，請勿洩漏。";
 
         if (SystemSetting::get('app.mode', 'testing') === 'testing') {
             Log::info('[SMS STUB - testing mode]', [
