@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\AdminOperationLog;
 use App\Models\Payment;
 use App\Services\ECPayService;
 use Illuminate\Bus\Queueable;
@@ -121,24 +120,8 @@ class RefundPaymentJob implements ShouldQueue
 
         $payment->update(['requires_manual_review' => true]);
 
-        AdminOperationLog::create([
-            'admin_id'        => null,
-            'action'          => 'refund_manual_review_required',
-            'resource_type'   => 'payment',
-            'resource_id'     => $payment->id,
-            'description'     => "退款連續失敗 {$attempts} 次，需人工處理：{$payment->order_no}",
-            'ip_address'      => '127.0.0.1',
-            'user_agent'      => 'system/RefundPaymentJob',
-            'request_summary' => [
-                'payment_id'   => $payment->id,
-                'order_no'     => $payment->order_no,
-                'attempts'     => $attempts,
-                'last_reason'  => $payment->refund_failure_reason,
-            ],
-            'created_at' => now(),
-        ]);
-
-        Log::error('[RefundPaymentJob] MANUAL REVIEW REQUIRED', [
+        // admin_operation_logs.admin_id 為 NOT NULL，系統觸發的事件改用 Laravel Log
+        Log::error('[RefundPaymentJob] ⚠️ MANUAL REVIEW REQUIRED', [
             'payment_id' => $payment->id,
             'order_no'   => $payment->order_no,
             'attempts'   => $attempts,
