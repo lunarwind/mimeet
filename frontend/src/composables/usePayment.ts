@@ -121,10 +121,25 @@ export function usePayment() {
   async function fetchTrialInfo(): Promise<TrialInfo | null> {
     isLoading.value = true
     try {
-      const res = await client.get<{ data: TrialInfo }>('/subscription/trial')
-      trialInfo.value = res.data.data
+      const res = await client.get('/subscription/trial')
+      const raw = res.data?.data ?? {}
+      // Map backend snake_case → frontend camelCase（與 fetchPlans / fetchCurrentSubscription 風格一致）
+      trialInfo.value = {
+        available: raw.trial_available ?? false,
+        isEligible: raw.is_eligible ?? false,
+        notice: raw.notice ?? '',
+        plan: raw.plan ? {
+          id: raw.plan.id,
+          name: raw.plan.name,
+          durationDays: raw.plan.duration_days ?? 0,
+          price: raw.plan.price ?? 0,
+          currency: raw.plan.currency ?? 'TWD',
+          features: raw.plan.features ?? [],
+        } : null,
+      }
       return trialInfo.value
     } catch (e) {
+      error.value = '載入體驗方案資訊失敗'
       return null
     } finally {
       isLoading.value = false

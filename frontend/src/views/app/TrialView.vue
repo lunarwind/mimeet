@@ -49,9 +49,9 @@ const FEATURES = [
         <div class="trial-hero">
           <div class="trial-hero__price">
             <span class="trial-hero__currency">NT$</span>
-            <span class="trial-hero__amount">199</span>
+            <span class="trial-hero__amount">{{ trialInfo?.plan?.price ?? 199 }}</span>
           </div>
-          <div class="trial-hero__duration">體驗 30 天</div>
+          <div class="trial-hero__duration">體驗 {{ trialInfo?.plan?.durationDays ?? 30 }} 天</div>
           <div class="trial-hero__subtitle">全功能解鎖，感受 MiMeet 的完整體驗</div>
         </div>
 

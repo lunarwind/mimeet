@@ -2964,14 +2964,21 @@ Authorization: Bearer {access_token}
   "success": true,
   "data": {
     "trial_available": true,
-    "price": 199,
-    "duration_days": 30,
     "is_eligible": true,
+    "plan": {
+      "id": "plan_trial",
+      "name": "新手體驗方案",
+      "duration_days": 30,
+      "price": 199,
+      "currency": "TWD",
+      "features": ["無限聊天", "進階搜尋", "QR 約會驗證"]
+    },
     "notice": "每位會員限購一次，購買後不可退款，不自動續費"
   }
 }
 ```
-> `is_eligible: false` 時表示此帳號已使用過體驗訂閱
+> - `trial_available: false` 表示後台目前無啟用中的體驗方案（`plan` 為 `null`）
+> - `is_eligible: false` 表示此帳號已使用過體驗訂閱
 
 ```http
 # 購買體驗訂閱（串接綠界）

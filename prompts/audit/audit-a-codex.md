@@ -1,0 +1,372 @@
+# Audit-A Round 3 — 認證與身份驗證模組（Codex 雲端版）
+
+> 你是 ChatGPT 雲端 Codex。本任務先讀 `prompts/audit/_common.md`，
+> 再讀本檔特定章節，依序執行。
+
+---
+
+## 0. 任務摘要
+
+對 mimeet repo `develop` 分支的「認證與身份驗證」模組執行第三輪稽核，
+產出 `docs/audits/audit-A-{今天日期}-codex.md`。
+
+**重點：本輪是 Round 3，必須對 Round 1（claudecode 兩份）+ Round 2（codex 一份）的
+所有 issue 做回歸測試，依 `_common.md` §0「回歸判定方法」嚴格判定狀態。**
+
+---
+
+## 1. 確認執行環境（雲端限制檢查）
+
+依 `_common.md` §1.2，雲端 agent 只能動 `docs/audits/`：
+
+```bash
+# 開始前確認你能 read 但不會誤動以下目錄
+ls backend/ admin/ frontend/ docker/ docs/ prompts/
+
+# 報告唯一允許新增的位置
+echo "預期輸出：docs/audits/audit-A-{today}-codex.md"
+```
+
+如果你發現 audit 過程中需要修 code 才能驗證，**停下來在報告 §5 提建議**，
+不要動手修。
+
+---
+
+## 2. 環境檢查
+
+依 `_common.md` §2 執行：
+
+```bash
+pwd
+ls -la | head -20
+git status
+git rev-parse HEAD                # → 這是本輪「程式碼基準」commit hash，必填到報告 Header
+git log -1 --pretty=format:'%H %s'
+
+# 同步檢查（雲端 agent 看當前 fork 是否最新）
+git log --oneline origin/develop -5
+
+ls -la docs/audits/
+
+# 對齊輸出格式（必讀）
+cat docs/audits/audit-A-20260427-codex.md | head -120
+```
+
+把 git rev-parse HEAD 的完整 40 字元 hash 記下來，待會填到報告 Header
+「程式碼基準（Local）」欄位。
+
+---
+
+## 3. 規格範圍
+
+**主要規格（只看這幾個章節，不要 scope creep）：**
+
+- `docs/API-001_前台API規格書.md`
+  - §2 認證與身份驗證（§2.1 用戶認證 / §2.2 身份驗證 / §2.3 密碼重設）
+  - §16.3 §16.4 女性照片驗證
+- `docs/PRD-001_MiMeet_約會產品需求規格書.md` §4.2.1（用戶註冊與驗證）
+- `docs/DEV-004_後端架構與開發規範.md` §3.1（路由規範）§13.1（SMS）
+- `docs/DEV-008_誠信分數系統規格書.md` §3 §4.1（驗證類加分 +5/+5/+15/+15）
+- `docs/UF-001_用戶流程圖.md` UF-01（註冊流程）
+- `docs/DEV-001_技術架構規格書.md` §6.1（Multi-Guard）
+
+**參照規格（不主審但要交叉驗證）：**
+
+- `docs/API-002_後台管理API規格書.md` §14（信用卡驗證後台管理）
+
+讀規格章節時，先 cat 拿到實際內容，**不要憑印象**：
+
+```bash
+grep -nE "^## |^### " docs/API-001_前台API規格書.md | head -30
+sed -n '160,400p' docs/API-001_前台API規格書.md  # §2 範圍
+```
+
+---
+
+## 4. 程式碼範圍
+
+執行下列指令，把實際存在/不存在的檔案列出來（不存在的標 ❌）：
+
+```bash
+for f in \
+  backend/app/Http/Controllers/Api/V1/AuthController.php \
+  backend/app/Http/Controllers/Api/V1/VerificationController.php \
+  backend/app/Http/Controllers/Api/V1/PhoneVerificationController.php \
+  backend/app/Http/Controllers/Api/V1/CreditCardVerificationController.php \
+  backend/app/Http/Controllers/Api/V1/Admin/VerificationController.php \
+  backend/app/Services/SmsService.php \
+  backend/app/Services/CreditCardVerificationService.php \
+  backend/app/Services/CreditScoreService.php \
+  backend/app/Services/UserActivityLogService.php \
+  backend/app/Mail/EmailVerificationMail.php \
+  backend/app/Mail/ResetPasswordMail.php \
+  backend/app/Http/Middleware/CheckSuspended.php \
+  backend/app/Models/User.php \
+  backend/routes/api.php \
+  backend/config/auth.php \
+  backend/config/sanctum.php \
+  backend/app/Http/Kernel.php \
+  frontend/src/api/auth.ts \
+  frontend/src/api/verification.ts \
+  frontend/src/views/public/RegisterView.vue \
+  frontend/src/views/public/LoginView.vue \
+  frontend/src/views/public/ForgotPasswordView.vue \
+  frontend/src/views/public/ResetPasswordView.vue \
+  frontend/src/views/app/settings/VerifyView.vue \
+  frontend/src/router/index.ts \
+  frontend/src/router/guards.ts
+do
+  [ -f "$f" ] && echo "✅ $f" || echo "❌ $f"
+done
+```
+
+把這份輸出**原樣**放進報告 §1 Pass 完成記錄附註，不要省略不存在的檔案。
+
+---
+
+## 5. 前次稽核（必讀，回歸測試的基礎）
+
+依 `_common.md` §0「回歸判定方法」對所有前次 issue 做回歸：
+
+```bash
+# 列出所有前次 audit-A 報告（不分 agent）
+ls -la docs/audits/audit-A-*.md
+```
+
+預期看到：
+
+- `docs/audits/audit-A-20260422-claudecode.md` — Round 1 第一份
+- `docs/audits/audit-A-20260424-claudecode.md` — Round 1 第二份
+- `docs/audits/audit-A-20260427-codex.md` — Round 2（你前一輪自己跑的）
+
+**必須做的事**：
+
+1. 讀完所有三份報告的「Issues 索引」與「Issue 詳情」區段
+2. 提取每份報告的「程式碼基準」commit hash
+3. 對每個 issue 跑：
+```bash
+   git diff {前次 hash}..HEAD -- {issue 引用的檔案}
+```
+4. 依 `_common.md` §0 判定本輪狀態（已修 / 未修 / 部分修 / 重構）
+
+**特別注意**：claudecode 與 codex 對同 issue 可能結論不同（例：A-006 vs A2-006）。
+若有分歧，本輪採最新 commit 的實況為準，並在備註欄注明：
+> ⚠️ 與 #X-NNN（agent A）結論不同，本輪採 codex Round 3 評估
+
+回歸表填到報告 §0：
+
+```markdown
+| Issue | 來源 | 前次等級 | 前次基準 | 本輪狀態 | 備註 |
+|---|---|---|---|---|---|
+| #A-001 | claudecode 20260422 | 🔴 Critical | {short hash} | ✅ 已修 | verify-phone 路由已加 auth:sanctum |
+| #A-002 | claudecode 20260422 | 🟠 High | {short hash} | ❌ 未修 | register 仍缺 verification block |
+| ... |
+| #A2-001 | codex 20260427 | 🟠 High | d0e54a6 | ❌ 未修 | 同 #A-002 |
+| #A2-009 | codex 20260427 | 🔵 Low | d0e54a6 | ✅ 已修 | SMS 文案已改 5 分鐘（commit X） |
+| #A2-010 | codex 20260427 | 🔵 Low | d0e54a6 | ✅ 已修 | 死碼 export 已移除（commit Y） |
+| ... |
+```
+
+---
+
+## 6. 規格端點清單（P1 對照表）
+
+17 個規格端點，每個都要查（即使前輪查過）：
+
+| # | Method | 端點 | 規格章節 |
+|---|---|---|---|
+| 1 | POST | /auth/register | API-001 §2.1.1 |
+| 2 | POST | /auth/login | API-001 §2.1.2 |
+| 3 | POST | /auth/refresh | API-001 §2.1.3（規格已標未實作）|
+| 4 | POST | /auth/logout | API-001 §2.1.4 |
+| 5 | POST | /auth/verify-email | API-001 §2.2.1 |
+| 6 | POST | /auth/resend-verification | API-001 §2.2.1 |
+| 7 | POST | /auth/verify-phone/send | API-001 §2.2.2.1 |
+| 8 | POST | /auth/verify-phone/confirm | API-001 §2.2.2.2 |
+| 9 | POST | /me/verification-photo/request | API-001 §2.2.3 / §16.3 |
+| 10 | POST | /me/verification-photo/upload | API-001 §2.2.3 / §16.3 |
+| 11 | GET | /me/verification-photo/status | API-001 §16.4 |
+| 12 | POST | /verification/credit-card/initiate | API-001 §2.2.4 |
+| 13 | GET | /verification/credit-card/status | API-001 §2.2.4 |
+| 14 | POST | /verification/credit-card/callback | API-001 §2.2.4 |
+| 15 | POST | /auth/forgot-password | API-001 §2.3.1 |
+| 16 | POST | /auth/reset-password | API-001 §2.3.2 |
+| 17 | POST | /me/change-password | API-001 §2.3.3 |
+
+**P1 grep（必跑、必引用輸出）：**
+
+```bash
+grep -nE "auth/|/me/verification|/verification/credit-card|/me/change-password" \
+  backend/routes/api.php | grep -v "^\s*//"
+
+grep -n "throttle" backend/app/Http/Kernel.php backend/routes/api.php | grep -iE "otp|login"
+
+# 檢查 verify-phone 路由 middleware（Round 1 #A-001 是 Critical 點）
+grep -B2 -A4 "verify-phone" backend/routes/api.php
+```
+
+填附錄 A 表格，每一行標 ✅ / ⚠️ middleware 不符 / ❌ 不存在。
+
+---
+
+## 7. 業務規則對照（P4 附錄 B）
+
+13 條，每條跑指令、引用輸出、判斷實作值：
+
+| # | 規則 | 規格值 | grep 命令 |
+|---|---|---|---|
+| 1 | 初始誠信分數 | 60 | `grep -rn "credit_score_initial" backend/` |
+| 2 | Email 驗證 +5 | 5 | `grep -nA 5 "email_verify\|wasChanged.*email_verified" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 3 | 手機驗證 +5 | 5 | `grep -nA 5 "phone_verify\|wasChanged.*phone_verified" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 4 | 男性 CC 驗證 +15 | 15 | `grep -nA 5 "adv_verify_male" backend/app/Services/CreditCardVerificationService.php` |
+| 5 | 女性照片驗證 +15 | 15 | `grep -nA 5 "adv_verify_female" backend/app/Http/Controllers/Api/V1/Admin/VerificationController.php` |
+| 6 | Email OTP 長度 | 6 位 | `grep -n "random_int.*999999\|str_pad" backend/app/Http/Controllers/Api/V1/AuthController.php \| head -10` |
+| 7 | Email OTP TTL | 600 秒 | `grep -n "Cache::put.*email_verification" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 8 | 手機 OTP TTL | 300 秒 | `grep -n "otp:phone\|Cache::put.*otpKey.*300" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 9 | 手機 OTP 冷卻 | 60 秒 | `grep -n "cooldownKey\|cooldown.*60" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 10 | 手機 OTP 失敗 5 次鎖 | 5 | `grep -n "attempts >= 5" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 11 | 註冊年齡下限 | 18 | `grep -n "before:-18\|18 years" backend/app/Http/Controllers/Api/V1/AuthController.php` |
+| 12 | reset token TTL | 60 分鐘 | `grep -nE "Password::sendResetLink\|reset.*expire\|expire.*60" backend/config/auth.php backend/app/` |
+| 13 | SMS 文案時間 | 5 分鐘 | `grep -n "分鐘內有效" backend/app/Services/SmsService.php` |
+
+---
+
+## 8. 模組特有 P11 grep（死碼/重複/規格缺漏）
+
+```bash
+# P11.1 死碼掃描
+# Auth Controller public method 對 routes/api.php 的引用
+grep -nE "public function" backend/app/Http/Controllers/Api/V1/AuthController.php
+# 對每個 method 跑 grep -n "AuthController::class.*'method'\|->method" backend/routes/api.php
+
+# 前端 export 是否被 import
+grep -nE "^export (async )?function|^export const|^export interface" \
+  frontend/src/api/auth.ts frontend/src/api/verification.ts
+
+# 對每個 export 跑：grep -rn "from.*api/auth\|from.*api/verification" frontend/src/
+
+# P11.2 重複實作（語意搜尋）
+# 1. phone E.164 轉換
+grep -rn "toE164\|+886\|str_starts_with.*'09'" backend/app/
+
+# 2. OTP 6 碼隨機生成
+grep -rn "random_int(0, 999999)\|random_int(100000, 999999)" backend/app/
+
+# 3. Mail 發送邏輯
+grep -rn "Mail::to" backend/app/Http/Controllers/Api/V1/AuthController.php backend/app/Mail/
+
+# 4. CheckSuspended middleware
+ls backend/app/Http/Middleware/ | grep -i suspend
+grep -rn "CheckSuspended\|check.suspended" backend/
+
+# 5. PhoneVerification Controller vs AuthController::verifyPhone* 並存
+ls backend/app/Http/Controllers/Api/V1/ | grep -iE "phone|verif"
+
+# P11.3 規格 vs 程式碼雙向缺漏
+# 規格列了但 code 沒實作（從 P1 對照表抽出 ❌ 端點）
+# code 有但規格沒寫
+grep -nE "Route::(post|get|patch|delete)" backend/routes/api.php | \
+  grep -E "auth/|verification|me/change|me/verification" | head -20
+# 對每條檢查 API-001 §2 是否有對應描述
+```
+
+---
+
+## 9. 重點關注（Round 3 必查）
+
+### 9.1 規格 vs 實作分歧的 spec sync 進度
+Round 1 + Round 2 多次推薦「改規格」的 issue 是否已落地：
+
+- A-002 / A2-001：register 回應結構（規格更新）
+- A-003 / A2-002：status='active' 是否規格已調整
+- A2-003：credit-card initiate 回應（payment_url vs aio_url+params 規格更新）
+- A-004 / A2-005：register 是否仍缺 group 欄位（推薦改規格廢止）
+- A-006 / A2-006：OTP 錯誤碼格式
+
+→ 對每條 grep `docs/API-001_前台API規格書.md` 看規格內容是否已修
+
+### 9.2 同根問題回歸：CheckSuspended
+- A2-004（middleware 缺）+ A2-008（檔案不存在）是同根
+- 檢查：
+```bash
+  ls backend/app/Http/Middleware/CheckSuspended.php
+  grep -n "check.suspended" backend/app/Http/Kernel.php
+  grep -n "check.suspended" backend/routes/api.php
+```
+- 回歸時兩個 issue 共用一個結論
+
+### 9.3 上一輪 quick win 是否真的修完
+- A2-009（SMS 文案）：應該已改為 5 分鐘
+- A2-010（死碼 export）：應該已移除
+- 對應修正應已 commit，本輪應該標 ✅ 已修
+
+---
+
+## 10. 報告輸出
+
+依 `_common.md` §6 完整格式產出，存到：
+
+```
+docs/audits/audit-A-{今天日期}-codex.md
+```
+
+**Header 必填欄位**：
+
+```markdown
+**執行日期：** {today}
+**稽核者：** ChatGPT Codex（雲端）
+**Agent ID：** codex
+**規格來源：**
+  - docs/API-001 §2 + §16.3/§16.4
+  - docs/PRD-001 §4.2.1
+  - docs/DEV-008 §3 §4.1
+  - docs/DEV-004 §3.1 §13.1
+  - docs/UF-001 UF-01
+**程式碼基準（Local）：** {完整 40 字元 hash}
+**前次稽核（不分 agent，全部都要讀）：**
+  - docs/audits/audit-A-20260422-claudecode.md
+  - docs/audits/audit-A-20260424-claudecode.md
+  - docs/audits/audit-A-20260427-codex.md
+**總結：** {N} issues（🔴 a / 🟠 b / 🟡 c / 🔵 d）+ {M} Symmetric
+```
+
+---
+
+## 11. Self-Check（產出前必跑）
+
+依 `_common.md` §7 全部檢查項：
+
+- [ ] Header 包含完整 commit hash + Agent ID + 三份前次稽核連結
+- [ ] §0 對所有前次 issue（A-001 ~ A-008、A2-001 ~ A2-010）全部用回歸判定方法標明本輪狀態
+- [ ] 17 個規格端點全部出現在附錄 A
+- [ ] 13 條業務規則全部出現在附錄 B
+- [ ] P11.1 / P11.2 / P11.3 三項都有具體發現
+- [ ] 每個 issue 引用的程式碼是實際 cat 出來的
+- [ ] 每個 grep 命令的輸出在報告中至少出現一次
+- [ ] 每個 issue 都有 file:line + Option A/B + 推薦
+- [ ] Symmetric ≥ 10 條
+- [ ] 報告檔名 `audit-A-{YYYYMMDD}-codex.md`
+- [ ] git diff 只新增 docs/audits/ 下的單一檔案
+
+```bash
+git status
+git diff --stat
+```
+
+---
+
+## 12. 完成後 PR
+
+依 `_common.md` §9 情境 B：
+
+- PR 標題：`docs(audit): Audit-A Round 3 認證與身份驗證模組稽核完成`
+- PR 描述開頭：
+  > ⚠️ 此為純文件 PR，不修改任何程式碼，請審查後手動合併
+- 目標分支：`develop`（不是 main）
+- 不勾選 Auto-merge
+- 內文包含：
+  - 重點發現摘要
+  - 總結 issue 計數（🔴 a / 🟠 b / 🟡 c / 🔵 d）
+  - 程式碼基準 commit hash（short）
+
+完成 PR 後**停下，不要自動跑下一個 audit**，等人類確認品質。
