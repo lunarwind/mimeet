@@ -200,15 +200,17 @@ class SubscriptionController extends Controller
             'code' => 200,
             'message' => 'OK',
             'data' => [
-                'plan' => $plan ? [
-                    'id' => $plan->slug,
-                    'name' => $plan->name,
+                'trial_available' => $plan !== null,
+                'is_eligible'     => $eligible,
+                'plan'            => $plan ? [
+                    'id'            => $plan->slug,
+                    'name'          => $plan->name,
                     'duration_days' => $plan->duration_days,
-                    'price' => $plan->price,
-                    'currency' => $plan->currency,
-                    'features' => $plan->features,
+                    'price'         => $plan->price,
+                    'currency'      => $plan->currency,
+                    'features'      => $plan->features,
                 ] : null,
-                'eligible' => $eligible,
+                'notice' => '每位會員限購一次，購買後不可退款，不自動續費',
             ],
         ]);
     }
