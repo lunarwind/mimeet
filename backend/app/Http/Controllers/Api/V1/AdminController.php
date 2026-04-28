@@ -838,9 +838,10 @@ class AdminController extends Controller
                 'paid_at'              => $p->paid_at?->toISOString(),
                 'refunded_at'          => $p->refunded_at?->toISOString(),
                 'refund_trade_no'      => $p->refund_trade_no,
-                'invoice_applicable'   => $p->type !== 'verification',
+                'invoice_applicable'   => true,   // 所有付款類型都嘗試開發票（含驗證）
                 'invoice_no'           => $p->invoice_no,
                 'invoice_issued_at'    => $p->invoice_issued_at?->toISOString(),
+                'invoice_status'       => $p->invoice_status ?? 'pending',
                 'failure_reason'       => $p->failure_reason,
                 'created_at'           => $p->created_at?->toISOString(),
             ]),

@@ -51,8 +51,15 @@ class PointsHandler
             $pointOrder->id,
         );
 
-        // 開立電子發票（單寫 payments SSOT）
-        $this->paymentService->issueInvoiceForPointOrder($pointOrder->fresh());
+        // 開立電子發票（異步 Job：直接用 payment.id）
+        try {
+            \App\Jobs\IssueInvoiceJob::dispatch($payment->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[PointsHandler] Failed to dispatch IssueInvoiceJob', [
+                'payment_id' => $payment->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
 
         Log::info('[PointsHandler] Points credited', [
             'user_id'    => $user->id,
