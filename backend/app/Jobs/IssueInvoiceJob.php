@@ -47,6 +47,14 @@ class IssueInvoiceJob implements ShouldQueue
             return;
         }
 
+        // 先檢查 invoice 是否啟用（功能停用 → 不 retry，直接 return）
+        if (!$ecpay->isInvoiceEnabled()) {
+            Log::info('[IssueInvoiceJob] Skipped (invoice disabled)', [
+                'payment_id' => $this->paymentId,
+            ]);
+            return;
+        }
+
         $user = $payment->user;
 
         $result = $ecpay->issueInvoice([
@@ -65,11 +73,11 @@ class IssueInvoiceJob implements ShouldQueue
         ]);
 
         if ($result === null) {
-            // isInvoiceEnabled() 回傳 false → 功能停用，不算失敗，不 retry
-            Log::info('[IssueInvoiceJob] Skipped (invoice disabled)', [
-                'payment_id' => $this->paymentId,
-            ]);
-            return;
+            // issueInvoice 回傳 null = 綠界 API 呼叫失敗（RtnCode 非 1）
+            // throw 讓 Job 進入 retry 機制（backoff: 10s → 60s → 300s）
+            throw new \RuntimeException(
+                "ECPay invoice API failed (payment_id={$this->paymentId})，將自動 retry"
+            );
         }
 
         $payment->update([
