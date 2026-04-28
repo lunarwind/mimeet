@@ -1,6 +1,7 @@
 <template>
   <div class="app-shell">
     <AnnouncementBanner />
+    <UnverifiedPhoneBanner />
     <router-view />
     <BottomNav v-if="showNav" />
   </div>
@@ -11,6 +12,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import BottomNav from './BottomNav.vue'
 import AnnouncementBanner from '@/components/common/AnnouncementBanner.vue'
+import UnverifiedPhoneBanner from '@/components/UnverifiedPhoneBanner.vue'
 
 const route = useRoute()
 

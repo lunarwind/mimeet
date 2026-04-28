@@ -293,6 +293,13 @@ onBeforeUnmount(() => {
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
 })
 
+function skipSmsVerification() {
+  // 清 timer（onBeforeUnmount 也會清，這裡是雙保險）
+  if (smsTimer) { clearInterval(smsTimer); smsTimer = null }
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+  router.push('/app/explore')
+}
+
 function goLogin() { router.push('/login') }
 function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
 </script>
@@ -622,6 +629,8 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
             <span v-if="smsCountdown > 0" class="resend-countdown">{{ smsCountdown }} 秒後可重新發送</span>
             <button v-else class="resend-btn" @click="sendSmsCode">重新發送簡訊驗證碼</button>
           </div>
+
+          <button class="link-btn" @click="skipSmsVerification">稍後再驗證</button>
 
         </div>
 

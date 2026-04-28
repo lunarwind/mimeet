@@ -413,6 +413,12 @@ const settingsLinks = [
       </button>
     </template>
 
+    <!-- 手機未驗證警示卡 -->
+    <div v-if="authStore.user && !authStore.user.phone_verified" class="phone-warning-card">
+      <span>📱 您尚未完成手機驗證，目前為 Lv0，部分功能受限</span>
+      <RouterLink to="/app/settings/verify" class="phone-warning-link">立即驗證 →</RouterLink>
+    </div>
+
     <div class="account-page">
       <!-- F40：我的會員狀態卡片 -->
       <section class="member-status">
@@ -1054,4 +1060,7 @@ const settingsLinks = [
 .link-row:active { opacity: 0.7; }
 .logout-btn { width: 100%; height: 48px; border-radius: 10px; border: 1.5px solid #EF4444; background: transparent; color: #EF4444; font-size: 15px; font-weight: 600; cursor: pointer; }
 .logout-btn:active { background: #FEF2F2; }
+/* ── 手機未驗證警示卡 ── */
+.phone-warning-card { background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 10px; padding: 12px 16px; margin: 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: #92400E; }
+.phone-warning-link { color: #92400E; font-weight: 600; text-decoration: underline; flex-shrink: 0; }
 </style>
