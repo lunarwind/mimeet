@@ -53,15 +53,9 @@ export interface CreateOrderResponse {
 }
 
 export interface TrialInfo {
-  available: boolean    // trial_available：後台是否有啟用中的體驗方案
-  isEligible: boolean   // is_eligible：當前用戶是否還能購買
-  notice: string        // 購買注意事項文案
-  plan: {
-    id: string
-    name: string
-    durationDays: number
-    price: number
-    currency: string
-    features: string[]
-  } | null
+  trial_available: boolean  // 後台是否有啟用中的體驗方案
+  is_eligible: boolean      // 當前用戶是否還能購買
+  price: number             // 體驗方案價格（NT$）
+  duration_days: number     // 體驗天數
+  notice?: string           // 購買注意事項文案
 }

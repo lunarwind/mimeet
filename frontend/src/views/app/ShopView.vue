@@ -17,12 +17,14 @@ const uiStore = useUiStore()
 const {
   plans,
   currentSubscription,
+  trialInfo,
   isPaid,
   isExpiringSoon,
   daysRemaining,
   isLoading,
   fetchPlans,
   fetchCurrentSubscription,
+  fetchTrialInfo,
   toggleAutoRenew,
 } = usePayment()
 
@@ -91,7 +93,7 @@ const PAYMENT_METHODS = [
 ]
 
 onMounted(async () => {
-  await Promise.all([fetchPlans(), fetchCurrentSubscription(), fetchPointPackages(), fetchPointBalance()])
+  await Promise.all([fetchPlans(), fetchCurrentSubscription(), fetchPointPackages(), fetchPointBalance(), fetchTrialInfo()])
 
   // Detect payment return (hash mode: params are after #/app/shop?)
   const hashParams = new URLSearchParams(window.location.hash.split('?')[1] ?? '')
@@ -261,10 +263,14 @@ const PAID_FEATURES = [
       </section>
 
       <!-- 新手體驗入口 -->
-      <section v-if="!isPaid" class="trial-entry" @click="router.push('/app/shop/trial')">
+      <section
+        v-if="!isPaid && trialInfo?.trial_available && trialInfo?.is_eligible"
+        class="trial-entry"
+        @click="router.push('/app/shop/trial')"
+      >
         <div class="trial-entry__left">
           <span class="trial-entry__tag">限時體驗</span>
-          <span class="trial-entry__title">NT$199 體驗 30 天</span>
+          <span class="trial-entry__title">NT${{ trialInfo.price }} 體驗 {{ trialInfo.duration_days }} 天</span>
           <span class="trial-entry__desc">全功能解鎖，每人限購一次</span>
         </div>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F0294E" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>

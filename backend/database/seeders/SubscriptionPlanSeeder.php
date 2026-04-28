@@ -62,9 +62,9 @@ class SubscriptionPlanSeeder extends Seeder
             [
                 'slug'             => 'plan_trial',
                 'name'             => '體驗方案',
-                'price'            => 49,
-                'original_price'   => 49,
-                'duration_days'    => 3,
+                'price'            => 199,
+                'original_price'   => 199,
+                'duration_days'    => 30,
                 'membership_level' => 3,
                 'is_trial'         => true,
                 'is_active'        => true,

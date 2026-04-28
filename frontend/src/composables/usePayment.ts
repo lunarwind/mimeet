@@ -123,19 +123,13 @@ export function usePayment() {
     try {
       const res = await client.get('/subscription/trial')
       const raw = res.data?.data ?? {}
-      // Map backend snake_case → frontend camelCase（與 fetchPlans / fetchCurrentSubscription 風格一致）
+      // 優先讀頂層扁平欄位（新格式），fallback 到巢狀 plan（舊格式）
       trialInfo.value = {
-        available: raw.trial_available ?? false,
-        isEligible: raw.is_eligible ?? false,
-        notice: raw.notice ?? '',
-        plan: raw.plan ? {
-          id: raw.plan.id,
-          name: raw.plan.name,
-          durationDays: raw.plan.duration_days ?? 0,
-          price: raw.plan.price ?? 0,
-          currency: raw.plan.currency ?? 'TWD',
-          features: raw.plan.features ?? [],
-        } : null,
+        trial_available: raw.trial_available ?? (raw.plan != null),
+        is_eligible: raw.is_eligible ?? raw.eligible ?? false,
+        price: raw.price ?? raw.plan?.price ?? 0,
+        duration_days: raw.duration_days ?? raw.plan?.duration_days ?? 0,
+        notice: raw.notice,
       }
       return trialInfo.value
     } catch (e) {

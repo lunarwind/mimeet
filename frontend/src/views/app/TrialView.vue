@@ -37,7 +37,7 @@ const FEATURES = [
   <AppLayout title="新手體驗方案" :show-back="true">
     <div class="trial-page">
       <!-- 已使用過 -->
-      <div v-if="trialInfo && !trialInfo.isEligible" class="used-notice">
+      <div v-if="trialInfo && !trialInfo.is_eligible" class="used-notice">
         <div class="used-notice__icon">ℹ️</div>
         <div class="used-notice__title">您已使用過體驗方案</div>
         <p class="used-notice__desc">每位會員限購一次體驗方案，您可以選擇正式訂閱方案繼續享受全功能。</p>
@@ -49,9 +49,9 @@ const FEATURES = [
         <div class="trial-hero">
           <div class="trial-hero__price">
             <span class="trial-hero__currency">NT$</span>
-            <span class="trial-hero__amount">{{ trialInfo?.plan?.price ?? 199 }}</span>
+            <span class="trial-hero__amount">{{ trialInfo?.price ?? '—' }}</span>
           </div>
-          <div class="trial-hero__duration">體驗 {{ trialInfo?.plan?.durationDays ?? 30 }} 天</div>
+          <div class="trial-hero__duration">體驗 {{ trialInfo?.duration_days ?? '—' }} 天</div>
           <div class="trial-hero__subtitle">全功能解鎖，感受 MiMeet 的完整體驗</div>
         </div>
 
@@ -80,7 +80,7 @@ const FEATURES = [
           :disabled="isLoading"
           @click="handlePurchase"
         >
-          {{ isLoading ? '處理中...' : '立即購買 NT$199' }}
+          {{ isLoading ? '處理中...' : `立即購買 NT$${trialInfo?.price ?? ''}` }}
         </button>
       </template>
 

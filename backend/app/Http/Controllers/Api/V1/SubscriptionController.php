@@ -205,7 +205,10 @@ class SubscriptionController extends Controller
             'data' => [
                 'trial_available' => $plan !== null,
                 'is_eligible'     => $eligible,
-                'plan'            => $plan ? [
+                'eligible'        => $eligible,           // backward-compat
+                'price'           => $plan?->price ?? 0,  // 頂層扁平（前端優先讀這個）
+                'duration_days'   => $plan?->duration_days ?? 0,
+                'plan'            => $plan ? [            // backward-compat
                     'id'            => $plan->slug,
                     'name'          => $plan->name,
                     'duration_days' => $plan->duration_days,
