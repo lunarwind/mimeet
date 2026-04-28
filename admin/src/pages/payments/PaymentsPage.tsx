@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Table, Select, Tag, Card, Row, Col, Statistic, Typography, Space, Modal, Descriptions, Button, Alert } from 'antd'
+import { Table, Select, Tag, Card, Row, Col, Statistic, Typography, Space, Modal, Descriptions, Button, Alert, Popconfirm } from 'antd'
 import { EyeOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -50,6 +50,7 @@ interface Payment {
   invoice_applicable: boolean
   invoice_no: string | null
   invoice_issued_at?: string | null
+  invoice_status?: string
   failure_reason?: string | null
   created_at: string
 }
@@ -73,6 +74,7 @@ export default function PaymentsPage() {
   const [detailRecord, setDetailRecord] = useState<Payment | null>(null)
   const [exporting, setExporting] = useState(false)
   const [refunding, setRefunding] = useState(false)
+  const [issuingInvoice, setIssuingInvoice] = useState<number | null>(null)
 
   useEffect(() => { fetchPayments() }, [page, statusFilter, typeFilter, envFilter])
 
@@ -88,6 +90,19 @@ export default function PaymentsPage() {
       setMeta(res.data.meta ?? null)
     } catch { setPayments([]) }
     setLoading(false)
+  }
+
+  async function handleIssueInvoice(id: number) {
+    setIssuingInvoice(id)
+    try {
+      await apiClient.post(`/admin/payments/${id}/issue-invoice`)
+      alert('已排入佇列，約 1 分鐘後完成，請重整查看。')
+      setTimeout(() => { fetchPayments(); setIssuingInvoice(null) }, 60_000)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      alert(e?.response?.data?.error?.message ?? '補開失敗')
+      setIssuingInvoice(null)
+    }
   }
 
   async function handleManualRefund(record: Payment) {
@@ -129,12 +144,28 @@ export default function PaymentsPage() {
     { title: '綠界序號', dataIndex: 'gateway_trade_no', key: 'gateway_trade_no', width: 140, ellipsis: true,
       render: (v: string | null) => v ? <Text copyable style={{ fontSize: 11 }}>{v}</Text> : '-',
     },
-    { title: '發票', key: 'invoice', width: 110,
+    { title: '發票', key: 'invoice', width: 160,
       render: (_: unknown, r: Payment) => {
-        if (!r.invoice_applicable) return <Tag color="default" style={{ fontSize: 10 }}>不適用</Tag>
         if (r.invoice_no) return <Tag color="blue" style={{ fontSize: 11 }}>{r.invoice_no}</Tag>
-        if (r.status === 'paid') return <Tag color="orange" style={{ fontSize: 10 }}>未開立</Tag>
-        return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
+        if (r.status !== 'paid') return <Text type="secondary" style={{ fontSize: 11 }}>-</Text>
+        const statusTag = r.invoice_status === 'failed'
+          ? <Tag color="red" style={{ fontSize: 10 }}>❌ 失敗</Tag>
+          : <Tag color="orange" style={{ fontSize: 10 }}>⏳ 待開立</Tag>
+        if (isSuperAdmin) {
+          return (
+            <Space size={4}>
+              {statusTag}
+              <Popconfirm
+                title="確認補開發票？"
+                description="此操作將呼叫綠界發票 API，無法撤銷"
+                onConfirm={() => handleIssueInvoice(r.id)}
+              >
+                <Button size="small" loading={issuingInvoice === r.id} style={{ fontSize: 11 }}>補開</Button>
+              </Popconfirm>
+            </Space>
+          )
+        }
+        return statusTag
       },
     },
     { title: '付款時間', dataIndex: 'paid_at', key: 'paid_at', width: 120,

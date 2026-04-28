@@ -45,8 +45,15 @@ class SubscriptionHandler
         // 直接呼叫既有邏輯（包含 DB transaction + 通知）
         $this->paymentService->activateSubscription($order);
 
-        // 開立電子發票（單寫 payments SSOT）
-        $this->paymentService->issueInvoiceForOrder($order->fresh());
+        // 開立電子發票（異步 Job：直接用 payment.id，不依賴 order.payment_id）
+        try {
+            \App\Jobs\IssueInvoiceJob::dispatch($payment->id);
+        } catch (\Throwable $e) {
+            Log::error('[SubscriptionHandler] Failed to dispatch IssueInvoiceJob', [
+                'payment_id' => $payment->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
 
         Log::info('[SubscriptionHandler] Subscription activated', [
             'order_no'   => $order->order_number,

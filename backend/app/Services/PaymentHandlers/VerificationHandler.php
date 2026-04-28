@@ -55,6 +55,16 @@ class VerificationHandler
                 ->update(['status' => 'paid', 'paid_at' => $payment->paid_at]);
         }
 
+        // 開立電子發票（NT$100 驗證也開發票，退款時 Phase 2 補折讓單）
+        try {
+            \App\Jobs\IssueInvoiceJob::dispatch($payment->id);
+        } catch (\Throwable $e) {
+            Log::error('[VerificationHandler] Failed to dispatch IssueInvoiceJob', [
+                'payment_id' => $payment->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+
         Log::info('[VerificationHandler] User verified', [
             'user_id'    => $user->id,
             'order_no'   => $payment->order_no,

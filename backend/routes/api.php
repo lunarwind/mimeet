@@ -289,6 +289,7 @@ Route::prefix('api/v1')->group(function () {
             Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])->middleware('admin.permission:reports.process');
             Route::get('/payments', [AdminController::class, 'payments'])->middleware('admin.permission:payments.view');
             Route::post('/payments/{id}/refund', [AdminController::class, 'refundPayment'])->middleware('check.super_admin');
+            Route::post('/payments/{id}/issue-invoice', [\App\Http\Controllers\Api\V1\Admin\PaymentInvoiceController::class, 'issueInvoice'])->middleware('check.super_admin');
             Route::get('/settings', [AdminController::class, 'getSettings']);
             Route::patch('/settings', [AdminController::class, 'updateSettings']);
 
