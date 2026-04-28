@@ -397,6 +397,12 @@ Route::prefix('api/v1')->group(function () {
                 // 新格式（Step 6，加密儲存）
                 Route::get('payment', [\App\Http\Controllers\Api\V1\Admin\PaymentSettingsController::class, 'index']);
                 Route::put('payment', [\App\Http\Controllers\Api\V1\Admin\PaymentSettingsController::class, 'update']);
+                // 電子發票字軌管理（super_admin only，service 內已守門）
+                Route::prefix('ecpay/invoice-words')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Api\V1\Admin\EcpayInvoiceWordController::class, 'index']);
+                    Route::post('/', [\App\Http\Controllers\Api\V1\Admin\EcpayInvoiceWordController::class, 'store']);
+                    Route::patch('/{trackId}/status', [\App\Http\Controllers\Api\V1\Admin\EcpayInvoiceWordController::class, 'updateStatus']);
+                });
             });
         });
     });

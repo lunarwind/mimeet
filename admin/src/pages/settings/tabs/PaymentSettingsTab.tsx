@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Card, Input, Button, Alert, Divider, Space, Typography, Tag, Form,
-  message, Switch, Modal, Tabs, Badge,
+  message, Switch, Modal, Tabs, Badge, Table, Select, InputNumber, Popconfirm,
 } from 'antd'
-import { SaveOutlined, ExperimentOutlined, WarningOutlined, LockOutlined } from '@ant-design/icons'
+import { SaveOutlined, ExperimentOutlined, WarningOutlined, LockOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons'
 import apiClient from '../../../api/client'
 
 const { Text, Title } = Typography
@@ -369,6 +369,9 @@ export default function PaymentSettingsTab() {
         儲存後下一筆交易即套用（環境切換立即生效）
       </Text>
 
+      {/* ── 電子發票字軌管理 ────────────────────────────────────────── */}
+      {invoiceEnabled && <InvoiceWordManager isSandbox={isSandbox} />}
+
       {/* ── 切換至 Production 密碼確認 Modal ────────────────────────── */}
       <Modal
         title={<Space><LockOutlined style={{ color: '#dc2626' }} /><span>切換至正式環境 — 需要密碼確認</span></Space>}
@@ -401,5 +404,187 @@ export default function PaymentSettingsTab() {
         )}
       </Modal>
     </div>
+  )
+}
+
+// ── 電子發票字軌管理 ─────────────────────────────────────────────────────
+function InvoiceWordManager({ isSandbox }: { isSandbox: boolean }) {
+  const rocYear     = new Date().getFullYear() - 1911
+  const currentTerm = Math.ceil((new Date().getMonth() + 1) / 2)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [words, setWords]       = useState<any[]>([])
+  const [listLoading, setListLoading] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [form] = Form.useForm()
+
+  async function loadWords() {
+    setListLoading(true)
+    try {
+      const res = await apiClient.get(
+        `/admin/settings/ecpay/invoice-words?year=${rocYear}&term=${currentTerm}`,
+      )
+      const data = res.data.data
+      // 綠界回應可能把清單放在 WordsList / InvoiceWordList 等欄位
+      const list = data?.WordsList ?? data?.InvoiceWordList ?? (Array.isArray(data) ? data : [])
+      setWords(list)
+    } catch {
+      // 查詢失敗不中斷主頁面
+    }
+    setListLoading(false)
+  }
+
+  useEffect(() => { loadWords() }, [])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function handleSubmit(values: any) {
+    setSubmitting(true)
+    try {
+      await apiClient.post('/admin/settings/ecpay/invoice-words', values)
+      message.success('字軌新增並啟用成功')
+      setModalOpen(false)
+      form.resetFields()
+      await loadWords()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } }
+      message.error(e?.response?.data?.error?.message ?? '新增失敗')
+    }
+    setSubmitting(false)
+  }
+
+  async function toggleStatus(trackId: string, enabled: boolean) {
+    try {
+      await apiClient.patch(`/admin/settings/ecpay/invoice-words/${trackId}/status`, { enabled })
+      message.success(enabled ? '已啟用' : '已停用')
+      await loadWords()
+    } catch {
+      message.error('狀態更新失敗')
+    }
+  }
+
+  return (
+    <Card
+      size="small"
+      title={<Space><FileTextOutlined />電子發票字軌管理</Space>}
+      style={{ marginTop: 20 }}
+      extra={<Button size="small" icon={<ReloadOutlined />} onClick={loadWords} loading={listLoading}>重新整理</Button>}
+    >
+      {isSandbox ? (
+        <Alert
+          type="info" showIcon style={{ marginBottom: 12 }}
+          message="Sandbox：字軌可任意設定"
+          description={
+            <span>
+              字軌字母任意兩個英文字母（如 ZZ）。
+              號碼每組 50 個，起號尾數 00 或 50，迄號尾數 49 或 99。
+              期別不可小於當期（{rocYear} 年第 {currentTerm} 期）。
+              RtnCode 5070350 = 字軌未設定或已用完 → 點「新增字軌」即可解決。
+            </span>
+          }
+        />
+      ) : (
+        <Alert
+          type="warning" showIcon style={{ marginBottom: 12 }}
+          message="正式環境：字軌必須與財政部配號完全一致"
+          description={
+            <span>
+              必須先向當地國稅局申請，至財政部電子發票整合服務平台取號（每兩個月配發）。
+              收到配號後填入下方，否則發票無法上傳財政部對帳。
+              {' '}<a href="https://www.einvoice.nat.gov.tw" target="_blank" rel="noreferrer">財政部電子發票整合平台</a>
+            </span>
+          }
+        />
+      )}
+
+      <Button type="primary" size="small" onClick={() => setModalOpen(true)} style={{ marginBottom: 12 }}>
+        新增字軌
+      </Button>
+
+      <Table
+        dataSource={words}
+        loading={listLoading}
+        rowKey={(r) => r.TrackID ?? r.InvoiceHeader}
+        size="small"
+        pagination={false}
+        locale={{ emptyText: '尚無字軌（RtnCode 5070350 表示需要新增）' }}
+        columns={[
+          { title: '期別', width: 120, render: (_, r) => `${r.InvoiceYear ?? ''}年第${r.InvoiceTerm ?? ''}期` },
+          { title: '字軌', dataIndex: 'InvoiceHeader', width: 60 },
+          { title: '起號', dataIndex: 'InvoiceStart', width: 100 },
+          { title: '迄號', dataIndex: 'InvoiceEnd', width: 100 },
+          { title: '已用', dataIndex: 'UseCount', width: 60 },
+          {
+            title: '狀態', width: 80,
+            render: (_, r) => (
+              <Tag color={r.InvoiceStatus === '1' ? 'green' : 'default'}>
+                {r.InvoiceStatus === '1' ? '啟用中' : '未啟用'}
+              </Tag>
+            ),
+          },
+          {
+            title: '切換',
+            render: (_, r) => (
+              <Popconfirm
+                title={r.InvoiceStatus === '1' ? '確認停用此字軌？' : '確認啟用此字軌？'}
+                onConfirm={() => toggleStatus(r.TrackID, r.InvoiceStatus !== '1')}
+              >
+                <Switch
+                  checked={r.InvoiceStatus === '1'}
+                  size="small"
+                  checkedChildren="啟" unCheckedChildren="停"
+                />
+              </Popconfirm>
+            ),
+          },
+        ]}
+      />
+
+      <Modal
+        title="新增字軌"
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        onOk={() => form.submit()}
+        okText="新增並啟用"
+        confirmLoading={submitting}
+        width={460}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{
+            invoice_year: String(rocYear),
+            invoice_term: currentTerm,
+            header: 'ZZ',
+            start: 12345000,
+            end: 12345049,
+          }}
+        >
+          <Form.Item name="invoice_year" label="民國年" rules={[{ required: true }]}>
+            <Input placeholder={`例：${rocYear}`} style={{ width: 120 }} />
+          </Form.Item>
+          <Form.Item
+            name="invoice_term" label="期別"
+            rules={[{ required: true }]}
+            extra="1=1-2月, 2=3-4月, 3=5-6月, 4=7-8月, 5=9-10月, 6=11-12月"
+          >
+            <Select style={{ width: 150 }} options={[1,2,3,4,5,6].map(t => ({ value: t, label: `第 ${t} 期` }))} />
+          </Form.Item>
+          <Form.Item
+            name="header" label="字軌（兩個英文字母）"
+            rules={[{ required: true, pattern: /^[A-Za-z]{2}$/, message: '必須為兩個英文字母' }]}
+          >
+            <Input maxLength={2} style={{ width: 80, textTransform: 'uppercase' }} placeholder="ZZ" />
+          </Form.Item>
+          <Form.Item name="start" label="起始號碼" rules={[{ required: true }]} extra="尾數必須為 00 或 50">
+            <InputNumber style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="end" label="結束號碼" rules={[{ required: true }]} extra="尾數必須為 49 或 99">
+            <InputNumber style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Card>
   )
 }
