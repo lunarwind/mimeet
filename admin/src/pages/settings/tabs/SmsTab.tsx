@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Form, Input, Select, Button, Space, message, Divider, Typography } from 'antd'
+import { Card, Form, Input, Select, Button, Space, message, Divider, Typography, Alert } from 'antd'
 import apiClient from '../../../api/client'
 import DebugResultPanel from '../../../components/common/DebugResultPanel'
 
@@ -8,6 +8,7 @@ const { Text } = Typography
 export default function SmsTab() {
   const [form] = Form.useForm()
   const [provider, setProvider] = useState('disabled')
+  const [appMode, setAppMode] = useState<string | null>(null)
   const [saveLoading, setSaveLoading] = useState(false)
 
   // --- Per-provider test credentials (separate state, never shared) ---
@@ -26,8 +27,10 @@ export default function SmsTab() {
 
   useEffect(() => {
     apiClient.get('/admin/settings/system-control').then(res => {
-      const sms = res.data.data.sms
+      const data = res.data.data
+      const sms = data.sms
       setProvider(sms.provider)
+      setAppMode(data.app_mode?.mode ?? data.app_mode ?? null)
       form.setFieldsValue({
         provider: sms.provider,
         mitake_username: sms.mitake?.username || '',
@@ -102,6 +105,21 @@ export default function SmsTab() {
 
   return (
     <Card>
+      {provider !== 'disabled' && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="SMS 行為說明（2026-04-28 更新）"
+          description={
+            <span>
+              SMS 發送行為由上方「SMS 服務商」設定決定，<strong>與系統模式（app_mode）無關</strong>。
+              {' '}當前 app_mode = <code>{appMode ?? '讀取中...'}</code>。
+              {' '}設定服務商為「停用」時只寫 log；設為 Twilio/三竹時前台即真實寄出。
+            </span>
+          }
+        />
+      )}
       <Form form={form} layout="vertical" style={{ maxWidth: 500 }} onValuesChange={(changed) => { if (changed.provider) setProvider(changed.provider) }}>
         <Form.Item label="SMS 服務商" name="provider">
           <Select options={[

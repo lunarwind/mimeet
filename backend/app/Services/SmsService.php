@@ -16,15 +16,34 @@ class SmsService
     {
         $body = "【MiMeet】您的驗證碼為 {$code}，5 分鐘內有效，請勿洩漏。";
 
-        if (SystemSetting::get('app.mode', 'testing') === 'testing') {
-            Log::info('[SMS STUB - testing mode]', [
+        // SMS 行為由 sms.provider 決定，與 app_mode 無關
+        // （app_mode 只控制 ECPay sandbox/production）
+        $provider = SystemSetting::get('sms.provider', 'disabled');
+
+        if ($provider === 'disabled') {
+            Log::info('[SMS] provider=disabled — 僅寫 log，未實際發送', [
                 'phone' => substr($phone, 0, 4) . '****',
-                'code' => $code,
+                'code'  => $code,
             ]);
             return true;
         }
 
-        return $this->getDriver()->send($phone, $body);
+        try {
+            $sent = $this->getDriver()->send($phone, $body);
+            if (!$sent) {
+                Log::warning('[SMS] driver::send 回傳 false', [
+                    'provider' => $provider,
+                    'phone'    => substr($phone, 0, 4) . '****',
+                ]);
+            }
+            return $sent;
+        } catch (\Throwable $e) {
+            Log::error('[SMS] driver 例外', [
+                'provider' => $provider,
+                'error'    => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     public function getDriver(): SmsDriverInterface

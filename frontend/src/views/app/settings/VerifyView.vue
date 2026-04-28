@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { sendPhoneCode, verifyPhoneCode } from '@/api/auth'
@@ -209,6 +209,10 @@ function goBack() {
     currentStep.value = 'overview'
   }
 }
+
+onBeforeUnmount(() => {
+  if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = undefined }
+})
 </script>
 
 <template>

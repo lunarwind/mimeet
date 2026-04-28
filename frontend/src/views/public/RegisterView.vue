@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, verifyEmail, resendVerification, sendPhoneCode, verifyPhoneCode } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
@@ -274,6 +274,9 @@ async function verifySms() {
   smsError.value = ''
   try {
     await verifyPhoneCode({ phone: step2.phone, code })
+    // 驗證成功 → 清 timer 後再 navigate，避免 unmount 後 timer 繼續 fire
+    if (smsTimer) { clearInterval(smsTimer); smsTimer = null }
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
     router.push('/app/explore')
   } catch {
     smsError.value = '驗證碼不正確或已過期'
@@ -283,6 +286,12 @@ async function verifySms() {
     isSmsVerifying.value = false
   }
 }
+
+// 路由切換前清理 timer，防止 leak 導致 Page Unresponsive
+onBeforeUnmount(() => {
+  if (smsTimer) { clearInterval(smsTimer); smsTimer = null }
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+})
 
 function goLogin() { router.push('/login') }
 function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
@@ -614,7 +623,6 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
             <button v-else class="resend-btn" @click="sendSmsCode">重新發送簡訊驗證碼</button>
           </div>
 
-          <button class="link-btn" @click="router.push('/app/explore')">稍後再驗證</button>
         </div>
 
       </Transition>
