@@ -22,6 +22,8 @@ class ForceJsonResponse
 {
     private const EXCLUDED_PATH_PREFIXES = [
         'api/v1/payments/ecpay',
+        'api/v1/payments/return',         // ECPay OrderResultURL（POST browser redirect）
+        'api/v1/verification/credit-card/return', // 信用卡驗證 browser redirect
     ];
 
     public function handle(Request $request, Closure $next): Response
