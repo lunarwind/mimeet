@@ -94,15 +94,17 @@ class SystemControlController extends Controller
 
     public function getAppMode(): JsonResponse
     {
-        $mode = SystemSetting::get('app.mode', 'testing');
+        $mode = SystemSetting::get('app_mode', 'testing');
+        $ecpayEnv = SystemSetting::get('ecpay_environment', 'sandbox');
         return response()->json(['success' => true, 'data' => [
             'mode' => $mode,
             'mail_enabled' => $mode === 'production',
-            'sms_enabled' => $mode === 'production' && SystemSetting::get('sms.provider', 'disabled') !== 'disabled',
-            'ecpay_sandbox' => $mode === 'testing',
+            'sms_enabled' => $mode === 'production' && SystemSetting::get('sms_provider', 'disabled') !== 'disabled',
+            'ecpay_sandbox' => $ecpayEnv === 'sandbox',   // 改讀真實 ecpay_environment
+            'ecpay_environment' => $ecpayEnv,
             'description' => $mode === 'testing'
-                ? '測試模式：Email/SMS 只寫 Log，綠界使用 Sandbox'
-                : '正式模式：Email/SMS 實際發送，綠界使用正式環境',
+                ? '測試模式：Email/SMS 只寫 Log'
+                : '正式模式：Email/SMS 實際發送',
         ]]);
     }
 

@@ -8,6 +8,8 @@ interface AppModeData {
   mode: string
   maintenance_mode: boolean
   version: string
+  ecpay_environment?: 'sandbox' | 'production'
+  ecpay_sandbox?: boolean
 }
 
 export default function AppModeTab() {
@@ -65,15 +67,24 @@ export default function AppModeTab() {
             </Tag>
           </div>
 
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <Tag color={isTesting ? 'red' : 'green'}>Email {isTesting ? '● 停用' : '● 啟用'}</Tag>
             <Tag color={isTesting ? 'red' : 'green'}>SMS {isTesting ? '● 停用' : '● 啟用'}</Tag>
-            <Tag color={isTesting ? 'orange' : 'green'}>綠界 {isTesting ? '● Sandbox' : '● 正式'}</Tag>
+            {/* 綠界標籤讀真實 ecpay_environment，與 app_mode 獨立 */}
+            <Tag color={(data.ecpay_environment ?? 'sandbox') === 'sandbox' ? 'orange' : 'green'}>
+              綠界 {(data.ecpay_environment ?? 'sandbox') === 'sandbox' ? '● Sandbox' : '● 正式'}
+            </Tag>
           </div>
 
           {isTesting && (
-            <Alert type="warning" message="測試模式下，Email 與 SMS 僅寫入 Log，不會實際發送。綠界使用 Sandbox 環境。" showIcon />
+            <Alert type="warning" message="測試模式下，Email 與 SMS 僅寫入 Log，不會實際發送。" showIcon />
           )}
+          <Alert
+            type="info"
+            message="金流環境（綠界 Sandbox / 正式）與系統模式獨立管理，請至「金流與發票」分頁切換。"
+            showIcon
+            style={{ marginTop: 4 }}
+          />
 
           <Button type="primary" danger={!isTesting} onClick={() => setSwitchModalOpen(true)}>
             切換為{isTesting ? '正式' : '測試'}模式
