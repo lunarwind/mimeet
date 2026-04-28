@@ -47,14 +47,33 @@ class DatasetController extends Controller
     {
         $request->validate(['confirm_password' => 'required|string']);
 
-        if (!Hash::check($request->confirm_password, $request->user()->password)) {
+        $admin = $request->user();
+        $superAdminEmail = env('SUPER_ADMIN_EMAIL', 'chuck@lunarwind.org');
+
+        // ── Email 守門：僅系統預設 super-admin 可執行 ──────────────────
+        if ($admin->email !== $superAdminEmail) {
+            Log::warning('[Dataset] Reset blocked — non-default super admin attempted', [
+                'attempted_by' => $admin->email,
+                'admin_id'     => $admin->id,
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => [
+                    'code'    => 'PERMISSION_DENIED',
+                    'message' => "此操作僅限系統預設超級管理員（{$superAdminEmail}）執行",
+                ],
+            ], 403);
+        }
+
+        // ── 密碼驗證 ──────────────────────────────────────────────────
+        if (!Hash::check($request->confirm_password, $admin->password)) {
             return response()->json([
                 'success' => false,
                 'error' => ['code' => 'PASSWORD_INCORRECT', 'message' => '密碼驗證失敗'],
             ], 422);
         }
 
-        Log::info("[Dataset] Reset executed by admin #{$request->user()->id}");
+        Log::info("[Dataset] Reset executed by admin #{$admin->id} ({$admin->email})");
 
         try {
             $exitCode = Artisan::call('mimeet:reset', ['--force' => true]);
@@ -65,14 +84,34 @@ class DatasetController extends Controller
                 return response()->json([
                     'success' => false,
                     'error' => [
-                        'code' => 'RESET_FAILED',
+                        'code'    => 'RESET_FAILED',
                         'message' => '清空失敗（exit ' . $exitCode . '）',
-                        'detail' => $output,
+                        'detail'  => $output,
                     ],
                 ], 500);
             }
 
             Log::info('[Dataset] Reset completed', ['output' => $output]);
+
+            // ── AdminOperationLog（reset 完成後寫入）──────────────────
+            // Note: admin_operation_logs 可能也在 truncate 清單內，但 reset 後仍可 insert
+            try {
+                \App\Models\AdminOperationLog::create([
+                    'admin_id'        => $admin->id,
+                    'action'          => 'database_reset',
+                    'resource_type'   => 'system',
+                    'resource_id'     => 0,
+                    'description'     => "清空業務資料：truncate 19 張業務表，重建 uid=1，admin_users 僅保留 {$superAdminEmail}",
+                    'ip_address'      => $request->ip(),
+                    'user_agent'      => substr((string) $request->userAgent(), 0, 500),
+                    'request_summary' => ['email' => $admin->email],
+                    'created_at'      => now(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('[Dataset] AdminOperationLog write failed (non-fatal)', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
         } catch (\Throwable $e) {
             Log::error('[Dataset] Reset exception', ['error' => $e->getMessage()]);
             return response()->json([
@@ -83,7 +122,11 @@ class DatasetController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => ['message' => '資料庫已重置為乾淨狀態，uid=1 官方帳號已重建'],
+            'data'    => [
+                'message'           => '資料庫已重置為乾淨狀態，uid=1 官方帳號已重建，admin_users 僅保留 ' . $superAdminEmail,
+                'token_invalidated' => true,
+                'redirect_to_login' => true,
+            ],
         ]);
     }
 
