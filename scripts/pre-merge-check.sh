@@ -13,6 +13,17 @@ echo "  MiMeet Pre-Merge Checklist"
 echo "  =========================="
 echo ""
 
+# ── .env 必填變數檢查（critical 缺漏立即中止）──────────────────
+if [[ -f backend/.env ]]; then
+  echo "  [ENV] 檢查 backend/.env 必填變數..."
+  if ! bash scripts/check-env.sh backend/.env; then
+    echo "  [FAIL] .env 必填變數缺漏，請補齊後再 merge"
+    exit 1
+  fi
+else
+  echo "  [WARN] backend/.env 不存在，跳過 .env 檢查（Staging 部署前必須補）"
+fi
+
 check() {
   local desc="$1"
   local cmd="$2"
