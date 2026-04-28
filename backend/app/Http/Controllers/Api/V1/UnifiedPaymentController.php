@@ -85,16 +85,17 @@ class UnifiedPaymentController extends Controller
     }
 
     /**
-     * GET /api/v1/payments/return
-     * ECPay 瀏覽器導回 URL，redirect 到前台結果頁。
+     * GET|POST /api/v1/payments/return
+     * ECPay OrderResultURL：綠界以 POST 送瀏覽器 redirect，redirect 到前台結果頁。
+     * input() 同時讀 POST body 與 GET query string，相容兩種模式。
      */
     public function returnUrl(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $orderNo = $request->query('MerchantTradeNo', '');
-        $rtnCode = $request->query('RtnCode', '0');
+        $orderNo = $request->input('MerchantTradeNo', '');
+        $rtnCode = $request->input('RtnCode', '0');
         $status  = $rtnCode === '1' ? 'success' : 'failed';
 
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'https://mimeet.online'));
-        return redirect("{$frontendUrl}/#/payment/result?order_no={$orderNo}&status={$status}");
+        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'https://mimeet.online')), '/');
+        return redirect("{$frontendUrl}/#/app/shop?payment={$status}");
     }
 }

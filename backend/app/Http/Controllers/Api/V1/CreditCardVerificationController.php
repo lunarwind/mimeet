@@ -101,11 +101,16 @@ class CreditCardVerificationController extends Controller
      * GET /api/v1/verification/credit-card/return
      * ECPay front-end return URL. Redirect to frontend result page.
      */
+    /**
+     * GET|POST /api/v1/verification/credit-card/return
+     * ECPay OrderResultURL：綠界以 POST 送瀏覽器 redirect。
+     * input() 同時讀 POST body 與 GET query string，相容兩種模式。
+     */
     public function returnUrl(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $rtnCode = $request->query('RtnCode', '');
-        $orderNo = $request->query('MerchantTradeNo', '');
-        $status = $rtnCode === '1' ? 'success' : 'failed';
+        $rtnCode = $request->input('RtnCode', $request->query('RtnCode', ''));
+        $orderNo = $request->input('MerchantTradeNo', $request->query('MerchantTradeNo', ''));
+        $status  = $rtnCode === '1' ? 'success' : 'failed';
 
         $frontendUrl = rtrim(config('app.frontend_url', 'https://mimeet.online'), '/');
         return redirect("{$frontendUrl}/#/app/settings/verify?credit_card={$status}&order={$orderNo}");

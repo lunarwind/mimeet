@@ -158,7 +158,8 @@ Route::prefix('api/v1')->group(function () {
 
     // ─── 統一金流 Callback（新 ECPay NotifyURL）──────────────────────
     Route::post('payments/callback', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'callback']);
-    Route::get('payments/return',    [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
+    // OrderResultURL：綠界以 POST 送瀏覽器 redirect，同時支援 GET（手動測試）
+    Route::match(['get', 'post'], 'payments/return', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
     // 訂單查詢（前端結果頁 polling 用，需登入）
     Route::get('payments/{order_no}', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'show'])
          ->middleware('auth:sanctum');
@@ -166,7 +167,8 @@ Route::prefix('api/v1')->group(function () {
     // ─── ECPay alias 路由（過渡期，ECPay 後台 NotifyURL 改指 /payments/callback 後可移除）
     Route::prefix('payments/ecpay')->group(function () {
         Route::post('/notify', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'callback']);
-        Route::get('/return',  [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
+        // OrderResultURL alias — 綠界以 POST 送，同時支援 GET
+        Route::match(['get', 'post'], '/return', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
         Route::get('/checkout/{token}', [PaymentCallbackController::class, 'checkout']);
         // mock / point-mock 已刪除（A' 階段：sandbox 走真綠界，不用自家 mock）
     });
@@ -251,7 +253,8 @@ Route::prefix('api/v1')->group(function () {
     });
     // Public callbacks (ECPay server-to-server + browser return)
     Route::post('verification/credit-card/callback', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'callback']);
-    Route::get('verification/credit-card/return', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'returnUrl']);
+    // OrderResultURL：綠界以 POST 送瀏覽器 redirect，同時支援 GET
+    Route::match(['get', 'post'], 'verification/credit-card/return', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'returnUrl']);
 
     // ─── Notifications (authenticated) ───────────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
