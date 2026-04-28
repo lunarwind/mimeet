@@ -15,25 +15,54 @@ class ResetToCleanState extends Command
     protected $description = 'Reset database to initial state (preserves id=1 system user + system config)';
 
     private const TRUNCATE_TABLES = [
+        // ── 用戶活動類 ────────────────────────────────────────────────
         'user_profile_visits',
         'user_follows',
         'user_blocks',
         'user_activity_logs',
         'user_verifications',
+
+        // ── 通知 / 廣播 / 檢舉 ───────────────────────────────────────
         'broadcast_campaigns',
         'report_followups',
         'report_images',
         'reports',
         'notifications',
+
+        // ── 誠信分數 / FCM ────────────────────────────────────────────
         'credit_score_histories',
         'fcm_tokens',
+
+        // ── 訊息 / 對話 / 約會 ──────────────────────────────────────
         'messages',
         'conversations',
         'date_invitations',
+
+        // ── 訂閱與訂單 ─────────────────────────────────────────────
         'subscriptions',
         'orders',
+
+        // ── 點數交易（2026-04-28 補：MVP 早期建 reset 時這些表尚未建立）
+        'point_orders',
+        'point_transactions',
+
+        // ── 統一金流主表 + 信用卡驗證（2026-04-28 補，同上原因）──────
+        'payments',
+        'credit_card_verifications',
+
+        // ── Token / Session ──────────────────────────────────────────
         'personal_access_tokens',
         'password_reset_tokens',
+
+        // ── Admin 操作日誌（2026-04-28 補）──────────────────────────
+        // 注意：DatasetController::reset 在 Artisan::call 之後才寫 audit log，
+        //       所以 reset 完成的紀錄會是清空後的第一筆，保留可追溯性。
+        'admin_operation_logs',
+
+        // ── Queue 殘留（2026-04-28 補）──────────────────────────────
+        // 避免 worker 重啟後執行指向已刪資料的 stale job。
+        // jobs 表不存在（queue 走 Redis），只清 failed_jobs（DB 持久化）。
+        'failed_jobs',
     ];
 
     public function handle(): int
@@ -172,13 +201,25 @@ class ResetToCleanState extends Command
 
         // Show summary
         $this->table(['Item', 'Status'], [
-            ['users.id=1 (官方示範帳號)', DB::table('users')->where('id', 1)->exists()
+            // ── 重建項目 ────────────────────────────────────────────
+            ['users.id=1 (官方帳號)', DB::table('users')->where('id', 1)->exists()
                 ? '✅ ' . DB::table('users')->where('id', 1)->value('email')
                 : '❌ missing'],
             ['admin_users', DB::table('admin_users')->count() . ' account(s) — only ' . ($superAdminEmail ?? env('SUPER_ADMIN_EMAIL', 'chuck@lunarwind.org'))],
-            ['subscription_plans', DB::table('subscription_plans')->count() . ' plans'],
-            ['system_settings', DB::table('system_settings')->count() . ' entries'],
-            ['user data', 'cleared'],
+            // ── 清空確認 ────────────────────────────────────────────
+            ['orders / subscriptions',
+                DB::table('orders')->count() . ' / ' . DB::table('subscriptions')->count() . ' (cleared)'],
+            ['point_orders / point_transactions',
+                DB::table('point_orders')->count() . ' / ' . DB::table('point_transactions')->count() . ' (cleared)'],
+            ['payments / credit_card_verifications',
+                DB::table('payments')->count() . ' / ' . DB::table('credit_card_verifications')->count() . ' (cleared)'],
+            ['admin_operation_logs',
+                DB::table('admin_operation_logs')->count() . ' (cleared, DatasetController will add 1)'],
+            ['failed_jobs', DB::table('failed_jobs')->count() . ' (cleared)'],
+            // ── 保留確認 ────────────────────────────────────────────
+            ['subscription_plans', DB::table('subscription_plans')->count() . ' plans (preserved)'],
+            ['point_packages', DB::table('point_packages')->count() . ' packages (preserved)'],
+            ['system_settings', DB::table('system_settings')->count() . ' entries (preserved)'],
         ]);
 
         if ($this->option('with-test-data')) {
