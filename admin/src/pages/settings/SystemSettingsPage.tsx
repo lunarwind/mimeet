@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm } from 'antd'
+import { Tabs, Card, InputNumber, Button, Typography, Divider, Space, message, Modal, Input, Tag, Alert, Statistic, Row, Col, Table, Form, Select, Drawer, Checkbox, Popconfirm, Tooltip } from 'antd'
 import { SaveOutlined, DeleteOutlined, DatabaseOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import { useAuthStore } from '../../stores/authStore'
@@ -142,7 +142,12 @@ function SystemParamsTab() {
   )
 }
 
+const SUPER_ADMIN_EMAIL = 'chuck@lunarwind.org'
+
 function DatasetManager() {
+  const adminUser = useAuthStore((s) => s.user)
+  const isSuperAdminChuck = adminUser?.email === SUPER_ADMIN_EMAIL
+
   const [stats, setStats] = useState<{ is_clean: boolean; counts: Record<string, number> }>({ is_clean: true, counts: {} })
   const [loading, setLoading] = useState(false)
   const [freshMode, setFreshMode] = useState(true)
@@ -192,17 +197,22 @@ function DatasetManager() {
         try {
           if (action === 'reset') {
             await apiClient.post('/admin/settings/dataset/reset', { confirm_password: pw })
-            message.success('資料庫已清空')
+            message.success('資料庫已清空，2 秒後跳轉至登入頁...')
+            // reset 會 truncate personal_access_tokens → chuck token 也失效，必須重新登入
+            setTimeout(() => {
+              useAuthStore.getState().logout?.()
+              window.location.href = '/admin/login'
+            }, 2000)
           } else {
             await apiClient.post('/admin/settings/dataset/seed', { fresh: freshMode, confirm_password: pw })
             message.success('測試資料集已匯入')
+            await loadStats()
           }
-          await loadStats()
         } catch (err: unknown) {
           const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '操作失敗'
           message.error(msg)
+          setLoading(false)
         }
-        setLoading(false)
       },
     })
   }
@@ -233,11 +243,24 @@ function DatasetManager() {
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <div>
               <Text strong>清空業務資料</Text>
-              <br /><Text type="secondary" style={{ fontSize: 12 }}>刪除所有用戶、聊天、訂單。保留：管理員帳號、系統設定。</Text>
+              <br /><Text type="secondary" style={{ fontSize: 12 }}>
+                刪除所有用戶、聊天、訂單、admin_users（僅保留 {SUPER_ADMIN_EMAIL}）。
+                保留：系統設定、訂閱方案。重建：uid=1 官方帳號。
+              </Text>
+              {!isSuperAdminChuck && (
+                <><br /><Text type="danger" style={{ fontSize: 11 }}>⚠️ 僅 {SUPER_ADMIN_EMAIL} 可執行</Text></>
+              )}
             </div>
-            <Button danger icon={<DeleteOutlined />} onClick={() => confirmAction('reset')} disabled={loading || stats.is_clean}>
-              清空資料庫
-            </Button>
+            <Tooltip title={!isSuperAdminChuck ? `僅 ${SUPER_ADMIN_EMAIL} 可執行此操作` : undefined}>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => confirmAction('reset')}
+                disabled={loading || stats.is_clean || !isSuperAdminChuck}
+              >
+                清空資料庫
+              </Button>
+            </Tooltip>
           </Space>
         </Card>
 

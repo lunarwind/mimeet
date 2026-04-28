@@ -117,12 +117,35 @@ class ResetToCleanState extends Command
             }
         }
 
-        // Ensure admin users exist (safety net if they were somehow lost)
-        if (DB::table('admin_users')->count() === 0) {
-            $this->warn('  ⚠ admin_users table is empty — re-seeding...');
-            Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\AdminUserSeeder', '--force' => true]);
-            $this->line('  ✓ admin_users re-seeded (' . DB::table('admin_users')->count() . ' accounts)');
+        // ── admin_users: 僅保留系統預設 super-admin ──────────────────────
+        $superAdminEmail = env('SUPER_ADMIN_EMAIL', 'chuck@lunarwind.org');
+
+        // 1) 先確保 chuck 存在（防止「reset 後沒有任何 admin」災難）
+        $existingChuck = DB::table('admin_users')->where('email', $superAdminEmail)->first();
+        if (!$existingChuck) {
+            // 完全不存在 → 用 env 預設密碼建立
+            DB::table('admin_users')->insert([
+                'name'       => env('ADMIN_NAME', 'Super Admin'),
+                'email'      => $superAdminEmail,
+                'password'   => bcrypt(env('SUPER_ADMIN_PASSWORD', env('ADMIN_PASSWORD', 'ChangeMe@2026'))),
+                'role'       => 'super_admin',
+                'is_active'  => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->warn("  ⚠ admin_users: {$superAdminEmail} not found, recreated with default password");
+        } else {
+            // 存在 → 確保 role=super_admin & is_active=true，但不動 password
+            DB::table('admin_users')
+                ->where('email', $superAdminEmail)
+                ->update(['role' => 'super_admin', 'is_active' => true, 'updated_at' => now()]);
         }
+
+        // 2) 再刪除其他 admin_users（順序不可顛倒）
+        $deletedAdmins = DB::table('admin_users')
+            ->where('email', '!=', $superAdminEmail)
+            ->delete();
+        $this->line("  ✓ admin_users (kept {$superAdminEmail}, deleted {$deletedAdmins} others)");
 
         // Ensure subscription plans exist
         if (DB::table('subscription_plans')->count() === 0) {
@@ -152,7 +175,7 @@ class ResetToCleanState extends Command
             ['users.id=1 (官方示範帳號)', DB::table('users')->where('id', 1)->exists()
                 ? '✅ ' . DB::table('users')->where('id', 1)->value('email')
                 : '❌ missing'],
-            ['admin_users', DB::table('admin_users')->count() . ' accounts'],
+            ['admin_users', DB::table('admin_users')->count() . ' account(s) — only ' . ($superAdminEmail ?? env('SUPER_ADMIN_EMAIL', 'chuck@lunarwind.org'))],
             ['subscription_plans', DB::table('subscription_plans')->count() . ' plans'],
             ['system_settings', DB::table('system_settings')->count() . ' entries'],
             ['user data', 'cleared'],
