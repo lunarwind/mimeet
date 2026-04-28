@@ -31,12 +31,15 @@ class ECPayService
 
     /**
      * 取得目前環境（sandbox / production）
-     * 從 ecpay_environment 讀取（Step 6 後統一新 key，舊 ecpay.mode 已透過 migration 遷移）
+     * 讀 ecpay_environment；若值不合法直接 throw（不靜默 fallback）。
      */
     public function getEnvironment(): string
     {
         $env = SystemSetting::get('ecpay_environment', 'sandbox');
-        return in_array($env, ['sandbox', 'production']) ? $env : 'sandbox';
+        if (!in_array($env, ['sandbox', 'production'], true)) {
+            throw new \RuntimeException("Invalid ecpay_environment value: '{$env}'");
+        }
+        return $env;
     }
 
     public function isSandbox(): bool
@@ -44,15 +47,14 @@ class ECPayService
         return $this->getEnvironment() === 'sandbox';
     }
 
-    // ─── 憑證 ─────────────────────────────────────────────────────────
+    // ─── 金流憑證（無 fallback，未填直接 throw）────────────────────
 
     public function getMerchantId(): string
     {
         $env = $this->getEnvironment();
         $val = SystemSetting::get("ecpay_{$env}_merchant_id", '');
-
-        if ($val === '' && $env === 'sandbox') {
-            return config('ecpay.sandbox_fallback.merchant_id', '2000132');
+        if (empty($val)) {
+            throw new \RuntimeException("ECPay 金流 {$env} MerchantID 未設定，請至後台「金流與發票」設定頁填入");
         }
         return (string) $val;
     }
@@ -60,40 +62,100 @@ class ECPayService
     public function getHashKey(): string
     {
         $env = $this->getEnvironment();
-        $val = SystemSetting::get("ecpay_{$env}_hash_key", '');
-
-        if ($val === '' && $env === 'sandbox') {
-            return config('ecpay.sandbox_fallback.hash_key', '5294y06JbISpM5x9');
+        $raw = SystemSetting::get("ecpay_{$env}_hash_key", '');
+        if (empty($raw)) {
+            throw new \RuntimeException("ECPay 金流 {$env} HashKey 未設定，請至後台「金流與發票」設定頁填入");
         }
-        return (string) $val;
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($raw);
+        } catch (\Throwable) {
+            return $raw; // 相容未加密的舊值（未來應全加密）
+        }
     }
 
     public function getHashIV(): string
     {
         $env = $this->getEnvironment();
-        $val = SystemSetting::get("ecpay_{$env}_hash_iv", '');
+        $raw = SystemSetting::get("ecpay_{$env}_hash_iv", '');
+        if (empty($raw)) {
+            throw new \RuntimeException("ECPay 金流 {$env} HashIV 未設定，請至後台「金流與發票」設定頁填入");
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($raw);
+        } catch (\Throwable) {
+            return $raw;
+        }
+    }
 
-        if ($val === '' && $env === 'sandbox') {
-            return config('ecpay.sandbox_fallback.hash_iv', 'v77hoKGq4kWxNNIS');
+    // ─── 發票憑證（依環境分離，無 fallback）────────────────────────
+
+    public function invoiceMerchantId(): string
+    {
+        $env = $this->getEnvironment();
+        $val = SystemSetting::get("ecpay_invoice_{$env}_merchant_id", '');
+        if (empty($val)) {
+            throw new \RuntimeException("ECPay 發票 {$env} MerchantID 未設定，請至後台「金流與發票」設定頁填入");
         }
         return (string) $val;
     }
 
-    // ─── URL ──────────────────────────────────────────────────────────
+    public function invoiceHashKey(): string
+    {
+        $env = $this->getEnvironment();
+        $raw = SystemSetting::get("ecpay_invoice_{$env}_hash_key", '');
+        if (empty($raw)) {
+            throw new \RuntimeException("ECPay 發票 {$env} HashKey 未設定");
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($raw);
+        } catch (\Throwable) {
+            return $raw;
+        }
+    }
+
+    public function invoiceHashIV(): string
+    {
+        $env = $this->getEnvironment();
+        $raw = SystemSetting::get("ecpay_invoice_{$env}_hash_iv", '');
+        if (empty($raw)) {
+            throw new \RuntimeException("ECPay 發票 {$env} HashIV 未設定");
+        }
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($raw);
+        } catch (\Throwable) {
+            return $raw;
+        }
+    }
+
+    // ─── URL（硬編碼，不依賴 config）──────────────────────────────
 
     public function getAioUrl(): string
     {
-        return config('ecpay.urls.' . $this->getEnvironment() . '.aio');
+        return $this->isSandbox()
+            ? 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5'
+            : 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';
     }
 
     public function getQueryUrl(): string
     {
-        return config('ecpay.urls.' . $this->getEnvironment() . '.query');
+        return $this->isSandbox()
+            ? 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5'
+            : 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
     }
 
     public function getRefundUrl(): string
     {
-        return config('ecpay.urls.' . $this->getEnvironment() . '.refund');
+        return $this->isSandbox()
+            ? 'https://payment-stage.ecpay.com.tw/CreditDetail/DoAction'
+            : 'https://payment.ecpay.com.tw/CreditDetail/DoAction';
+    }
+
+    public function getInvoiceApiUrl(string $endpoint = 'Issue'): string
+    {
+        $base = $this->isSandbox()
+            ? 'https://einvoice-stage.ecpay.com.tw/B2CInvoice'
+            : 'https://einvoice.ecpay.com.tw/B2CInvoice';
+        return "{$base}/{$endpoint}";
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -293,24 +355,7 @@ class ECPayService
         return (bool) SystemSetting::get('ecpay_invoice_enabled', false);
     }
 
-    private function invoiceMerchantId(): string
-    {
-        // 新 key 格式（舊 ecpay.invoice.merchant_id 已在 migration 遷移並刪除）
-        return SystemSetting::get('ecpay_invoice_merchant_id',
-            config('services.ecpay.invoice_merchant_id', '2000132'));
-    }
-
-    private function invoiceHashKey(): string
-    {
-        return SystemSetting::get('ecpay_invoice_hash_key',
-            config('services.ecpay.invoice_hash_key', 'ejCk326UnaZWKisg'));
-    }
-
-    private function invoiceHashIv(): string
-    {
-        return SystemSetting::get('ecpay_invoice_hash_iv',
-            config('services.ecpay.invoice_hash_iv', 'q9jcZX8Ib9LM8wYk'));
-    }
+    // invoiceMerchantId / invoiceHashKey / invoiceHashIV 已移至公開方法（上方），私有版本刪除
 
     private function aesEncrypt(string $plaintext, string $key, string $iv): string
     {
@@ -335,10 +380,8 @@ class ECPayService
 
         $merchantId = $this->invoiceMerchantId();
         $hashKey    = $this->invoiceHashKey();
-        $hashIv     = $this->invoiceHashIv();
-        $baseUrl    = $this->isSandbox()
-            ? 'https://einvoice-stage.ecpay.com.tw/B2CInvoice/Issue'
-            : 'https://einvoice.ecpay.com.tw/B2CInvoice/Issue';
+        $hashIv     = $this->invoiceHashIV();
+        $baseUrl    = $this->getInvoiceApiUrl('Issue');
 
         $items = [];
         foreach ($orderData['items'] as $item) {

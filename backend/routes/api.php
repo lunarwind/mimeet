@@ -163,19 +163,12 @@ Route::prefix('api/v1')->group(function () {
     Route::get('payments/{order_no}', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'show'])
          ->middleware('auth:sanctum');
 
-    // ─── Alias 路由（過渡期保留，規劃兩週後砍掉）────────────────────
-    // ECPay 後台 NotifyURL 改用 /api/v1/payments/callback 後可移除
+    // ─── ECPay alias 路由（過渡期，ECPay 後台 NotifyURL 改指 /payments/callback 後可移除）
     Route::prefix('payments/ecpay')->group(function () {
-        // Alias: 訂閱 callback → 統一入口
         Route::post('/notify', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'callback']);
         Route::get('/return',  [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
-        // checkout/{token} 保留（getPaymentUrl @deprecated 仍使用）
         Route::get('/checkout/{token}', [PaymentCallbackController::class, 'checkout']);
-        // Mock 端點（sandbox 測試用，兩週後一起砍）
-        if (config('app.env') !== 'production') {
-            Route::get('/mock',       [PaymentCallbackController::class, 'mock']);
-            Route::get('/point-mock', [PaymentCallbackController::class, 'pointMock']);
-        }
+        // mock / point-mock 已刪除（A' 階段：sandbox 走真綠界，不用自家 mock）
     });
 
     // ─── F40 Points (authenticated) ────────────────────────────────
