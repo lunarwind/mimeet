@@ -108,6 +108,9 @@ class SubscriptionController extends Controller
             'reference_id' => $order->id,
         ]);
 
+        // 雙向綁定：order.payment_id → payments.id
+        $order->update(['payment_id' => $result['payment']->id]);
+
         return response()->json([
             'success' => true,
             'code'    => 201,
@@ -242,6 +245,8 @@ class SubscriptionController extends Controller
             'amount'       => $order->amount,
             'reference_id' => $order->id,
         ]);
+
+        $order->update(['payment_id' => $result['payment']->id]);
 
         return response()->json([
             'success' => true,
