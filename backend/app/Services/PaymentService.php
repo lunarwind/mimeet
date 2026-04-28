@@ -157,25 +157,6 @@ class PaymentService
     }
 
     /**
-     * Handle sandbox mock payment (for development).
-     */
-    public function handleMockPayment(string $merchantTradeNo): Order
-    {
-        $order = Order::where('ecpay_merchant_trade_no', $merchantTradeNo)->firstOrFail();
-
-        if ($order->status !== 'pending') {
-            return $order;
-        }
-
-        $this->activateSubscription($order);
-
-        // Also try to issue invoice in mock mode
-        $this->issueInvoiceForOrder($order->fresh());
-
-        return $order->fresh();
-    }
-
-    /**
      * Activate subscription after successful payment.
      * Changed to public so SubscriptionHandler can call it directly.
      */
@@ -233,11 +214,23 @@ class PaymentService
 
     /**
      * Issue B2C electronic invoice for a paid order.
+     * SSOT：發票欄位寫入 payments 表，不再寫 orders 表。
      */
-    private function issueInvoiceForOrder(Order $order): void
+    public function issueInvoiceForOrder(Order $order): void
     {
-        if ($order->invoice_no) {
-            return; // Already issued
+        if (!$this->ecPayService->isInvoiceEnabled()) {
+            return;
+        }
+
+        // 找對應的 Payment 主表記錄
+        $payment = \App\Models\Payment::find($order->payment_id);
+        if (!$payment) {
+            Log::warning('[Invoice] Payment record not found for order', ['order_id' => $order->id]);
+            return;
+        }
+
+        if ($payment->invoice_no) {
+            return; // 已開立，冪等
         }
 
         $user = $order->user;
@@ -248,30 +241,78 @@ class PaymentService
         $plan = $order->plan;
 
         $invoiceResult = $this->ecPayService->issueInvoice([
-            'relate_number' => $order->order_number,
+            'relate_number'  => $order->order_number,
             'customer_email' => $user->email ?? '',
             'customer_phone' => '',
-            'sales_amount' => $order->amount,
-            'items' => [
-                [
-                    'seq' => 1,
-                    'name' => 'MiMeet ' . ($plan->name ?? '訂閱方案'),
-                    'count' => 1,
-                    'word' => '式',
-                    'price' => $order->amount,
-                    'amount' => $order->amount,
-                ],
-            ],
+            'sales_amount'   => $order->amount,
+            'items'          => [[
+                'seq'    => 1,
+                'name'   => 'MiMeet ' . ($plan->name ?? '訂閱方案'),
+                'count'  => 1,
+                'word'   => '式',
+                'price'  => $order->amount,
+                'amount' => $order->amount,
+            ]],
         ]);
 
         if ($invoiceResult) {
-            $order->update([
-                'invoice_no' => $invoiceResult['invoice_no'],
-                'invoice_date' => $invoiceResult['invoice_date'],
-                'invoice_random_number' => $invoiceResult['random_number'],
+            // 單寫 payments，不寫 orders
+            $payment->update([
+                'invoice_no'            => $invoiceResult['invoice_no'],
+                'invoice_issued_at'     => now(),
+                'invoice_random_number' => $invoiceResult['random_number'] ?? null,
             ]);
-            Log::info('[Invoice] Saved to order', [
-                'order' => $order->order_number,
+            Log::info('[Invoice] Saved to payments', [
+                'payment_id' => $payment->id,
+                'invoice_no' => $invoiceResult['invoice_no'],
+            ]);
+        }
+    }
+
+    /**
+     * Issue invoice for a point purchase, writing to payments SSOT.
+     */
+    public function issueInvoiceForPointOrder(\App\Models\PointOrder $pointOrder): void
+    {
+        if (!$this->ecPayService->isInvoiceEnabled()) {
+            return;
+        }
+
+        $payment = \App\Models\Payment::find($pointOrder->payment_id);
+        if (!$payment || $payment->invoice_no) {
+            return;
+        }
+
+        $user = $pointOrder->user;
+        if (!$user) {
+            return;
+        }
+
+        $package = $pointOrder->package;
+
+        $invoiceResult = $this->ecPayService->issueInvoice([
+            'relate_number'  => $pointOrder->trade_no,
+            'customer_email' => $user->email ?? '',
+            'customer_phone' => '',
+            'sales_amount'   => $pointOrder->amount,
+            'items'          => [[
+                'seq'    => 1,
+                'name'   => 'MiMeet 點數 ' . ($package?->name ?? $pointOrder->points . '點'),
+                'count'  => 1,
+                'word'   => '組',
+                'price'  => $pointOrder->amount,
+                'amount' => $pointOrder->amount,
+            ]],
+        ]);
+
+        if ($invoiceResult) {
+            $payment->update([
+                'invoice_no'            => $invoiceResult['invoice_no'],
+                'invoice_issued_at'     => now(),
+                'invoice_random_number' => $invoiceResult['random_number'] ?? null,
+            ]);
+            Log::info('[Invoice] Saved to payments (points)', [
+                'payment_id' => $payment->id,
                 'invoice_no' => $invoiceResult['invoice_no'],
             ]);
         }

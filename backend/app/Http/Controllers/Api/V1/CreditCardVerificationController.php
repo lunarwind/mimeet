@@ -70,6 +70,9 @@ class CreditCardVerificationController extends Controller
             'reference_id' => $verification->id,
         ]);
 
+        // 雙向綁定：verification.payment_id → payments.id
+        $verification->update(['payment_id' => $result['payment']->id]);
+
         return response()->json([
             'success' => true,
             'data' => [

@@ -777,15 +777,13 @@ class AdminController extends Controller
             'per_page'    => 'sometimes|integer|min:1|max:1000',
             'status'      => 'sometimes|string',
             'type'        => 'sometimes|string|in:verification,subscription,points',
-            'environment' => 'sometimes|string|in:sandbox,production,legacy',
+            'environment' => 'sometimes|string|in:sandbox,production',
             'search'      => 'sometimes|string|max:100',
             'date_from'   => 'sometimes|date',
             'date_to'     => 'sometimes|date',
         ]);
 
-        // 預設隱藏 legacy（避免 mock 7 筆干擾真實統計）
         $query = \App\Models\Payment::with('user:id,nickname,email')
-            ->when(!$request->filled('environment'), fn ($q) => $q->where('environment', '!=', 'legacy'))
             ->when($request->filled('status'),      fn ($q) => $q->where('status', $request->input('status')))
             ->when($request->filled('type'),        fn ($q) => $q->where('type', $request->input('type')))
             ->when($request->filled('environment'), fn ($q) => $q->where('environment', $request->input('environment')))
@@ -804,34 +802,47 @@ class AdminController extends Controller
         $perPage  = (int) $request->input('per_page', 20);
         $paginated = $query->paginate($perPage);
 
-        // 統計：只算非 legacy 的真實交易
-        $stats = \App\Models\Payment::where('environment', '!=', 'legacy');
-        $totalRevenue = (clone $stats)->where('status', 'paid')->sum('amount');
-        $totalPaid    = (clone $stats)->where('status', 'paid')->count();
-        $totalOrders  = (clone $stats)->count();
+        $statsBase = \App\Models\Payment::query();
+        if ($request->filled('environment')) {
+            $statsBase->where('environment', $request->input('environment'));
+        }
+        if ($request->filled('type')) {
+            $statsBase->where('type', $request->input('type'));
+        }
+        $totalRevenue = (clone $statsBase)->where('status', 'paid')->sum('amount');
+        $totalPaid    = (clone $statsBase)->where('status', 'paid')->count();
+        $totalOrders  = (clone $statsBase)->count();
 
         return response()->json([
             'success' => true, 'code' => 'PAYMENTS_LIST', 'message' => 'OK',
             'data' => $paginated->map(fn (\App\Models\Payment $p) => [
-                'id'                     => $p->id,
-                'order_number'           => $p->order_no,   // 向下相容欄位名
-                'order_no'               => $p->order_no,
-                'type'                   => $p->type,
-                'environment'            => $p->environment,
-                'user'                   => $p->user ? ['id' => $p->user->id, 'nickname' => $p->user->nickname] : null,
-                'amount'                 => $p->amount,
-                'status'                 => $p->status,
-                'gateway_trade_no'       => $p->gateway_trade_no,
-                'payment_method'         => $p->payment_method,
-                'paid_at'                => $p->paid_at?->toISOString(),
-                'refunded_at'            => $p->refunded_at?->toISOString(),
-                'requires_manual_review' => (bool) $p->requires_manual_review,
-                'invoice_no'             => $p->invoice_no,
-                'raw_callback'           => $p->raw_callback,
-                'created_at'             => $p->created_at?->toISOString(),
-                // 向下相容（舊 PaymentsPage 讀的欄位）
-                'ecpay_trade_no'         => $p->gateway_trade_no,
-                'ecpay_payment_type'     => $p->payment_method,
+                'id'                   => $p->id,
+                'order_no'             => $p->order_no,
+                'type'                 => $p->type,
+                'type_label'           => match ($p->type) {
+                    'subscription' => '訂閱方案',
+                    'points'       => '點數購買',
+                    'verification' => '信用卡驗證',
+                    default        => $p->type,
+                },
+                'item_name'            => $p->item_name,
+                'environment'          => $p->environment,
+                'user'                 => $p->user ? ['id' => $p->user->id, 'nickname' => $p->user->nickname, 'email' => $p->user->email] : null,
+                'amount'               => $p->amount,
+                'currency'             => $p->currency,
+                'status'               => $p->status,
+                'gateway'              => $p->gateway,
+                'gateway_trade_no'     => $p->gateway_trade_no,
+                'payment_method'       => $p->payment_method,
+                'card_country'         => $p->card_country,
+                'paid_at'              => $p->paid_at?->toISOString(),
+                'refunded_at'          => $p->refunded_at?->toISOString(),
+                'refund_trade_no'      => $p->refund_trade_no,
+                'invoice_applicable'   => $p->type !== 'verification',
+                'invoice_no'           => $p->invoice_no,
+                'invoice_issued_at'    => $p->invoice_issued_at?->toISOString(),
+                'failure_reason'       => $p->failure_reason,
+                'created_at'           => $p->created_at?->toISOString(),
             ]),
             'meta' => [
                 'page'          => $paginated->currentPage(),

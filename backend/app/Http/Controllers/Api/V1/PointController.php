@@ -85,6 +85,9 @@ class PointController extends Controller
             'reference_id' => $order->id,
         ]);
 
+        // 雙向綁定：point_order.payment_id → payments.id
+        $order->update(['payment_id' => $result['payment']->id]);
+
         return response()->json([
             'success' => true,
             'code'    => 201,

@@ -45,6 +45,9 @@ class SubscriptionHandler
         // 直接呼叫既有邏輯（包含 DB transaction + 通知）
         $this->paymentService->activateSubscription($order);
 
+        // 開立電子發票（單寫 payments SSOT）
+        $this->paymentService->issueInvoiceForOrder($order->fresh());
+
         Log::info('[SubscriptionHandler] Subscription activated', [
             'order_no'   => $order->order_number,
             'payment_id' => $payment->id,
