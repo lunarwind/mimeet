@@ -937,7 +937,7 @@ padding-bottom: env(safe-area-inset-bottom);
 
 ```
 電話驗證碼：
-「【MiMeet】您的驗證碼為 {CODE}，請於 10 分鐘內輸入。切勿將驗證碼透露給他人。」
+「【MiMeet】您的驗證碼為 {CODE}，5 分鐘內有效，請勿洩漏。」
 
 密碼重設：
 「【MiMeet】您的密碼重設碼為 {CODE}，1小時內有效。若非本人操作，請忽略此訊息。」
