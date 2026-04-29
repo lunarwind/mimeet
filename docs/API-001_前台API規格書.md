@@ -168,25 +168,32 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "code": 201,
-  "message": "註冊成功，請查收驗證郵件",
+  "code": "REGISTER_SUCCESS",
+  "message": "註冊成功，請驗證信箱。",
   "data": {
     "user": {
       "id": 123,
       "email": "user@example.com",
       "nickname": "甜心寶貝",
       "gender": "female",
-      "group": 2,
-      "status": "pending_verification",
-      "created_at": "2024-12-20T10:30:00Z"
+      "status": "active",
+      "credit_score": 60,
+      "membership_level": 0,
+      "email_verified": false,
+      "phone_verified": false
     },
-    "verification": {
-      "email_sent": true,
-      "expires_at": "2024-12-20T11:30:00Z"
-    }
+    "token": "eyJ0eXAiOiJKV1Qi..."
   }
 }
 ```
+
+> **`code` 為字串型態**（非整數），回傳 `"REGISTER_SUCCESS"`。
+>
+> **`status` 欄位說明**：系統採用 `email_verified` / `phone_verified` 兩個 boolean 欄位管控驗證狀態，`status` 反映帳號可用性而非驗證進度。可能值：`active`（正常）/ `suspended`（人工停權）/ `auto_suspended`（誠信分數歸零自動停權）。
+>
+> **`token`**：Sanctum Personal Access Token，TTL 1440 分鐘（24 小時）。前端收到後立即儲存並用於後續 API 呼叫的 `Authorization: Bearer` header。
+>
+> **`verification` block**（已移除）：原規格設計的 `verification.email_sent` / `verification.expires_at` 不在實際回應中，Email 驗證碼由後端非同步寄出，TTL 10 分鐘。
 
 **錯誤回應 (400)：**
 ```json
@@ -394,15 +401,26 @@ Authorization: Bearer {access_token}
 {
   "success": true,
   "data": {
-    "order_no": "CCV_20260426200000_000123",
-    "payment_url": "https://payment-stage.ecpay.com.tw/..."
+    "payment_id": 42,
+    "aio_url": "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5",
+    "params": {
+      "MerchantID": "3002607",
+      "MerchantTradeNo": "CCV20260428...",
+      "TotalAmount": 100,
+      "CheckMacValue": "..."
+    }
   }
 }
 ```
 
-前端收到 `payment_url` 後 `window.location.href = paymentUrl` 跳轉。
-付款完成後 ECPay 將瀏覽器導回 `GET /api/v1/verification/credit-card/return?credit_card=success`，
-後端再 redirect 到 `/#/app/settings/verify?credit_card=success`。
+前端收到後，組出 `<form method="POST" action="{aio_url}">` 並 submit，瀏覽器跳轉到 ECPay 付款頁。
+
+> **注意**：回應結構為 `payment_id + aio_url + params`（ECPay AIO form-post 模式），**非** `payment_url` 直接跳轉。實作見 `CreditCardVerificationController::initiate()`。
+
+付款完成後 ECPay 以 **POST** 將瀏覽器導回 `/api/v1/verification/credit-card/return`，
+後端 redirect 到 `/#/app/settings/verify?credit_card=success&order=...`。
+
+> **OrderResultURL 支援 POST**：ECPay OrderResultURL 實際以 POST 送瀏覽器 redirect（含付款結果參數），後端路由 `Route::match(['get','post'], ...)` 同時相容兩種方法。請勿假設僅 GET。
 
 ##### 查詢驗證狀態
 
@@ -482,9 +500,11 @@ Content-Type: application/json
 
 **Email 連結格式：**
 ```
-https://mimeet.tw/reset-password?token={token}&email={encoded_email}
+https://mimeet.online/#/reset-password?token={token}&email={encoded_email}
 ```
-前端路由 `/reset-password`，讀取 query params，完成後跳轉 `/login`。
+前端路由 `/#/reset-password`（Hash Router 模式），讀取 query params，完成後跳轉 `/login`。
+
+> Staging 網域為 `mimeet.online`（`.club` 為 production 保留）。
 
 ---
 
