@@ -79,14 +79,6 @@ function SystemParamsTab() {
 
   return (
     <div>
-      <Alert
-        type="info"
-        showIcon
-        message="誠信分數規則請至「⭐ 誠信分數配分」Tab 設定"
-        description="此處舊版「誠信分數規則」區塊已移除，因其為純前端假資料、按下儲存不會真正生效。所有誠信分數配分（GPS 得分、扣分等）的唯一調整入口為「⭐ 誠信分數配分」Tab。"
-        style={{ marginBottom: 24 }}
-      />
-
       <Card title="資料保留政策（Data Retention）" style={{ marginBottom: 24 }}>
         <Alert type="info" message="超過保留期限的軟刪除訊息、隔離區檔案與用戶活動日誌將被每日排程永久清除。" showIcon style={{ marginBottom: 16 }} />
         <div style={{ maxWidth: 400 }}>
