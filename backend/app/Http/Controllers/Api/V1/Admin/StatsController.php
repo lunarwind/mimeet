@@ -103,14 +103,58 @@ class StatsController extends Controller
                 ->where('status', 'pending')->count();
         }
 
+        // ── 會員等級分布（5 組精確分組，Lv1.5 以 DECIMAL(3,1) 精確比對）──────
+        $levelDist = User::query()
+            ->whereNull('deleted_at')
+            ->selectRaw("
+                COUNT(CASE WHEN membership_level = 0   THEN 1 END) as lv0,
+                COUNT(CASE WHEN membership_level = 1   THEN 1 END) as lv1,
+                COUNT(CASE WHEN membership_level = 1.5 THEN 1 END) as lv1_5,
+                COUNT(CASE WHEN membership_level = 2   THEN 1 END) as lv2,
+                COUNT(CASE WHEN membership_level >= 3  THEN 1 END) as lv3
+            ")
+            ->first();
+
+        $levelDistribution = [
+            ['level' => 'Lv0',   'label' => '未驗證',       'count' => (int) ($levelDist->lv0   ?? 0)],
+            ['level' => 'Lv1',   'label' => '基礎驗證',     'count' => (int) ($levelDist->lv1   ?? 0)],
+            ['level' => 'Lv1.5', 'label' => '女性照片驗證', 'count' => (int) ($levelDist->lv1_5 ?? 0)],
+            ['level' => 'Lv2',   'label' => '進階驗證',     'count' => (int) ($levelDist->lv2   ?? 0)],
+            ['level' => 'Lv3',   'label' => '完整驗證',     'count' => (int) ($levelDist->lv3   ?? 0)],
+        ];
+
+        // ── 最新付款（subscription + points，排除 verification NT$100 押金）────
+        $recentPayments = Payment::query()
+            ->with(['user:id,nickname'])
+            ->where('status', 'paid')
+            ->whereIn('type', ['subscription', 'points'])
+            ->orderByDesc('paid_at')
+            ->limit(5)
+            ->get(['id', 'user_id', 'type', 'item_name', 'amount', 'paid_at', 'invoice_status'])
+            ->map(function ($p) {
+                return [
+                    'id'             => (int) $p->id,
+                    'user'           => $p->user?->nickname ?? '已刪除用戶',
+                    'plan'           => $p->item_name,
+                    'type'           => $p->type,
+                    'amount'         => (int) $p->amount,
+                    'time'           => optional($p->paid_at)->toIso8601String(),
+                    'invoice_status' => $p->invoice_status,  // 前端負責顯示對照
+                ];
+            })
+            ->values()
+            ->toArray();
+
         return response()->json([
             'success' => true,
             'data' => [
-                'members' => $members,
-                'revenue' => $revenue,
-                'points' => $points,
-                'pending_tickets' => $pendingTickets,
-                'pending_verifications' => $pendingVerifications,
+                'members'              => $members,
+                'revenue'              => $revenue,
+                'points'               => $points,
+                'pending_tickets'      => $pendingTickets,
+                'pending_verifications'=> $pendingVerifications,
+                'level_distribution'   => $levelDistribution,
+                'recent_payments'      => $recentPayments,
             ],
         ]);
     }
