@@ -24,6 +24,7 @@ class ResetToCleanState extends Command
 
         // ── 通知 / 廣播 / 檢舉 ───────────────────────────────────────
         'broadcast_campaigns',
+        'user_broadcasts',          // 2026-04-30 補：廣播個別推送記錄（broadcast_campaigns child）
         'report_followups',
         'report_images',
         'reports',
