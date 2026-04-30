@@ -210,7 +210,7 @@ function DatasetManager() {
   }
 
   return (
-    <Card title={<Space><DatabaseOutlined />測試資料集管理</Space>}>
+    <Card title={<Space><DatabaseOutlined />業務資料統計</Space>}>
       <Alert
         type={stats.is_clean ? 'success' : 'info'}
         message={stats.is_clean ? '資料庫目前為乾淨狀態 ✅' : '資料庫含有業務資料'}
