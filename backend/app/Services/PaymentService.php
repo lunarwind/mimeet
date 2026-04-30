@@ -261,6 +261,7 @@ class PaymentService
                 'invoice_no'            => $invoiceResult['invoice_no'],
                 'invoice_issued_at'     => now(),
                 'invoice_random_number' => $invoiceResult['random_number'] ?? null,
+                'invoice_status'        => 'issued',
             ]);
             Log::info('[Invoice] Saved to payments', [
                 'payment_id' => $payment->id,
@@ -310,6 +311,7 @@ class PaymentService
                 'invoice_no'            => $invoiceResult['invoice_no'],
                 'invoice_issued_at'     => now(),
                 'invoice_random_number' => $invoiceResult['random_number'] ?? null,
+                'invoice_status'        => 'issued',
             ]);
             Log::info('[Invoice] Saved to payments (points)', [
                 'payment_id' => $payment->id,
