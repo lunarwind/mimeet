@@ -36,20 +36,56 @@ function EChart({ option, style }: { option: echarts.EChartsOption; style?: Reac
 }
 
 
+interface LevelDistribution {
+  level: string   // 'Lv0' | 'Lv1' | 'Lv1.5' | 'Lv2' | 'Lv3'
+  label: string
+  count: number
+}
+
+interface RecentPayment {
+  id: number
+  user: string
+  plan: string
+  type: 'subscription' | 'points'
+  amount: number
+  time: string | null       // ISO 8601 or null
+  invoice_status: 'pending' | 'issued' | 'failed' | 'not_applicable' | null
+}
+
 interface DashboardStats {
   total_members: number
   month_revenue: number
   paid_members: number
   pending_tickets: number
-  level_distribution: { value: number; name: string; itemStyle: { color: string } }[]
+  level_distribution: LevelDistribution[]
   recent_tickets: { id: string; type: string; time: string }[]
-  recent_payments: { user: string; plan: string; amount: number; time: string }[]
+  recent_payments: RecentPayment[]
   // F40 第二排 KPI
   points_sales_month: number
   points_circulating: number
   points_consumed_today: number
   pending_verifications: number
   consumption_by_feature: { name: string; value: number }[]
+}
+
+// 發票狀態顯示對照（涵蓋全部 4 個 enum 值 + null）
+const invoiceStatusLabel = (s: string | null): string => {
+  switch (s) {
+    case 'pending':         return '待開立'
+    case 'issued':          return '已開立'
+    case 'failed':          return '開立失敗'
+    case 'not_applicable':  return '不適用'
+    default:                return '—'   // null 或未知值
+  }
+}
+
+// 等級分布顯示用顏色對照
+const LEVEL_COLORS: Record<string, string> = {
+  'Lv0':   '#9CA3AF',
+  'Lv1':   '#3B82F6',
+  'Lv1.5': '#8B5CF6',
+  'Lv2':   '#10B981',
+  'Lv3':   '#F0294E',
 }
 
 export default function DashboardPage() {
@@ -78,15 +114,18 @@ export default function DashboardPage() {
         const consumption = Object.entries(cbf).map(([k, v]) => ({ name: featureNames[k] ?? k, value: Number(v) }))
         setStats(prev => ({
           ...prev,
-          total_members: d.members?.total ?? 0,
-          month_revenue: d.revenue?.subscription_month ?? 0,
-          paid_members: d.members?.paid ?? 0,
-          pending_tickets: d.pending_tickets ?? 0,
-          points_sales_month: d.revenue?.points_month ?? 0,
-          points_circulating: d.points?.circulating ?? 0,
-          points_consumed_today: d.points?.consumed_today ?? 0,
-          pending_verifications: d.pending_verifications ?? 0,
+          total_members:          d.members?.total ?? 0,
+          month_revenue:          d.revenue?.subscription_month ?? 0,
+          paid_members:           d.members?.paid ?? 0,
+          pending_tickets:        d.pending_tickets ?? 0,
+          points_sales_month:     d.revenue?.points_month ?? 0,
+          points_circulating:     d.points?.circulating ?? 0,
+          points_consumed_today:  d.points?.consumed_today ?? 0,
+          pending_verifications:  d.pending_verifications ?? 0,
           consumption_by_feature: consumption,
+          // 新欄位：後端提供，前端直接使用，不自行推導
+          level_distribution: d.level_distribution ?? [],
+          recent_payments:    d.recent_payments ?? [],
         }))
         return  // B1：summary 成功就結束，不覆蓋正確數字
       }
@@ -111,32 +150,29 @@ export default function DashboardPage() {
         ? (Array.isArray(ticketsRes.value.data?.data) ? ticketsRes.value.data.data : [])
         : []
 
-      const paidCount   = Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0
+      const paidCount    = Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0
       const pendingCount = Array.isArray(tickets) ? tickets.filter((t: { status: string }) => t.status === 'pending').length : 0
 
-      const lvCounts = [0, 0, 0, 0]
-      if (Array.isArray(members)) {
-        members.forEach((m: { membership_level: number }) => {
-          lvCounts[Math.min(Math.floor(m.membership_level), 3)]++
-        })
-      }
+      // fallback 等級分布：5 組精確規則（與後端 StatsController 一致，不用 Math.floor）
+      const fallbackLevelDist: LevelDistribution[] = [
+        { level: 'Lv0',   label: '未驗證',       count: Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level === 0).length : 0 },
+        { level: 'Lv1',   label: '基礎驗證',     count: Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level === 1).length : 0 },
+        { level: 'Lv1.5', label: '女性照片驗證', count: Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level === 1.5).length : 0 },
+        { level: 'Lv2',   label: '進階驗證',     count: Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level === 2).length : 0 },
+        { level: 'Lv3',   label: '完整驗證',     count: Array.isArray(members) ? members.filter((m: { membership_level: number }) => m.membership_level >= 3).length : 0 },
+      ]
 
       setStats(prev => ({
         ...prev,
-        total_members:   Array.isArray(members) ? members.length : 0,
-        month_revenue:   0,  // fallback 不算收入（需真實付款資料）
-        paid_members:    paidCount,
-        pending_tickets: pendingCount,
-        level_distribution: [
-          { value: lvCounts[0], name: 'Lv0 未驗證',    itemStyle: { color: '#9CA3AF' } },
-          { value: lvCounts[1], name: 'Lv1 Email驗證',  itemStyle: { color: '#3B82F6' } },
-          { value: lvCounts[2], name: 'Lv2 進階驗證',  itemStyle: { color: '#10B981' } },
-          { value: lvCounts[3], name: 'Lv3 付費會員',  itemStyle: { color: '#F0294E' } },
-        ],
+        total_members:      Array.isArray(members) ? members.length : 0,
+        month_revenue:      0,   // fallback 不算收入（需真實付款資料）
+        paid_members:       paidCount,
+        pending_tickets:    pendingCount,
+        level_distribution: fallbackLevelDist,
         recent_tickets: Array.isArray(tickets) ? tickets.slice(0, 5).map((t: { id: number; type: string; created_at: string }) => ({
           id: `TK-${t.id}`, type: t.type, time: t.created_at ? new Date(t.created_at).toLocaleString('zh-TW') : '',
         })) : [],
-        recent_payments: [],  // fallback 無法提供正確最新付款列表
+        recent_payments: [],  // fallback 場景下無法取最新付款資料
       }))
     } catch {
       // API unavailable — show zeros
@@ -157,6 +193,13 @@ export default function DashboardPage() {
     ],
   }
 
+  // 轉換後端格式 { level, label, count } → ECharts 需要的 { name, value, itemStyle }
+  const pieSeries = stats.level_distribution.map((d) => ({
+    name: `${d.level} ${d.label}`,
+    value: d.count,
+    itemStyle: { color: LEVEL_COLORS[d.level] ?? '#CBD5E1' },
+  }))
+
   const pieOption: echarts.EChartsOption = {
     tooltip: { formatter: '{b}: {c} 人 ({d}%)' },
     legend: {
@@ -164,7 +207,7 @@ export default function DashboardPage() {
       right: 10,
       top: 'center',
       formatter: (name: string) => {
-        const item = stats.level_distribution.find((d) => d.name === name)
+        const item = pieSeries.find((d) => d.name === name)
         return `${name}  ${item?.value ?? 0}`
       },
     },
@@ -173,7 +216,7 @@ export default function DashboardPage() {
         type: 'pie',
         radius: ['45%', '70%'],
         center: ['35%', '50%'],
-        data: stats.level_distribution,
+        data: pieSeries,
         label: { show: false },
       },
     ],
@@ -317,10 +360,19 @@ export default function DashboardPage() {
             ) : (
               <List
                 dataSource={stats.recent_payments}
-                renderItem={(item) => (
+                renderItem={(item: RecentPayment) => (
                   <List.Item>
-                    {item.user} <Tag color="blue">{item.plan}</Tag> <Text strong>NT${item.amount}</Text>{' '}
-                    <Text type="secondary">{item.time}</Text>
+                    <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text strong>{item.user}</Text>
+                      <Tag color="blue">{item.plan}</Tag>
+                      <Text strong>NT${item.amount.toLocaleString()}</Text>
+                      <Tag color={item.invoice_status === 'issued' ? 'green' : item.invoice_status === 'failed' ? 'red' : 'default'}>
+                        {invoiceStatusLabel(item.invoice_status)}
+                      </Tag>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {item.time ? new Date(item.time).toLocaleString('zh-TW') : '—'}
+                      </Text>
+                    </div>
                   </List.Item>
                 )}
               />

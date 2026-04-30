@@ -183,49 +183,83 @@ POST /api/v1/admin/auth/logout
 
 > 所需權限：所有管理員角色均可查看（members.view 或以上）
 
-### 3.1 取得今日 / 本月統計數字
+### 3.1 取得儀表板統計摘要
+
+> **2026-04-30 更新**：回應結構已對齊實際實作。移除舊有的 `new_registrations / new_verified / active_users / paid_members` 欄位；新增 `level_distribution`（5 組等級分布）與 `recent_payments`（最新付款列表）。
 
 ```
 GET /api/v1/admin/stats/summary
 ```
 
-**Query 參數：**
-
-| 參數 | 類型 | 必填 | 說明 |
-|------|------|------|------|
-| `period` | string | 否 | `today`（預設）/ `month` / `yesterday` |
+**權限：** admin（任意角色）
 
 **成功回應 200：**
 ```json
 {
   "success": true,
   "data": {
-    "period": "today",
-    "new_registrations": {
-      "total": 42,
-      "male": 18,
-      "female": 24,
-      "vs_yesterday_pct": 12.5
+    "members": {
+      "total": 1234,
+      "new_today": 5,
+      "new_month": 87,
+      "paid": 256,
+      "active": 890
     },
-    "new_verified": {
-      "total": 15,
-      "male": 7,
-      "female": 8
+    "revenue": {
+      "subscription_month": 38500,
+      "points_month": 12800,
+      "points_today": 1500
     },
-    "active_users": {
-      "total": 320,
-      "male": 140,
-      "female": 180
-    },
-    "paid_members": {
-      "total": 89,
-      "new_today": 3
+    "points": {
+      "circulating": 45600,
+      "consumed_today": 320,
+      "consumed_month": 8900,
+      "consumption_by_feature": { "stealth": 120, "super_like": 200 }
     },
     "pending_tickets": 7,
-    "pending_verifications": 4
+    "pending_verifications": 4,
+    "level_distribution": [
+      { "level": "Lv0",   "label": "未驗證",       "count": 120 },
+      { "level": "Lv1",   "label": "基礎驗證",     "count": 450 },
+      { "level": "Lv1.5", "label": "女性照片驗證", "count": 88 },
+      { "level": "Lv2",   "label": "進階驗證",     "count": 320 },
+      { "level": "Lv3",   "label": "完整驗證",     "count": 256 }
+    ],
+    "recent_payments": [
+      {
+        "id": 10,
+        "user": "癡兒",
+        "plan": "MiMeet 週費方案",
+        "type": "subscription",
+        "amount": 149,
+        "time": "2026-04-30T11:12:59+08:00",
+        "invoice_status": "pending"
+      }
+    ]
   }
 }
 ```
+
+**業務規則：**
+
+- `members.total`：`users` 表排除 `deleted_at IS NOT NULL` 的已刪除帳號，包含 uid=1 系統帳號
+- `level_distribution`：固定 5 筆，順序固定為 Lv0 → Lv1 → Lv1.5 → Lv2 → Lv3
+- `level_distribution.count` 採精確分組：`membership_level` 嚴格等於 0 / 1 / 1.5 / 2，以及 `>= 3`
+- `recent_payments` 過濾條件：`status = 'paid'` AND `type IN ('subscription', 'points')`（排除 `verification` 的 NT$100 押金）
+- `recent_payments` 排序：`paid_at DESC`，最多 5 筆
+- `recent_payments.user`：顯示 `users.nickname`；已刪除用戶回 `"已刪除用戶"`
+- `recent_payments.time`：ISO 8601 格式；`paid_at = null` 時回 `null`
+- `recent_payments.invoice_status`：後端原值傳遞，前端負責顯示對照
+
+**`invoice_status` 狀態說明（含顯示文字）：**
+
+| 值 | 前端顯示 | 業務意義 |
+|---|---|---|
+| `pending` | 待開立 | IssueInvoiceJob 已 dispatch，等候 worker 處理或 retry 中 |
+| `issued` | 已開立 | 發票已成功開立（同時會有 `invoice_no` 值）|
+| `failed` | 開立失敗 | 重試 3 次後仍失敗，需 admin 介入手動處理 |
+| `not_applicable` | 不適用 | 此付款不開立發票（業主決策）|
+| `null` | — | 欄位未設值（2026-04-28 migration 之前的舊資料殘留）|
 
 ---
 
