@@ -139,7 +139,8 @@ class StatsController extends Controller
                     'type'           => $p->type,
                     'amount'         => (int) $p->amount,
                     'time'           => optional($p->paid_at)->toIso8601String(),
-                    'invoice_status' => $p->invoice_status,  // 前端負責顯示對照
+                    // 衍生防禦：invoice_no 有值即 issued（防止 status 欄位遺漏更新）
+                    'invoice_status' => $p->invoice_no ? 'issued' : $p->invoice_status,
                 ];
             })
             ->values()
