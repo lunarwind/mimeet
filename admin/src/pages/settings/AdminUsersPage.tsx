@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Table, Button, Modal, Input, Tag, message, Card, Typography, Select, Popconfirm, Form, Space } from 'antd'
+import { Table, Button, Modal, Input, Tag, message, Card, Typography, Select, Popconfirm, Form, Space, Collapse } from 'antd'
 import { PlusOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import type { AdminRole } from '../../types/admin'
@@ -163,6 +163,61 @@ export default function AdminUsersPage() {
         <Title level={4} style={{ margin: 0 }}>管理員帳號</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>新增管理員</Button>
       </div>
+
+      {/* 角色權限說明 — 預設收合，點擊展開 */}
+      <Collapse
+        style={{ marginBottom: 16 }}
+        items={[{
+          key: 'role-permissions',
+          label: '各角色權限設計意圖（後端實作持續完善中）',
+          children: (
+            <div>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                以下表格為 <Tag color="red">super_admin 超級管理員</Tag>
+                <Tag color="blue">admin 一般管理員</Tag>
+                <Tag color="green">cs 客服人員</Tag>
+                三種角色的<strong>設計意圖</strong>。
+                後端 RBAC 實作目前仍在補齊中，部分路由細粒度控制尚未完整生效，
+                實際行為以系統現況為準。如發現「應限制但仍可操作」情況，請通報技術負責人。
+              </Text>
+
+              <Table
+                size="small"
+                pagination={false}
+                bordered
+                style={{ marginBottom: 12 }}
+                columns={[
+                  { title: '功能模組',    dataIndex: 'module',  key: 'module',  width: 160 },
+                  { title: '查看',        dataIndex: 'view',    key: 'view',    width: 130 },
+                  { title: '新增',        dataIndex: 'create',  key: 'create',  width: 100 },
+                  { title: '編輯 / 調整', dataIndex: 'edit',    key: 'edit',    width: 160 },
+                  { title: '刪除 / 停權', dataIndex: 'del',     key: 'del',     width: 160 },
+                  { title: '備註',        dataIndex: 'note',    key: 'note' },
+                ]}
+                dataSource={[
+                  { key: '1', module: '會員管理',         view: 'super/admin/cs', create: '—',           edit: 'super/admin（停權/調分）', del: 'super（刪帳）admin（停權）', note: 'cs 僅查看' },
+                  { key: '2', module: '舉報 / 申訴處理',  view: 'super/admin/cs', create: '—',           edit: 'super/admin/cs（處理）',  del: 'super/admin',              note: 'cs 可處理回報' },
+                  { key: '3', module: '聊天記錄',         view: 'super/admin',    create: '—',           edit: '—',                       del: '—',                        note: 'cs 不可存取' },
+                  { key: '4', module: '支付記錄',         view: 'super/admin',    create: '—',           edit: '—',                       del: 'super（退款/補發票）',      note: 'cs 不可存取' },
+                  { key: '5', module: '系統設定（方案定價）', view: 'super/admin', create: '—',          edit: 'super/admin',             del: '—',                        note: '訂閱/點數方案' },
+                  { key: '6', module: '系統設定（其他）',  view: 'super',          create: '—',           edit: 'super',                   del: '—',                        note: '僅 super 可存取' },
+                  { key: '7', module: 'SEO / 廣告連結',   view: 'super/admin',    create: 'super/admin', edit: 'super/admin',             del: '—',                        note: 'cs 不可存取' },
+                  { key: '8', module: '廣播 / 系統公告',  view: 'super/admin',    create: 'super/admin', edit: 'super/admin',             del: 'super/admin',              note: 'cs 不可存取' },
+                  { key: '9', module: '後台操作日誌',     view: 'super/admin',    create: '—',           edit: '—',                       del: '—',                        note: 'cs 不可存取' },
+                  { key: '10', module: '管理員帳號管理',  view: 'super',          create: 'super',       edit: 'super（角色調整）',       del: 'super（非自己）',          note: '此頁面本身須 super 才可見' },
+                ]}
+              />
+
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                ⚠️ 本表為角色設計意圖。部分權限規則尚未在後端完整生效，實際操作以系統實際行為為準。
+                詳見 <code>docs/audits/audit-F-20260423.md</code> F-001 觀察項。
+                <br />
+                權限說明版本：2026-04-30 · 依據：AdminPermissionsSeeder.php + 路由 middleware 實際檢視
+              </Text>
+            </div>
+          ),
+        }]}
+      />
 
       <Card>
         <Table dataSource={data} columns={columns} rowKey="id" loading={loading}
