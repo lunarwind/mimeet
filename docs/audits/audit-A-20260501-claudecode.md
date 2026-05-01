@@ -610,3 +610,49 @@ Content-Type: application/json
 - [x] Symmetric 23 條 ≥ 10
 - [x] 報告檔名 `audit-A-20260501-claudecode.md`
 - [x] git diff 只新增 docs/audits/ 下的單一檔案
+
+---
+
+## Errata 2026-05-01（Prompt 0-1 補登）
+
+**追加觸發：** 修正執行 prompts §0-1 要求驗證 Gemini 報告對 PRD-001 §4.2.1 SMS TTL 的 🟠 High 結論。實際 view PRD 後確認 **Gemini 方向正確**，本輪 Symmetric 表第 22 條（SMS 文案 / OTP TTL 對齊）需局部修正：規格與程式碼對 **phone OTP** 不一致。新增 issue。
+
+### Issue #A5-010
+**Pass：** P4 業務規則 / P11.3 規格缺漏
+**規格位置：** docs/PRD-001_MiMeet_約會產品需求規格書.md §4.2.1（line 210, 221）
+**規格內容：**
+```
+210:  - **驗證碼系統**：隨機 6 位數字，**10 分鐘內有效**
+...
+221:  When 系統顯示隨機 6 位驗證碼（10 分鐘有效）
+```
+（line 210 為 §4.2.1「身份驗證」段落最後一句，未區分 email / phone / photo；line 221 在 Acceptance Criteria 中針對女性進階驗證的隨機碼。）
+**程式碼位置：**
+- `backend/app/Services/SmsService.php:17` — SMS 文案「5 分鐘內有效」
+- `backend/app/Http/Controllers/Api/V1/AuthController.php:419` — `Cache::put($otpKey, $code, 300)`（phone OTP TTL = 300s）
+- `backend/app/Http/Controllers/Api/V1/AuthController.php:127, 382` — Email OTP TTL = 600s
+- `backend/app/Http/Controllers/Api/V1/VerificationPhotoController.php:42` — 女性驗證隨機碼 `now()->addMinutes(10)`（600s）
+**差異說明：** PRD line 210「10 分鐘」是統一聲明，但實作分三組：
+- Email OTP = 10 分鐘 ✅ 對齊
+- 女性驗證隨機碼 = 10 分鐘 ✅ 對齊（line 221 也是這個）
+- **手機 SMS OTP = 5 分鐘 ❌ 不對齊**
+PRD 與 SmsService / AuthController phone OTP 衝突。Gemini 報告判定 🟠 High 方向正確（但細節有出入：實際是「PRD 一律寫 10 分鐘但 phone 為 5 分鐘」，並非「PRD 全部 10 分鐘 vs Code 全部 5 分鐘」）。
+**等級：** 🟡 Medium（前次 Symmetric 結論需收回；Gemini 的 🟠 評級略偏高，因為 email/photo 都對齊，僅 phone 出入；用戶端不會看到 PRD，但 PM 與工程師讀規格會誤判）
+**建議方案：**
+- Option A（推薦）：PRD §4.2.1 line 210 改為：「**驗證碼系統**：隨機 6 位數字。**Email 驗證碼 10 分鐘有效；手機 SMS OTP 5 分鐘有效；女性進階驗證隨機碼 10 分鐘有效**。」放入 Prompt 1-2 spec sync 第二波 modification 6 一起執行。
+- Option B：把手機 OTP TTL 改為 10 分鐘以對齊 PRD（不推薦：5 分鐘是 SMS 業界慣例，且 SmsService:17 簡訊文案、DEV-004 §13.1 已明確 5 分鐘）
+**推薦：** A
+**相關 issue:** > 同根問題，亦見 Gemini 報告中對 §4.2.1 的引用
+
+### 對前次 Symmetric 表的修正
+
+§6 第 22 條（「SMS 文案『5 分鐘內有效』...」）的判定範圍應收窄為「DEV-004 §13.1 + SmsService 實作對齊」；PRD-001 §4.2.1 的對齊狀態以 #A5-010 為準。
+
+### 三方稽核交叉驗證結論
+
+| 項目 | Claude Code | Codex | Gemini | 仲裁 |
+|---|---|---|---|---|
+| PRD §4.2.1 SMS TTL | ✅ Symmetric | ✅ Symmetric | 🟠 High | Gemini 對方向正確 → 列為 #A5-010 🟡 Medium |
+
+Gemini 因方法論差異未附 git diff 證據（見執行 prompts 附錄 B），但本條結論可獨立透過 view PRD 與 view code 兩端原文驗證為真。本輪三方稽核合計 issue 數從 9 條更新為 **10 條**。
+
