@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getCurrentAppeal, type CurrentAppeal } from '@/api/appeals'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -14,26 +15,49 @@ const suspendReason = computed(() => {
   return '您的帳號因違反使用條款已被暫停'
 })
 
+// ── 進行中申訴 ─────────────────────────────────────────────
+const currentAppeal = ref<CurrentAppeal | null>(null)
+const appealLoaded = ref(false)
+const hasPendingAppeal = computed(() => currentAppeal.value?.status === 'pending')
+
+const submittedDateLabel = computed(() => {
+  const iso = currentAppeal.value?.submitted_at
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+})
+
 // ── 分數動畫 ──────────────────────────────────────────────
 const animatedScore = ref(0)
 
-onMounted(() => {
+onMounted(async () => {
+  // 分數動畫
   const target = creditScore.value
-  if (target <= 0) { animatedScore.value = 0; return }
-  const duration = 1000
-  const start = performance.now()
-  function step(now: number) {
-    const elapsed = now - start
-    const progress = Math.min(elapsed / duration, 1)
-    // ease-out
-    const eased = 1 - Math.pow(1 - progress, 3)
-    animatedScore.value = Math.round(eased * target)
-    if (progress < 1) requestAnimationFrame(step)
+  if (target > 0) {
+    const duration = 1000
+    const start = performance.now()
+    const animate = (now: number) => {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      animatedScore.value = Math.round(eased * target)
+      if (progress < 1) requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
   }
-  requestAnimationFrame(step)
+
+  // 載入進行中申訴狀態（API 失敗時靜默 fallback 為「無申訴」UI）
+  try {
+    currentAppeal.value = await getCurrentAppeal()
+  } catch {
+    currentAppeal.value = null
+  } finally {
+    appealLoaded.value = true
+  }
 })
 
 function goToAppeal() {
+  if (hasPendingAppeal.value) return
   router.push('/suspended/appeal')
 }
 
@@ -113,16 +137,37 @@ function handleLogout() {
       <!-- ⑤ 分隔線 -->
       <hr class="suspended-card__divider" />
 
-      <!-- ⑥ 說明文字 -->
-      <p class="suspended-card__desc">
+      <!-- ⑥ 進行中申訴 / 說明文字 -->
+      <div v-if="hasPendingAppeal" class="suspended-card__appeal-status">
+        <div class="suspended-card__appeal-status-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="suspended-card__appeal-status-body">
+          <div class="suspended-card__appeal-status-title">已有申訴審核中</div>
+          <div class="suspended-card__appeal-status-meta">
+            案號 {{ currentAppeal?.ticket_no }}
+            <span v-if="submittedDateLabel"> · {{ submittedDateLabel }}</span>
+          </div>
+          <div class="suspended-card__appeal-status-desc">
+            審核通常於 3-5 個工作天內完成，結果將以 Email 通知您。
+          </div>
+        </div>
+      </div>
+      <p v-else class="suspended-card__desc">
         如您認為此停權有誤，可提出申訴。<br />
         我們將於 3-5 個工作天內審核，<br />
         審核結果將以 Email 通知您。
       </p>
 
       <!-- ⑦ 按鈕 -->
-      <button class="suspended-card__btn suspended-card__btn--primary" @click="goToAppeal">
-        提出申訴
+      <button
+        class="suspended-card__btn suspended-card__btn--primary"
+        :disabled="hasPendingAppeal || !appealLoaded"
+        @click="goToAppeal"
+      >
+        {{ hasPendingAppeal ? '申訴審核中' : '提出申訴' }}
       </button>
       <button class="suspended-card__btn suspended-card__btn--secondary" @click="handleLogout">
         登出
@@ -426,6 +471,60 @@ function handleLogout() {
 
 .suspended-card__btn--primary:active {
   background: #D01A3C;
+}
+
+.suspended-card__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.suspended-card__btn:disabled:active {
+  transform: none;
+}
+
+/* ── 進行中申訴狀態卡片 ───────────────────────────────────── */
+.suspended-card__appeal-status {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.suspended-card__appeal-status-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.suspended-card__appeal-status-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.suspended-card__appeal-status-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1E40AF;
+  margin-bottom: 2px;
+}
+
+.suspended-card__appeal-status-meta {
+  font-size: 12px;
+  color: #1E40AF;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.suspended-card__appeal-status-desc {
+  font-size: 12px;
+  color: #1E40AF;
+  line-height: 1.5;
 }
 
 .suspended-card__btn--secondary {
