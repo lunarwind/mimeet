@@ -154,4 +154,41 @@ class User extends Authenticatable
         }
         return $now >= $start && $now < $end;
     }
+
+    /**
+     * 推導用戶「不靠訂閱」應有的 membership_level。
+     *
+     * 訂閱到期降級時用此值取代 Lv3，避免直接寫死成 Lv1 而誤刪驗證升級的成果。
+     *
+     * 規則（PRD §3.2 + 程式碼 ground truth 雙向驗證）：
+     * - Lv2  : 男性 + 信用卡驗證（credit_card_verified_at 不為 null）
+     * - Lv1.5: 女性 + 照片驗證已通過（user_verifications.status='approved'）
+     * - Lv1  : 已驗證手機（phone_verified=true）
+     * - Lv0  : 剛註冊
+     *
+     * 不檢查 email_verified 的原因：
+     *   email_verified 為 phone_verified 的註冊前置條件，
+     *   到達此判斷時必然為 true，故不重複檢查（已驗證 production 無例外資料）。
+     */
+    public function getBaseMembershipLevel(): float
+    {
+        if ($this->gender === 'male' && $this->credit_card_verified_at !== null) {
+            return 2.0;
+        }
+
+        if ($this->gender === 'female') {
+            $hasApprovedPhotoVerification = UserVerification::where('user_id', $this->id)
+                ->where('status', 'approved')
+                ->exists();
+            if ($hasApprovedPhotoVerification) {
+                return 1.5;
+            }
+        }
+
+        if ($this->phone_verified) {
+            return 1.0;
+        }
+
+        return 0.0;
+    }
 }

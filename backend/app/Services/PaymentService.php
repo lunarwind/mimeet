@@ -190,11 +190,14 @@ class PaymentService
                 : $paidAt;
 
             // Create new subscription
+            // Trial 方案規格：「不含自動續費功能」(PRD §4.4.3)
+            // 一般訂閱保留 DB 預設 auto_renew=true（規格 §4.4.5）
             Subscription::create([
                 'user_id' => $order->user_id,
                 'plan_id' => $plan->id,
                 'order_id' => $order->id,
                 'status' => 'active',
+                'auto_renew' => !$plan->is_trial,
                 'started_at' => $startedAt,
                 'expires_at' => $startedAt->copy()->addDays($plan->duration_days),
             ]);
