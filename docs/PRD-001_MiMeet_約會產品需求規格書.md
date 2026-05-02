@@ -124,6 +124,24 @@
 └─ 搜尋結果優先顯示
 ```
 
+**實作對應（各等級的 ground truth 欄位）**：
+
+| 等級 | 升級條件（規格原文） | 程式碼判定欄位 | 主要寫入路徑 |
+|---|---|---|---|
+| Lv0 | 註冊完成 Email 驗證 | `users.email_verified=true` | 註冊流程 |
+| Lv1 | 手機 SMS 驗證 | `users.phone_verified=true` | `AuthController::verifyPhone` |
+| Lv1.5 | 女性完成真人照片驗證 | `user_verifications.status='approved'`（gender=female）| `Admin/V1/VerificationController::review` |
+| Lv2 | 男性完成信用卡驗證 NT$100 | `users.credit_card_verified_at IS NOT NULL`（gender=male）| `VerificationHandler::onPaid`（ECPay callback 成功時） |
+| Lv3 | 購買任一訂閱方案 | `subscriptions.status='active' AND expires_at > now()` | `PaymentService::activateSubscription` |
+
+訂閱到期降級邏輯（`subscriptions:expire` job）依此表反推 base level：
+- 男性已完成信用卡驗證者降回 Lv2，未完成者降回 Lv1
+- 女性照片驗證已通過者降回 Lv1.5，未通過者降回 Lv1
+- 已驗手機但未做進階驗證者降回 Lv1，未驗手機者降回 Lv0
+- 詳見 `User::getBaseMembershipLevel()` 與 DEV-005 §10.4
+
+> **Admin 手動升降級的 edge case**（admin `verify_advanced` / `unverify_advanced` 與 ground truth 欄位不對稱）已記錄於 `docs/decisions/2026-05-03-admin-membership-edge-cases.md`，待後續專門 sprint 處理。
+
 **後台「會員等級功能設定」規格**：
 
 | 功能項目 | Lv0 | Lv1 | Lv1.5 | Lv2 | Lv3 |
