@@ -68,19 +68,25 @@ async function handleLogin() {
     authStore.setToken(res.token ?? '', rememberMe.value)
     authStore.setUser(res.user)
 
-    // 停權帳號跳轉
-    if (res.user.status === 'suspended') {
+    // 停權帳號跳轉（D 方案 / 決策 1A：login 對 suspended 用戶仍回 200 + 發 token，
+    // 依 user.status 主動跳 /suspended，由 CheckSuspended middleware 在後續 API 攔阻）
+    if (res.user.status === 'suspended' || res.user.status === 'auto_suspended') {
       router.push('/suspended')
       return
     }
 
     router.push('/app/explore')
   } catch (err: unknown) {
-    const e = err as { response?: { status?: number; data?: { error?: { code?: string | number; type?: string }; user?: { status?: string } } } }
+    const e = err as { response?: { status?: number; data?: { code?: string; error?: { code?: string | number; type?: string }; user?: { status?: string } } } }
     const code = e?.response?.data?.error?.code || e?.response?.status
 
     if (code === 429 || e?.response?.data?.error?.type === 'too_many_attempts') {
       showToast('請稍後再試，您已嘗試過多次')
+    } else if (e?.response?.data?.code === 'ACCOUNT_SUSPENDED') {
+      // 防呆：D 方案後 login 對 suspended 走 200 success path，正常不會進這分支。
+      // 此分支保留兼容（例如 staging 與 prod 版本不同步、或未來其他 endpoint 撞到攔截器）。
+      // axios 攔截器（client.ts）已 push /suspended，此處不顯誤導 toast。
+      return
     } else if (e?.response?.data?.user?.status === 'suspended') {
       router.push('/suspended')
     } else {

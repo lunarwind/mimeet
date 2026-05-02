@@ -262,7 +262,9 @@ Content-Type: application/json
 }
 ```
 
-> 失敗時 `error.code` 可能為 `INVALID_CREDENTIALS`（401，密碼錯誤）/ `ACCOUNT_LOGIN_LOCKED`（429，5 次/email 或 20 次/IP 失敗鎖）/ `ACCOUNT_SUSPENDED`（403，帳號被停權）。
+> 失敗時 `error.code` 可能為 `INVALID_CREDENTIALS`（401，密碼錯誤）/ `ACCOUNT_LOGIN_LOCKED`（429，5 次/email 或 20 次/IP 失敗鎖）。
+>
+> **停權帳號（D 方案，2026-05-02 起）：** 若帳號 `status` 為 `suspended` 或 `auto_suspended`，**login 仍回 200 + 發 token**（不再回 403）。回應 body 的 `data.user.status` 反映實際狀態，前端應據此導向 `/suspended`。後續 API 由 `check.suspended` middleware 攔阻並回 `403 ACCOUNT_SUSPENDED`，僅 `/auth/me`、`/auth/logout`、`/me/appeal`、`/me/appeal/current` 4 條 whitelist 路由停權者可用。詳見 docs/decisions/2026-05-01-check-suspended-decision.md。
 >
 > 使用 Laravel Sanctum Personal Access Token，無 refresh 機制。
 > Token 有效期 24 小時（SANCTUM_TOKEN_EXPIRATION=1440），到期後需重新登入。
@@ -3166,7 +3168,15 @@ POST /api/v1/me/appeal
 Authorization: Bearer {access_token}
 Content-Type: multipart/form-data
 ```
-middleware: auth:sanctum（停權用戶也可呼叫）
+middleware: `auth:sanctum` + `check.suspended` group，但本端點以 `->withoutMiddleware('check.suspended')` 排除停權檢查。
+
+**完整流程（D 方案）：**
+1. 停權用戶 login → 仍回 200 + 發正常 Sanctum token（決策 1A）
+2. 前端 SuspendedView 拿 token 呼叫 `POST /me/appeal` → 經 `auth:sanctum`，但 `withoutMiddleware('check.suspended')` 跳過停權攔截
+3. AppealService 內仍以 `$user->status in ['suspended','auto_suspended']` 反向驗證（NOT_SUSPENDED 錯誤）
+4. 寫入 `reports` 表（type='appeal'）→ admin 後台處理
+
+stripping `check.suspended` 的 4 條 whitelist：`/auth/me`、`/auth/logout`、`/me/appeal`、`/me/appeal/current`。
 
 **請求參數（multipart/form-data）：**
 - `reason`: string（必填，max:500）

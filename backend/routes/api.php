@@ -60,25 +60,28 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── Auth (authenticated) ────────────────────────────────────────
-    Route::prefix('auth')->middleware('auth:sanctum')->group(function () {
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::get('/me', [AuthController::class, 'me']);
+    // Whitelist：/auth/logout 與 /auth/me 不擋停權帳號（停權者要能讀自己 status + 登出）
+    Route::prefix('auth')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout'])
+            ->withoutMiddleware('check.suspended');
+        Route::get('/me', [AuthController::class, 'me'])
+            ->withoutMiddleware('check.suspended');
     });
 
     // ─── Phone verify (requires auth — A-001/G-001 fix) ─────────────
-    Route::prefix('auth')->middleware(['auth:sanctum', 'throttle:otp'])->group(function () {
+    Route::prefix('auth')->middleware(['auth:sanctum', 'check.suspended', 'throttle:otp'])->group(function () {
         Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend']);
         Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm']);
     });
 
     // ─── Media upload (authenticated, upload rate-limited) ──────────────
     Route::post('/uploads', [MediaController::class, 'upload'])
-        ->middleware(['auth:sanctum', 'throttle:upload']);
+        ->middleware(['auth:sanctum', 'check.suspended', 'throttle:upload']);
     Route::delete('/uploads', [MediaController::class, 'delete'])
-        ->middleware('auth:sanctum');
+        ->middleware(['auth:sanctum', 'check.suspended']);
 
     // ─── Users (authenticated, rate-limited) ───────────────────────────
-    Route::prefix('users')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+    Route::prefix('users')->middleware(['auth:sanctum', 'check.suspended', 'throttle:api'])->group(function () {
         Route::get('/me', [UserController::class, 'me']);
         Route::patch('/me', [UserController::class, 'update']);
         Route::get('/me/settings', [UserController::class, 'settings']);
@@ -98,7 +101,7 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── Me (authenticated) — blocked users ──────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('/me/blocked-users', [UserController::class, 'blockedUsers']);
     });
 
@@ -106,20 +109,20 @@ Route::prefix('api/v1')->group(function () {
     Route::get('/subscriptions/plans', [SubscriptionController::class, 'plans']);
 
     // ─── Subscriptions (authenticated) ───────────────────────────────
-    Route::prefix('subscriptions')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('subscriptions')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('/me', [SubscriptionController::class, 'mySubscription']);
         Route::post('/orders', [SubscriptionController::class, 'createOrder']);
         Route::patch('/me', [SubscriptionController::class, 'update']);
         Route::post('/cancel-request', [SubscriptionController::class, 'cancelRequest']);
     });
 
-    Route::prefix('subscription')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('subscription')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('/trial', [SubscriptionController::class, 'trial']);
         Route::post('/trial/purchase', [SubscriptionController::class, 'trialPurchase']);
     });
 
     // ─── Chats (authenticated) ─────────────────────────────────────────
-    Route::prefix('chats')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('chats')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('/', [ChatController::class, 'index'])->middleware('membership:2');
         Route::post('/', [ChatController::class, 'store'])->middleware('membership:2');
         Route::patch('/read-all', [ChatController::class, 'readAll']);
@@ -134,13 +137,13 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── DND / Do Not Disturb (F22 Part B) ─────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('me/dnd', [DndController::class, 'show']);
         Route::patch('me/dnd', [DndController::class, 'update']);
     });
 
     // ─── Date Invitations (legacy) ─────────────────────────────────────
-    Route::prefix('date-invitations')->middleware(['auth:sanctum', 'membership:2'])->group(function () {
+    Route::prefix('date-invitations')->middleware(['auth:sanctum', 'check.suspended', 'membership:2'])->group(function () {
         Route::post('/', [DateInvitationController::class, 'store']);
         Route::get('/', [DateInvitationController::class, 'index']);
         Route::patch('/{id}/response', [DateInvitationController::class, 'respond']);
@@ -148,7 +151,7 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── Dates (authenticated) ──────────────────────────────────────────
-    Route::prefix('dates')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('dates')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('/', [DateController::class, 'index'])->middleware('membership:2');
         Route::post('/', [DateController::class, 'store'])->middleware('membership:2');
         Route::patch('/{id}/accept', [DateController::class, 'accept']);
@@ -162,7 +165,7 @@ Route::prefix('api/v1')->group(function () {
     Route::match(['get', 'post'], 'payments/return', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'returnUrl']);
     // 訂單查詢（前端結果頁 polling 用，需登入）
     Route::get('payments/{order_no}', [\App\Http\Controllers\Api\V1\UnifiedPaymentController::class, 'show'])
-         ->middleware('auth:sanctum');
+         ->middleware(['auth:sanctum', 'check.suspended']);
 
     // ─── ECPay alias 路由（過渡期，ECPay 後台 NotifyURL 改指 /payments/callback 後可移除）
     Route::prefix('payments/ecpay')->group(function () {
@@ -174,7 +177,7 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── F40 Points (authenticated) ────────────────────────────────
-    Route::prefix('points')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('points')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('/packages', [PointController::class, 'packages']);
         Route::post('/purchase', [PointController::class, 'purchase']);
         Route::get('/balance', [PointController::class, 'balance']);
@@ -182,32 +185,32 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── F42 Stealth Mode (authenticated) ─────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('me/stealth', [StealthController::class, 'status']);
         Route::post('me/stealth', [StealthController::class, 'activate']);
         Route::delete('me/stealth', [StealthController::class, 'deactivate']);
     });
 
     // ─── FCM Push Token (B-003/H-004) ─────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('me/fcm-token', [FcmTokenController::class, 'store']);
         Route::delete('me/fcm-token', [FcmTokenController::class, 'destroy']);
     });
 
     // ─── F40-c Super Like (authenticated) ─────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('users/{id}/super-like', [SuperLikeController::class, 'store']);
     });
 
     // ─── F41 User Broadcasts (authenticated, membership:2+) ───────
-    Route::prefix('broadcasts')->middleware(['auth:sanctum', 'membership:2'])->group(function () {
+    Route::prefix('broadcasts')->middleware(['auth:sanctum', 'check.suspended', 'membership:2'])->group(function () {
         Route::post('/preview', [UserBroadcastController::class, 'preview']);
         Route::post('/send', [UserBroadcastController::class, 'send']);
         Route::get('/my', [UserBroadcastController::class, 'history']);
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────
-    Route::prefix('reports')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('reports')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('/', [ReportController::class, 'store']);
         Route::get('/', [ReportController::class, 'index']);
         Route::get('/history', [ReportController::class, 'history']);
@@ -215,39 +218,42 @@ Route::prefix('api/v1')->group(function () {
         Route::post('/{id}/followups', [ReportController::class, 'addFollowup']);
     });
 
-    // ─── Appeal (authenticated — suspended users can access) ─────────
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('me/appeal', [AppealController::class, 'store']);
-        Route::get('me/appeal/current', [AppealController::class, 'current']);
+    // ─── Appeal (authenticated — suspended users CAN access via withoutMiddleware) ─────────
+    // 申訴是停權者唯一的對外介面，必須繞過 check.suspended
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
+        Route::post('me/appeal', [AppealController::class, 'store'])
+            ->withoutMiddleware('check.suspended');
+        Route::get('me/appeal/current', [AppealController::class, 'current'])
+            ->withoutMiddleware('check.suspended');
     });
 
     // ─── Privacy (authenticated) ────────────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('me/privacy', [PrivacyController::class, 'index']);
         Route::patch('me/privacy', [PrivacyController::class, 'update']);
     });
 
     // ─── Change Password (authenticated) ────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('me/change-password', [AuthController::class, 'changePassword'])
             ->middleware('throttle:otp');
     });
 
     // ─── Account Deletion (authenticated) ───────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('me/delete-account', [DeleteAccountController::class, 'store']);
         Route::delete('me/delete-account', [DeleteAccountController::class, 'cancel']);
     });
 
     // ─── Verification Photo / Lv1.5 (Sprint 11) ─────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('me/verification-photo/request', [VerificationPhotoController::class, 'request']);
         Route::post('me/verification-photo/upload', [VerificationPhotoController::class, 'upload']);
         Route::get('me/verification-photo/status', [VerificationPhotoController::class, 'status']);
     });
 
     // ─── Credit Card Verification (男性進階驗證) ──────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::post('verification/credit-card/initiate', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'initiate']);
         Route::get('verification/credit-card/status', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'status']);
     });
@@ -257,7 +263,7 @@ Route::prefix('api/v1')->group(function () {
     Route::match(['get', 'post'], 'verification/credit-card/return', [\App\Http\Controllers\Api\V1\CreditCardVerificationController::class, 'returnUrl']);
 
     // ─── Notifications (authenticated) ───────────────────────────────
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::patch('notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::patch('notifications/{id}/read', [NotificationController::class, 'markRead']);
