@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { submitAppeal } from '@/api/appeals'
 
@@ -17,6 +17,16 @@ const submitError = ref<string | null>(null)
 const REASON_MAX = 500
 const EVIDENCE_MAX = 300
 
+// 圖片上傳（對齊後端 AppealController:20-21：images max 3, each max 5MB）
+const MAX_IMAGES = 3
+const MAX_IMAGE_SIZE_MB = 5
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
+
+const fileInput = ref<HTMLInputElement | null>(null)
+const images = ref<File[]>([])
+const imagePreviews = ref<string[]>([])
+const imageError = ref<string | null>(null)
+
 const reasonCount = computed(() => reason.value.length)
 const evidenceCount = computed(() => evidence.value.length)
 const canSubmit = computed(() =>
@@ -24,6 +34,53 @@ const canSubmit = computed(() =>
   reason.value.length <= REASON_MAX &&
   evidence.value.length <= EVIDENCE_MAX
 )
+
+function openFilePicker() {
+  if (images.value.length >= MAX_IMAGES) return
+  fileInput.value?.click()
+}
+
+function handleFileChange(event: Event) {
+  imageError.value = null
+  const input = event.target as HTMLInputElement
+  if (!input.files || input.files.length === 0) return
+
+  const incoming = Array.from(input.files)
+  if (images.value.length + incoming.length > MAX_IMAGES) {
+    imageError.value = `最多 ${MAX_IMAGES} 張圖片`
+    input.value = ''
+    return
+  }
+  for (const f of incoming) {
+    if (!f.type.startsWith('image/')) {
+      imageError.value = '只接受圖片檔（jpeg/png/gif/webp）'
+      input.value = ''
+      return
+    }
+    if (f.size > MAX_IMAGE_SIZE_BYTES) {
+      imageError.value = `單張圖片不可超過 ${MAX_IMAGE_SIZE_MB}MB`
+      input.value = ''
+      return
+    }
+  }
+  for (const f of incoming) {
+    images.value.push(f)
+    imagePreviews.value.push(URL.createObjectURL(f))
+  }
+  input.value = ''
+}
+
+function removeImage(idx: number) {
+  const url = imagePreviews.value[idx]
+  if (url) URL.revokeObjectURL(url)
+  images.value.splice(idx, 1)
+  imagePreviews.value.splice(idx, 1)
+  imageError.value = null
+}
+
+onBeforeUnmount(() => {
+  imagePreviews.value.forEach((url) => URL.revokeObjectURL(url))
+})
 
 // ── 送出 ──────────────────────────────────────────────────
 async function handleSubmit() {
@@ -34,7 +91,10 @@ async function handleSubmit() {
     const combined = evidence.value.trim()
       ? `${reason.value.trim()}\n\n佐證說明：${evidence.value.trim()}`
       : reason.value.trim()
-    const res = await submitAppeal({ reason: combined })
+    const res = await submitAppeal({
+      reason: combined,
+      images: images.value.length > 0 ? images.value : undefined,
+    })
     ticketNumber.value = res.ticket_no
     step.value = 'success'
   } catch {
@@ -113,15 +173,45 @@ function goBack() {
 
       <!-- 上傳圖片 -->
       <div class="appeal-field">
-        <label class="appeal-field__label">佐證圖片（選填，最多 3 張）</label>
+        <label class="appeal-field__label">佐證圖片（選填，最多 {{ MAX_IMAGES }} 張、每張 ≤{{ MAX_IMAGE_SIZE_MB }}MB）</label>
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
+          hidden
+          @change="handleFileChange"
+        />
         <div class="appeal-upload">
-          <div class="appeal-upload__slot">
+          <div
+            v-for="(url, idx) in imagePreviews"
+            :key="url"
+            class="appeal-upload__preview"
+          >
+            <img :src="url" alt="" class="appeal-upload__preview-img" />
+            <button
+              type="button"
+              class="appeal-upload__remove"
+              @click="removeImage(idx)"
+              aria-label="移除"
+            >
+              ×
+            </button>
+          </div>
+          <button
+            v-if="images.length < MAX_IMAGES"
+            type="button"
+            class="appeal-upload__slot"
+            @click="openFilePicker"
+            aria-label="新增圖片"
+          >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
             <span>上傳</span>
-          </div>
+          </button>
         </div>
+        <p v-if="imageError" class="appeal-field__error">{{ imageError }}</p>
       </div>
 
       <!-- 錯誤訊息 -->
@@ -298,6 +388,7 @@ function goBack() {
 .appeal-upload {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .appeal-upload__slot {
@@ -314,11 +405,54 @@ function goBack() {
   transition: border-color 0.15s;
   font-size: 11px;
   color: #94A3B8;
+  background: transparent;
+  font-family: inherit;
+  padding: 0;
 }
 
 .appeal-upload__slot:hover {
   border-color: #F0294E;
   color: #F0294E;
+}
+
+.appeal-upload__preview {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #E2E8F0;
+  background: #F8FAFC;
+}
+
+.appeal-upload__preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.appeal-upload__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 23, 42, 0.7);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.appeal-upload__remove:active {
+  background: rgba(15, 23, 42, 0.9);
 }
 
 /* ── Error ─────────────────────────────────────────────────── */

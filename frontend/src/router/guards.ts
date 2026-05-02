@@ -43,8 +43,16 @@ export function setupRouterGuards(router: Router) {
       return { path: '/app/shop' }
     }
 
-    // 7. Logged in but not verified → only allow public routes
-    if (!auth.isVerified && !PUBLIC_ROUTE_NAMES.has(routeName)) {
+    // 7. Logged in but not verified → only allow public routes.
+    //    /suspended/* short-circuits here because suspended users have
+    //    isVerified=false (status !== 'active'); without this exclusion,
+    //    /suspended/appeal would redirect to /login → /app/explore →
+    //    /suspended → /suspended/appeal infinite loop, stranding the user.
+    if (
+      !auth.isVerified
+      && !PUBLIC_ROUTE_NAMES.has(routeName)
+      && !to.path.startsWith('/suspended')
+    ) {
       return { path: '/login' }
     }
 

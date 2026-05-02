@@ -24,7 +24,7 @@ client.interceptors.request.use((config) => {
 // Response Interceptor：統一錯誤處理
 client.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const uiStore = useUiStore()
 
     if (error.response?.status === 401) {
@@ -37,6 +37,13 @@ client.interceptors.response.use(
     }
 
     if (error.response?.status === 403) {
+      // 帳號被停權：直接導去 /suspended，避免使用者看到通用「無權限」誤導訊息。
+      // 動態 import 避免 client ↔ router 模組循環。
+      if ((error.response.data as { code?: string } | undefined)?.code === 'ACCOUNT_SUSPENDED') {
+        const { default: router } = await import('@/router')
+        await router.push('/suspended')
+        return Promise.reject(error)
+      }
       uiStore.showToast('您沒有權限執行此操作', 'error')
       return Promise.reject(error)
     }

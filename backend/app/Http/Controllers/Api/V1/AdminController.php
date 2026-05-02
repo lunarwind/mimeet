@@ -9,6 +9,7 @@ use App\Models\Report;
 use App\Models\Subscription;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -386,6 +387,11 @@ class AdminController extends Controller
             );
         } elseif ($action === 'suspend') {
             $user->forceFill(['status' => 'suspended', 'suspended_at' => now()])->save();
+            $user->tokens()->delete();
+            UserActivityLogService::log($user->id, 'account_suspended_by_admin', [
+                'admin_id' => auth()->id(),
+                'tokens_revoked' => true,
+            ], $request);
         } elseif ($action === 'unsuspend') {
             $user->forceFill(['status' => 'active'])->save();
         } elseif ($action === 'verify_phone') {
@@ -504,6 +510,14 @@ class AdminController extends Controller
                     $updateData['suspended_at'] = now();
                 }
                 $user->update($updateData);
+                if ($newStatus === 'suspended') {
+                    $user->tokens()->delete();
+                    UserActivityLogService::log($user->id, 'account_suspended_by_admin', [
+                        'admin_id' => auth()->id(),
+                        'tokens_revoked' => true,
+                        'via' => 'patch_members',
+                    ], $request);
+                }
             }
         }
 

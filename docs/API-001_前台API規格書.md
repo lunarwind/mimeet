@@ -142,6 +142,10 @@ HTTP動詞：
 
 ### 2.1 用戶認證
 
+> **回應 `code` 規約（成功回應）：** §2.1.x 所有**成功**回應的 `code` 欄位一律為**字串語意碼**（如 `REGISTER_SUCCESS` / `LOGIN_SUCCESS` / `LOGOUT_SUCCESS`），不使用整數狀態碼。HTTP status code 由各端點獨立標註。前端應依 `code` 字串做 switch，不可依賴整數比較。
+>
+> **錯誤回應 `code` 與 `error.code` 字典化進行中**：目前混用整數（如 register error `code: 400`）與字串（如 login error `code: 'LOGIN_FAILED'`、`error.code: 'INVALID_CREDENTIALS'`）。完整字典與 code 統一由錯誤碼字典化任務（Audit-A 後續 Prompt 2-2）一併處理，本節暫保留現狀以不破壞前端契約。
+
 #### 2.1.1 用戶註冊
 ```http
 POST /api/v1/auth/register
@@ -157,7 +161,6 @@ Content-Type: application/json
   "nickname": "甜心寶貝",
   "gender": "female",
   "birth_date": "2001-05-15",
-  "group": 2,
   "terms_accepted": true,
   "privacy_accepted": true,
   "anti_fraud_read": true
@@ -238,7 +241,7 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "code": 200,
+  "code": "LOGIN_SUCCESS",
   "message": "登入成功",
   "data": {
     "user": {
@@ -259,6 +262,8 @@ Content-Type: application/json
 }
 ```
 
+> 失敗時 `error.code` 可能為 `INVALID_CREDENTIALS`（401，密碼錯誤）/ `ACCOUNT_LOGIN_LOCKED`（429，5 次/email 或 20 次/IP 失敗鎖）/ `ACCOUNT_SUSPENDED`（403，帳號被停權）。
+>
 > 使用 Laravel Sanctum Personal Access Token，無 refresh 機制。
 > Token 有效期 24 小時（SANCTUM_TOKEN_EXPIRATION=1440），到期後需重新登入。
 
@@ -279,7 +284,7 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "code": 200,
+  "code": "LOGOUT_SUCCESS",
   "message": "登出成功"
 }
 ```
@@ -363,22 +368,7 @@ Content-Type: application/json
 
 #### 2.2.3 真人驗證（女性）
 
-> 詳見 §16.3/§16.4 完整說明，本節為摘要。
-
-**開始驗證（獲取驗證碼）：**
-```http
-POST /api/v1/me/verification-photo/request
-Authorization: Bearer {access_token}
-```
-
-**上傳驗證照片：**
-```http
-POST /api/v1/me/verification-photo/upload
-Authorization: Bearer {access_token}
-Content-Type: multipart/form-data
-
-verification_photo: {file}
-```
+> **接點規格詳見 §16.3 / §16.4**（JSON 兩步驟流程：先 `POST /users/me/photos` 取得 URL，再 `POST /me/verification-photo/upload` 提交 `photo_url + random_code`）。本節僅為導引，避免重複維護。
 
 #### 2.2.4 信用卡驗證（男性進階驗證）
 

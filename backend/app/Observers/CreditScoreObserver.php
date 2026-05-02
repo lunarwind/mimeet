@@ -27,8 +27,9 @@ class CreditScoreObserver
                 'status' => 'auto_suspended',
                 'suspended_at' => now(),
             ]);
+            $user->tokens()->delete();
             Cache::put("suspended_user:{$user->id}", true, now()->addYear());
-            Log::info("[AutoSuspend] user #{$user->id} suspended, score={$newScore}");
+            Log::info("[AutoSuspend] user #{$user->id} suspended, score={$newScore}, tokens_revoked=true");
             if ($user->email) {
                 Mail::to($user->email)->queue(new AccountAutoSuspendedMail($user));
             }

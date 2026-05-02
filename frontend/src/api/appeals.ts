@@ -30,3 +30,24 @@ export async function submitAppeal(payload: AppealPayload): Promise<AppealRespon
   })
   return res.data.data
 }
+
+/**
+ * 對應 API-001 §10.8 GET /api/v1/me/appeal/current
+ * 回傳當前進行中（pending）或最近一筆已處理（resolved）的申訴；
+ * 若用戶從未提交過申訴，回傳 null。
+ */
+export interface CurrentAppeal {
+  ticket_no: string
+  status: string
+  submitted_at: string | null
+  admin_reply: string | null
+  replied_at: string | null
+}
+
+export async function getCurrentAppeal(): Promise<CurrentAppeal | null> {
+  const res = await client.get<{
+    success: boolean
+    data: CurrentAppeal | null
+  }>('/me/appeal/current')
+  return res.data.data
+}
