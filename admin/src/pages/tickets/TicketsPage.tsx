@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select, Divider, List, message } from 'antd'
+import { Table, Input, Tag, Button, Drawer, Descriptions, Space, Typography, Select, Divider, List, Alert, Image, message } from 'antd'
 import { SearchOutlined, SendOutlined } from '@ant-design/icons'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
@@ -17,17 +17,51 @@ interface Followup {
   created_at: string
 }
 
+interface UserSummary {
+  id: number
+  email?: string
+  nickname: string
+  status?: string
+  credit_score?: number
+}
+
+interface CreditScoreHistoryRow {
+  id: number
+  delta: number
+  score_before: number
+  score_after: number
+  type: string
+  reason: string
+  created_at: string
+}
+
+interface ReceivedReportRow {
+  id: number
+  type: string
+  status: string
+  description: string
+  created_at: string
+}
+
+interface AppealInfo {
+  credit_score_history: CreditScoreHistoryRow[]
+  received_reports: ReceivedReportRow[]
+  images: string[]
+}
+
 interface Ticket {
   id: number
-  uuid: string
+  uuid?: string
   type: string
   status: string
   description: string
   admin_reply: string | null
-  reporter: { id: number; nickname: string } | null
-  reported_user: { id: number; nickname: string } | null
+  reporter: UserSummary | null
+  reported_user: UserSummary | null
   followups?: Followup[]
   created_at: string
+  resolved_at?: string | null
+  appeal_info?: AppealInfo | null
 }
 
 export default function TicketsPage() {
@@ -63,15 +97,16 @@ export default function TicketsPage() {
     setLoading(false)
   }
 
+  // D.3：呼叫 GET /admin/tickets/{id} 取得完整詳情（含 type=appeal 的 appeal_info）
   async function fetchTicketDetail(id: number) {
     try {
       const res = await apiClient.get(`/admin/tickets/${id}`)
-      const ticket = res.data.data
+      const ticket: Ticket = res.data.data
       setSelectedTicket(ticket)
       setNewStatus(ticket.status)
       setAdminReply(ticket.admin_reply || '')
     } catch {
-      // fallback: use list data
+      // fallback: 維持列表資料
     }
   }
 
@@ -86,10 +121,18 @@ export default function TicketsPage() {
 
   async function handleProcess() {
     if (!selectedTicket) return
+    // 進入終態時 admin_reply 必填（後端也驗，但前端先擋）
+    const isTerminal = newStatus === 'resolved' || newStatus === 'dismissed'
+    if (isTerminal && !adminReply.trim()) {
+      message.warning('進入「已結案 / 已駁回」狀態時，必須填寫管理員回覆')
+      return
+    }
     setProcessing(true)
     try {
-      await apiClient.patch(`/admin/tickets/${selectedTicket.id}`, {
-        data: { status: newStatus, admin_reply: adminReply || undefined },
+      // D.3 修 wire：用 /status 端點 + 平鋪 body + admin_reply 欄位
+      await apiClient.patch(`/admin/tickets/${selectedTicket.id}/status`, {
+        status: newStatus,
+        admin_reply: adminReply || null,
       })
       message.success('Ticket 已更新')
       await fetchTicketDetail(selectedTicket.id)
@@ -104,8 +147,9 @@ export default function TicketsPage() {
     if (!selectedTicket || !followupText.trim()) return
     setFollowupSubmitting(true)
     try {
+      // D.3 修 wire：欄位 message（非 content）+ 平鋪 body
       await apiClient.post(`/admin/tickets/${selectedTicket.id}/reply`, {
-        data: { content: followupText },
+        message: followupText,
       })
       message.success('留言已新增')
       setFollowupText('')
@@ -147,6 +191,9 @@ export default function TicketsPage() {
     },
   ]
 
+  const isAppeal = selectedTicket?.type === 'appeal'
+  const appealInfo = selectedTicket?.appeal_info
+
   return (
     <div>
       <Title level={4} style={{ marginBottom: 16 }}>Ticket 回報管理</Title>
@@ -167,6 +214,7 @@ export default function TicketsPage() {
           <Select.Option value="scam">詐騙</Select.Option>
           <Select.Option value="fake_photo">假照片</Select.Option>
           <Select.Option value="appeal">停權申訴</Select.Option>
+          <Select.Option value="system_issue">系統問題</Select.Option>
           <Select.Option value="other">其他</Select.Option>
         </Select>
       </Space>
@@ -175,15 +223,36 @@ export default function TicketsPage() {
         pagination={{ current: page, pageSize: 20, total, onChange: setPage, showTotal: (t) => `共 ${t} 筆` }}
         size="middle" locale={{ emptyText: '目前無回報案件' }} />
 
-      <Drawer title={`Ticket #${selectedTicket?.id}`} placement="right" width={560}
+      <Drawer title={`Ticket #${selectedTicket?.id}`} placement="right" width={640}
         open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         {selectedTicket && (
           <div>
+            {/* D.3 解耦提示（僅 type=appeal 時） */}
+            {isAppeal && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="處理此申訴 ticket 僅變更 ticket 狀態，不影響使用者帳號狀態。"
+                description="如需解停使用者或補回誠信分數，請至「會員管理」頁面操作。"
+              />
+            )}
+
             {/* Ticket info */}
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="類型"><Tag>{selectedTicket.type}</Tag></Descriptions.Item>
               <Descriptions.Item label="目前狀態"><Tag color={STATUS_COLORS[selectedTicket.status]}>{STATUS_LABELS[selectedTicket.status]}</Tag></Descriptions.Item>
-              <Descriptions.Item label="回報者">{selectedTicket.reporter?.nickname || '-'}</Descriptions.Item>
+              <Descriptions.Item label="回報者">
+                {selectedTicket.reporter?.nickname || '-'}
+                {selectedTicket.reporter?.status && (
+                  <Tag style={{ marginLeft: 8 }} color={selectedTicket.reporter.status === 'active' ? 'green' : 'red'}>
+                    {selectedTicket.reporter.status}
+                  </Tag>
+                )}
+                {typeof selectedTicket.reporter?.credit_score === 'number' && (
+                  <Text type="secondary" style={{ marginLeft: 8 }}>誠信分數 {selectedTicket.reporter.credit_score}</Text>
+                )}
+              </Descriptions.Item>
               <Descriptions.Item label="被回報者">{selectedTicket.reported_user?.nickname || '-'}</Descriptions.Item>
               <Descriptions.Item label="描述">{selectedTicket.description}</Descriptions.Item>
               <Descriptions.Item label="建立時間">{selectedTicket.created_at ? dayjs(selectedTicket.created_at).format('YYYY/MM/DD HH:mm') : '-'}</Descriptions.Item>
@@ -191,6 +260,59 @@ export default function TicketsPage() {
                 <Descriptions.Item label="管理員回覆">{selectedTicket.admin_reply}</Descriptions.Item>
               )}
             </Descriptions>
+
+            {/* Appeal-only：申訴附圖 */}
+            {isAppeal && appealInfo && appealInfo.images.length > 0 && (
+              <>
+                <Divider>申訴附圖</Divider>
+                <Space wrap>
+                  {appealInfo.images.map((url, idx) => (
+                    <Image key={idx} width={120} height={120} src={url} style={{ objectFit: 'cover', borderRadius: 6 }} />
+                  ))}
+                </Space>
+              </>
+            )}
+
+            {/* Appeal-only：誠信分數歷史 */}
+            {isAppeal && appealInfo && appealInfo.credit_score_history.length > 0 && (
+              <>
+                <Divider>誠信分數歷史（最近 20 筆）</Divider>
+                <Table
+                  size="small"
+                  pagination={false}
+                  dataSource={appealInfo.credit_score_history}
+                  rowKey="id"
+                  columns={[
+                    { title: '時間', dataIndex: 'created_at', width: 140, render: (d) => d ? dayjs(d).format('MM/DD HH:mm') : '-' },
+                    { title: '變動', dataIndex: 'delta', width: 70, render: (d: number) => (
+                      <Tag color={d > 0 ? 'green' : d < 0 ? 'red' : 'default'}>{d > 0 ? `+${d}` : d}</Tag>
+                    ) },
+                    { title: '結算分', dataIndex: 'score_after', width: 80 },
+                    { title: '類型', dataIndex: 'type', width: 140, render: (t: string) => <Tag>{t}</Tag> },
+                    { title: '原因', dataIndex: 'reason', ellipsis: true },
+                  ]}
+                />
+              </>
+            )}
+
+            {/* Appeal-only：被檢舉記錄 */}
+            {isAppeal && appealInfo && appealInfo.received_reports.length > 0 && (
+              <>
+                <Divider>被檢舉記錄（最近 20 筆，排除本筆）</Divider>
+                <Table
+                  size="small"
+                  pagination={false}
+                  dataSource={appealInfo.received_reports}
+                  rowKey="id"
+                  columns={[
+                    { title: '時間', dataIndex: 'created_at', width: 140, render: (d) => d ? dayjs(d).format('MM/DD HH:mm') : '-' },
+                    { title: '類型', dataIndex: 'type', width: 110, render: (t: string) => <Tag color={t === 'appeal' ? 'purple' : 'red'}>{t}</Tag> },
+                    { title: '狀態', dataIndex: 'status', width: 90, render: (s: string) => <Tag color={STATUS_COLORS[s]}>{STATUS_LABELS[s] || s}</Tag> },
+                    { title: '描述（前 100 字）', dataIndex: 'description', ellipsis: true },
+                  ]}
+                />
+              </>
+            )}
 
             {/* Status update & reply */}
             <Divider>處理操作</Divider>
@@ -206,12 +328,19 @@ export default function TicketsPage() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>管理員回覆</Text>
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                管理員回覆
+                {(newStatus === 'resolved' || newStatus === 'dismissed') && (
+                  <Text type="danger" style={{ marginLeft: 4 }}>*</Text>
+                )}
+              </Text>
               <TextArea
                 value={adminReply}
                 onChange={(e) => setAdminReply(e.target.value)}
                 placeholder="輸入給用戶的回覆..."
                 rows={3}
+                maxLength={2000}
+                showCount
               />
             </div>
 

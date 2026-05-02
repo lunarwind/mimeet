@@ -750,6 +750,91 @@ class AdminController extends Controller
     }
 
     /**
+     * GET /api/v1/admin/tickets/{id} — single ticket detail with appeal_info (when type='appeal').
+     *
+     * D.3 解耦版：純讀取，不變更任何資料。
+     * appeal_info 區塊僅在 type='appeal' 時返回，含：
+     *   - credit_score_history：reporter 最近 20 筆誠信分數變動
+     *   - received_reports：reporter 被檢舉的最近 20 筆（排除自身這筆）
+     *   - images：申訴附圖 URL 陣列
+     */
+    public function getTicketDetail(Request $request, int $id): JsonResponse
+    {
+        $report = Report::with(['reporter:id,email,nickname,status,credit_score', 'reportedUser:id,email,nickname,status'])
+            ->findOrFail($id);
+
+        $data = [
+            'id' => $report->id,
+            'uuid' => $report->uuid ?? null,
+            'type' => $report->type,
+            'status' => $report->status,
+            'description' => $report->description,
+            'admin_reply' => $report->resolution_note,
+            'reporter' => $report->reporter ? [
+                'id' => $report->reporter->id,
+                'email' => $report->reporter->email,
+                'nickname' => $report->reporter->nickname,
+                'status' => $report->reporter->status,
+                'credit_score' => $report->reporter->credit_score,
+            ] : null,
+            'reported_user' => $report->reportedUser ? [
+                'id' => $report->reportedUser->id,
+                'email' => $report->reportedUser->email,
+                'nickname' => $report->reportedUser->nickname,
+                'status' => $report->reportedUser->status,
+            ] : null,
+            'created_at' => $report->created_at?->toISOString(),
+            'resolved_at' => $report->resolved_at?->toISOString(),
+        ];
+
+        if ($report->type === 'appeal' && $report->reporter) {
+            $reporterId = $report->reporter->id;
+
+            $creditHistory = \App\Models\CreditScoreHistory::where('user_id', $reporterId)
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get(['id', 'delta', 'score_before', 'score_after', 'type', 'reason', 'created_at'])
+                ->map(fn ($h) => [
+                    'id' => $h->id,
+                    'delta' => $h->delta,
+                    'score_before' => $h->score_before,
+                    'score_after' => $h->score_after,
+                    'type' => $h->type,
+                    'reason' => $h->reason,
+                    'created_at' => $h->created_at?->toISOString(),
+                ]);
+
+            $receivedReports = Report::where('reported_user_id', $reporterId)
+                ->where('id', '!=', $report->id)
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get(['id', 'type', 'status', 'description', 'created_at'])
+                ->map(fn ($r) => [
+                    'id' => $r->id,
+                    'type' => $r->type,
+                    'status' => $r->status,
+                    'description' => mb_substr($r->description ?? '', 0, 100),
+                    'created_at' => $r->created_at?->toISOString(),
+                ]);
+
+            $images = $report->images()->pluck('image_url')->all();
+
+            $data['appeal_info'] = [
+                'credit_score_history' => $creditHistory,
+                'received_reports' => $receivedReports,
+                'images' => $images,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'code' => 'TICKET_DETAIL',
+            'message' => 'OK',
+            'data' => $data,
+        ]);
+    }
+
+    /**
      * Update a ticket status.
      */
     public function updateTicket(Request $request, int $id): JsonResponse

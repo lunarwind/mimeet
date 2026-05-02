@@ -721,31 +721,57 @@ Then 帳號自動解除停權，恢復正常功能
 - 同一停權期間限提交一次申訴（再次提交回傳 422）
 - 申訴送出後顯示：「申訴已送出，我們將在 3 個工作天內回覆，請保持 Email 通暢。」
 
-**後台審核流程（管理員端）**：
+**後台審核流程（管理員端，D.3 解耦版 — 2026-05-02 起）**：
 
 申訴列表入口：後台 Ticket 列表 → 類型篩選「申訴」（type = appeal）
 
-申訴 Ticket 詳情頁顯示：
-- 用戶基本資料（暱稱、Email、停權前誠信分數、停權原因）
-- 申訴說明與佐證截圖
+申訴 Ticket 詳情頁顯示（GET `/admin/tickets/{id}`）：
+- 用戶基本資料（暱稱、Email、停權前誠信分數）
+- 申訴說明與佐證截圖（最多 3 張）
 - 該用戶完整誠信分數歷史（最近 20 筆）
-- 該用戶被檢舉記錄
+- 該用戶被檢舉記錄（最近 20 筆，排除本筆自身）
+- 醒目提示：「處理此申訴 ticket 僅變更 ticket 狀態，不影響使用者帳號狀態。如需解停使用者，請至『會員管理』頁面操作。」
 
-管理員操作選項（三選一）：
-① 核准申訴 — 補回分數
-  - 輸入補回分數（建議預設 30 分，最低必須 ≥ 30 才能解停）
+**Ticket 系統與 user.status / 誠信分數完全解耦：**
+管理員處理申訴 ticket 只能變更 ticket.status（pending → investigating → resolved/dismissed）+ 填寫 admin_reply。
+**不再**連動 user.status 或 credit_score。
+
+管理員操作選項（兩種）：
+① **核准申訴**（status = resolved）
   - 輸入給用戶的回覆說明（必填）
-  - 執行後：分數更新 → 系統自動解停 → Email 通知用戶
-② 駁回申訴 — 維持停權
-  - 輸入駁回原因（必填，用戶可在 Email 看到）
-  - 執行後：維持停權 → Email 通知用戶
-③ 直接刪除帳號（super_admin 專屬）
-  - 帳號軟刪除 → Email 通知
+  - 執行後：ticket.status = resolved + 系統依 user.status 自動發送通知（站內訊息 / email）
+  - **使用者帳號狀態不會自動恢復**，需 admin 至「會員管理 → 解停」獨立操作
+② **駁回申訴**（status = dismissed）
+  - 輸入駁回原因（必填）
+  - 執行後：ticket.status = dismissed + 系統依 user.status 自動發送通知
 
-**解停觸發條件**：
-- `credit_score >= 30` AND `status = 'auto_suspended'` 時系統自動解停
+**解停 / 補分流程（與 ticket 完全獨立）：**
+- 解停 user：admin 後台 → 會員管理 → 該帳號 → 「解除停權」按鈕（PATCH /admin/members/{id}/actions, action='unsuspend'）
+- 補誠信分數：admin 後台 → 會員管理 → 該帳號 → 「調整分數」按鈕（PATCH /admin/members/{id}/actions, action='adjust_score'）
+
+**自動解停的另一條觸發（保留既有 Observer 邏輯）：**
+- `credit_score >= 30` AND `status = 'auto_suspended'` 時 CreditScoreObserver 自動解停
+- 此觸發**不依賴 ticket 處理**，由分數變動本身觸發（admin 手動補分時也會觸發）
 - 解停後 status → 'active'，清除 Cache `suspended_user:{id}`
 - 發送 AccountReactivatedMail
+
+---
+
+**Ticket 處理通知雙軌（D.3 新增 — 2026-05-02）：**
+
+當 ticket.status 變為 resolved/dismissed 時，系統依「處理當下」`reporter.status` 自動發送通知：
+
+| 情境 | reporter.status | 通知管道 | 通知類型 |
+|---|---|---|---|
+| 1 | active | 站內訊息 | `notifications` 表 type=`ticket_replied` |
+| 2 | suspended / auto_suspended | Email | `TicketProcessedMail`（Resend，queue 派發）|
+
+**Email 範本三變體：**
+- type=appeal + status=resolved：主旨「您的申訴處理結果通知」+ **明確說明「申訴核准 ≠ 帳號自動恢復」**+ 引導聯繫客服
+- type=appeal + status=dismissed：主旨「您的申訴未通過」+ 駁回理由
+- type≠appeal：主旨「您的回報已處理」+ admin_reply
+
+**重複防護：** 重複設定同樣終態（如 resolved → resolved）**不重複發送**通知。
 
 ```
 驗收標準：
