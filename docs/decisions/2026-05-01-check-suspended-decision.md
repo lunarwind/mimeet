@@ -1,11 +1,40 @@
 # Decision Memo — `check.suspended` 中介層架構方向
 
-**狀態：** 🟡 **待 PM / 安全裁示**
+**狀態：** ✅ **已簽核（2026-05-02）— 採 Option A2 + appeal whitelist 變體（D 方案）**
 **建立日期：** 2026-05-01
+**簽核日期：** 2026-05-02
 **作者：** Claude Code（依 Audit-A Round 4 修正執行 Prompt 1-3）
-**對應 audit issue：** Codex `#A5-001` 🟠 High
-**程式碼基準：** `7787b7940ee45a1ad3ca5b078ef389084c660a09`（develop）
+**對應 audit issue：** Codex `#A5-001` 🟠 High + Bug 3 申訴閉環死結
+**程式碼基準（決策時）：** `7787b7940ee45a1ad3ca5b078ef389084c660a09`（develop）
+**實作 commit：** （本次 D 方案實作 commit 補入後填）
 **相關規格：** docs/DEV-004 §3.1 路由規範
+
+---
+
+## 簽核決議（2026-05-02）
+
+採用 **D 方案 = Option A2（CheckSuspended middleware 讀 `$request->user()->status`）+ appeal whitelist + login 1A 結構**：
+
+1. **Login 對 suspended 用戶改回 200 + 發正常 token**（不再回 403）—— 解決 Bug 3 申訴閉環死結
+2. **新增 `CheckSuspended` middleware** 掛在 26 個 `auth:sanctum` 群組之後 —— 解決 Bug 1 立即踢出
+3. **4 條 whitelist 用 `->withoutMiddleware('check.suspended')`**：
+   - `POST /me/appeal`（申訴提交）
+   - `GET /me/appeal/current`（申訴狀態查詢）
+   - `GET /auth/me`（前端讀 status 主動跳 /suspended）
+   - `POST /auth/logout`（停權者要能登出）
+4. **Token ability 不額外限制**（仍是普通 Sanctum PAT），靠 middleware 攔阻。被停權當下 `c5d9d57` 仍會撤舊 token，新登入會發新 token，雙保險。
+5. **WebSocket / Reverb 對 token revocation 反應**（c.2 隱憂）—— 本方案不涉及，現況仍是 token 失效時 broker 可能殘留授權；待未來如有 broker 整合需求再開新 issue。
+
+**驗收標準：**
+- 26 條 auth:sanctum 路由（除 4 條 whitelist 外）對 suspended 用戶皆回 403 ACCOUNT_SUSPENDED
+- 4 條 whitelist 路由對 suspended 用戶仍 200
+- AuthController::login 對 active / suspended / auto_suspended 都回 200 + token
+- 整合測試 `CheckSuspendedTest` 10 條 case 全綠
+
+**否決 Option B（保留 24h 延遲）的理由：** 對 dating app 的騷擾風險與付費糾紛場景不可接受。
+
+**否決 Option C 單做的理由：** Token revocation 已在 `c5d9d57` 完成，但只能在「下次 API 呼叫」生效；補上 middleware（A2）才能在「同一個尚未失效的 token」之間立即攔阻（雖然此情境少見，但屬深度防禦）。
+
 
 ---
 

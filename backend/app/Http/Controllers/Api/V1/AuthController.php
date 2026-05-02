@@ -213,11 +213,13 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (in_array($user->status, ['suspended', 'auto_suspended'])) {
-            return response()->json([
-                'success' => false, 'code' => 'ACCOUNT_SUSPENDED', 'message' => '您的帳號已被暫停使用。',
-            ], 403);
-        }
+        // 決策 1A（D 方案）：suspended / auto_suspended 用戶仍發 token，
+        // 由 CheckSuspended middleware 在後續 API 攔阻；前端依 user.status 主動跳 /suspended，
+        // /me/appeal* 透過 ->withoutMiddleware('check.suspended') whitelist 讓申訴可達。
+        // 詳見 docs/decisions/2026-05-01-check-suspended-decision.md。
+        //
+        // pending_deletion / deleted 等其他狀態由 GdprService 與其他流程處理，
+        // 此處不額外攔截以維持向後相容。
 
         // Login success — clear email failure count (keep IP count)
         Cache::forget($emailKey);
