@@ -116,6 +116,10 @@ onMounted(async () => {
     uiStore.showToast('付款處理中，請稍候...', 'info')
     await fetchCurrentSubscription()
     window.history.replaceState({}, '', window.location.pathname + window.location.hash.split('?')[0])
+  } else if (paymentStatus === 'failed') {
+    uiStore.showToast('付款失敗，請重新嘗試或更換付款方式', 'error')
+    await fetchCurrentSubscription()
+    window.history.replaceState({}, '', window.location.pathname + window.location.hash.split('?')[0])
   }
 })
 

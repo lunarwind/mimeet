@@ -552,6 +552,12 @@ And 後台管理員可在問題回報區看到此申請
 And 到期日後系統自動將用戶降級為驗證會員
 ```
 
+**實作對應**：
+- 自動降級由 `subscriptions:expire` scheduled command 處理（每日 00:05 觸發）
+- 降級邏輯：`User::getBaseMembershipLevel()` 推導「不靠訂閱應有的等級」（Lv2 / Lv1.5 / Lv1 / Lv0），不寫死 Lv1
+- 過期前 3 天提醒由 `subscriptions:notify-expiring` 處理（每日 09:00）
+- 詳見 DEV-005 §10.4 排程任務一覽
+
 ---
 
 ### 4.3.8 歷史回報紀錄
@@ -641,6 +647,11 @@ Then 用戶享有 30 天付費功能
 And 同一帳號不再顯示體驗價入口
 And 到期後自動降回驗證會員（無自動續費）
 ```
+
+**實作對應**：
+- 「不自動續費」由 `PaymentService::activateSubscription()` 在 `is_trial=true` 時強制設定 `subscriptions.auto_renew = false`
+- 一般訂閱 `auto_renew=true` 行為維持不變
+- 「到期後自動降回」與一般訂閱共用 `subscriptions:expire` 排程
 
 ---
 

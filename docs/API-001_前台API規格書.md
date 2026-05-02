@@ -1950,6 +1950,14 @@ Content-Type: application/json
 >
 > **Production 模式：** `payment_url` 為 checkout 端點，
 > 提供自動 POST 表單跳轉至綠界付款頁面（信用卡輸入界面）。
+>
+> **return URL 狀態值**（ECPay callback 後 `UnifiedPaymentController::returnUrl` 設定）：
+> - `?payment=success` — RtnCode=1 付款成功，前端 toast「付款成功！訂閱已啟用」+ refetch /auth/me
+> - `?payment=complete` — 異步付款完成（ATM/CVS），前端 toast「付款處理中，請稍候...」
+> - `?payment=failed` — RtnCode≠1 付款失敗，前端 toast「付款失敗，請重新嘗試或更換付款方式」
+>
+> 前端 `ShopView.vue` 處理完狀態後須清除 query string（用 `window.history.replaceState`），
+> 避免 reload 重複觸發 toast。
 
 #### 7.1.3 獲取訂閱狀態
 ```http

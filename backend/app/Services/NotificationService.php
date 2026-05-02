@@ -119,14 +119,18 @@ class NotificationService
         );
     }
 
-    public function notifySubscriptionExpiring(User $user, string $expiresAt): void
+    public function notifySubscriptionExpiring(User $user, string $expiresAt, ?int $subscriptionId = null): void
     {
+        $data = ['expires_at' => $expiresAt];
+        if ($subscriptionId !== null) {
+            $data['subscription_id'] = $subscriptionId;
+        }
         $this->notify(
             $user,
             'subscription_expiring',
             '訂閱即將到期',
             "您的會員將於 {$expiresAt} 到期",
-            ['expires_at' => $expiresAt],
+            $data,
         );
     }
 
@@ -138,6 +142,21 @@ class NotificationService
             '訂閱啟用成功！',
             "已啟用 {$planName}",
             ['plan_name' => $planName],
+        );
+    }
+
+    public function notifySubscriptionExpired(User $user, string $planName, ?int $subscriptionId = null): void
+    {
+        $data = ['plan_name' => $planName];
+        if ($subscriptionId !== null) {
+            $data['subscription_id'] = $subscriptionId;
+        }
+        $this->notify(
+            $user,
+            'subscription_expired',
+            '您的訂閱已到期',
+            "您的「{$planName}」會員資格已恢復為一般用戶。如需繼續享有付費功能，請至會員商城購買訂閱。",
+            $data,
         );
     }
 }
