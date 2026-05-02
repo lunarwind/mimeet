@@ -290,6 +290,7 @@ Route::prefix('api/v1')->group(function () {
             Route::post('/members/{id}/change-password', [AdminController::class, 'changeMemberPassword'])->middleware('admin.permission:members.edit');
             Route::post('/members/{id}/verify-email', [AdminController::class, 'forceVerifyEmail'])->middleware('admin.permission:members.edit');
             Route::get('/tickets', [AdminController::class, 'tickets'])->middleware('admin.permission:reports.view');
+            Route::get('/tickets/{id}', [AdminController::class, 'getTicketDetail'])->middleware('admin.permission:reports.view');
             Route::patch('/tickets/{id}', [AdminController::class, 'updateTicket'])->middleware('admin.permission:reports.process');
             Route::patch('/tickets/{id}/status', [TicketController::class, 'updateStatus'])->middleware('admin.permission:reports.process');
             Route::post('/tickets/{id}/reply', [TicketController::class, 'reply'])->middleware('admin.permission:reports.process');

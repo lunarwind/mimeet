@@ -1023,75 +1023,73 @@ GET /api/v1/admin/tickets/{ticket_id}
 }
 ```
 
-> **Sprint 8 新增**：當 `type = "appeal"` 時，回應額外包含：
+> **D.3 解耦版（2026-05-02）**：當 `type = "appeal"` 時，回應額外包含 `appeal_info` 區塊（純讀取參考資訊，不影響任何狀態變更）：
 ```json
 {
   "appeal_info": {
-    "suspended_at": "2026-04-08T09:00:00Z",
-    "suspension_reason": "誠信分數歸零（最後一筆記錄：被檢舉 -10 分）",
-    "credit_score_at_suspension": 0,
     "credit_score_history": [
-      { "delta": -10, "reason": "被檢舉 (Ticket R20260408001)", "created_at": "..." },
-      { "delta": -10, "reason": "被檢舉 (Ticket R20260401002)", "created_at": "..." }
+      { "id": 1, "delta": -10, "score_before": 30, "score_after": 20, "type": "report_submit", "reason": "被他人檢舉（待審）", "created_at": "..." },
+      { "id": 2, "delta": -10, "score_before": 20, "score_after": 10, "type": "report_submit", "reason": "被他人檢舉（待審）", "created_at": "..." }
+    ],
+    "received_reports": [
+      { "id": 12, "type": "harassment", "status": "resolved", "description": "前 100 字描述...", "created_at": "..." }
+    ],
+    "images": [
+      "https://api.mimeet.online/storage/appeals/3/xxx.jpg"
     ]
   }
 }
 ```
+> `credit_score_history` / `received_reports` 各最近 20 筆；`received_reports` 排除本筆 ticket 自身。**僅供 admin 審查參考，不影響此 ticket 處理流程。**
 
 ---
 
-### 6.3 更新 Ticket 狀態 / 回覆
+### 6.3 更新 Ticket 狀態 / 回覆（D.3 解耦版）
+
+> ⚠️ **D.3 變更（2026-05-02）：** 廢除 `PATCH /admin/tickets/{ticket_id}` 的 `action`/`restore_score`/`credit_adjustments` 機制。所有 ticket 狀態變更統一走 **`PATCH /admin/tickets/{ticket_id}/status`**，**不再** 連動 user.status 或 credit_score。**解停 user / 補分數須由 admin 至「會員管理頁」獨立操作。**
 
 ```
-PATCH /api/v1/admin/tickets/{ticket_id}
+PATCH /api/v1/admin/tickets/{ticket_id}/status
 ```
 
-> 狀態從 `pending` 改為 `processing` 時，系統自動記錄操作者為 assignee。
+middleware：`auth:sanctum` + `admin.auth` + `admin.permission:reports.process`
 
-**請求參數：**
+**請求參數（平鋪 body，不再 wrap `data`）：**
 ```json
 {
   "status": "resolved",
-  "admin_reply": "經查證屬實，已對違規用戶停權處理。感謝您的回報，已補回 10 分誠信分數。",
-  "credit_adjustments": [
-    { "user_id": 1001, "change": 10, "reason": "檢舉屬實，退回扣除分數並補獎勵" },
-    { "user_id": 1002, "change": -15, "reason": "檢舉屬實，違規懲罰" }
-  ]
+  "admin_reply": "經查證屬實，已處理。"
 }
 ```
 
-> `credit_adjustments` 為選填。若填寫，後端自動對對應用戶執行誠信分數調整並記錄。
-
-> **Sprint 8 新增** — 申訴專用 action（當 type=appeal 時使用）：
-```json
-// 申訴核准
-{
-  "status": "resolved",
-  "action": "approve_appeal",
-  "restore_score": 35,
-  "admin_reply": "申訴審核通過，已補回誠信分數，請注意未來行為。"
-}
-
-// 申訴駁回
-{
-  "status": "dismissed",
-  "action": "reject_appeal",
-  "admin_reply": "申訴理由不充分，維持停權決定。"
-}
-```
-> `restore_score` 最低值 30（系統強制驗證），低於 30 無法自動解停。
+| 欄位 | 型別 | 必填 | 說明 |
+|---|---|---|---|
+| `status` | string | ✅ | `pending` / `investigating` / `resolved` / `dismissed` |
+| `admin_reply` | string | 條件必填 | 當 `status=resolved` 或 `dismissed` 時必填，max 2000 字元 |
 
 **成功回應 200：**
 ```json
 {
   "success": true,
+  "code": "TICKET_STATUS_UPDATED",
+  "message": "案件狀態已更新",
   "data": {
-    "ticket_no": "R20250115001",
-    "status": "resolved",
-    "credit_adjustments_applied": 2
+    "ticket": { "id": 401, "status": "resolved", "resolved_at": "2026-05-02T01:13:14Z" }
   }
 }
 ```
+
+**通知行為（自動觸發）：**
+- 當 `status` 從非終態（pending/investigating）變為終態（resolved/dismissed）時，自動依「處理當下」`reporter.status` 發送通知：
+  - `reporter.status` ∈ {`suspended`, `auto_suspended`} → 寄 email（`TicketProcessedMail`，走 queue）
+  - 其他 → 站內訊息（`Notification` type=`ticket_replied`）
+- 重複設定同樣終態（resolved → resolved）**不重複發送**通知
+
+**廢棄端點與欄位（保留兼容但不再推薦使用）：**
+- `PATCH /admin/tickets/{ticket_id}`（`updateTicket`）— 仍存在但不觸發新版通知；前端應改用 `/status`
+- `action: approve_appeal | reject_appeal` — 已廢除
+- `restore_score` 欄位 — 已廢除（補分由「會員管理 → 調整誠信分數」獨立操作）
+- `credit_adjustments` 欄位 — 已廢除
 
 ---
 

@@ -5,112 +5,92 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\ReportFollowup;
-use App\Models\User;
-use App\Services\CreditScoreService;
-use App\Services\ReportService;
+use App\Services\TicketNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * D.3 解耦版（2026-05-02）：Ticket 系統 = 純行政管理工具。
+ *
+ * 解耦原則（用戶決策 Q1/Q2）：
+ * - updateStatus 只變更 ticket.status + resolution_note + resolved_by/at
+ * - 不變更 user.status（解停須由 admin 手動至會員管理頁操作）
+ * - 不變更 credit_score（補分須由 admin 手動至會員管理頁的調整分數操作）
+ * - appeal 與其他 ticket type 走相同通用流程，無特例
+ *
+ * 通知雙軌（用戶決策 Q4-Q8）：
+ * - status 變為 resolved/dismissed 時自動觸發通知
+ * - active user → 站內訊息（既有 NotificationService）
+ * - suspended/auto_suspended user → email（既有 Resend 設施）
+ * - 通知管道判斷在 ticket 變更前 snapshot user.status（race-safe）
+ *
+ * Refs: docs/decisions/2026-05-01-check-suspended-decision.md
+ */
 class TicketController extends Controller
 {
     public function __construct(
-        private readonly ReportService $reportService,
+        private readonly TicketNotificationService $ticketNotificationService,
     ) {}
 
     /**
-     * PATCH /api/v1/admin/tickets/{id}/status — resolve or dismiss a report
+     * PATCH /api/v1/admin/tickets/{id}/status
+     *
+     * Body:
+     *   - status: pending|investigating|resolved|dismissed (required)
+     *   - admin_reply: string (required when status=resolved|dismissed, max 2000 chars)
      */
     public function updateStatus(Request $request, int $id): JsonResponse
     {
-        $report = Report::findOrFail($id);
-        $adminId = $request->user()->id;
-
-        // Handle appeal-specific actions
-        if ($report->type === 'appeal') {
-            return $this->handleAppealAction($request, $report, $adminId);
-        }
-
         $request->validate([
-            'status' => 'required|in:resolved,dismissed',
-            'note' => 'required|string|max:500',
+            'status' => 'required|in:pending,investigating,resolved,dismissed',
+            'admin_reply' => 'required_if:status,resolved,dismissed|nullable|string|max:2000',
         ]);
 
-        $report = $this->reportService->resolveReport(
-            $report,
-            $adminId,
-            $request->input('status'),
-            $request->input('note'),
-        );
+        $report = Report::findOrFail($id);
+        $oldStatus = $report->status;
+        $newStatus = $request->input('status');
+        $adminReply = $request->input('admin_reply');
+        $adminId = $request->user()->id;
 
-        $reporterChange = $report->reporter_score_change ?? 0;
-        $reportedChange = $request->input('status') === 'resolved' ? -5 : 0;
+        // ── Race-safe：先 snapshot reporter.status，避免後續 user.status 異動影響通知管道判斷 ──
+        // 雖然此版本 ticket 處理不會變更 user.status，但保留此習慣以防未來重新耦合。
+        $reporter = $report->reporter;
+        $reporterStatusSnapshot = $reporter?->status;
+
+        $isTerminalNew = in_array($newStatus, ['resolved', 'dismissed'], true);
+        $isTerminalOld = in_array($oldStatus, ['resolved', 'dismissed'], true);
+
+        $report->update(array_filter([
+            'status' => $newStatus,
+            'resolution_note' => $adminReply,
+            'resolved_by' => $isTerminalNew ? $adminId : null,
+            'resolved_at' => $isTerminalNew ? now() : null,
+        ], fn ($v) => $v !== null));
+
+        // ── 通知：僅在「首次進入終態」時觸發，重複設定同樣終態不重發 ──
+        $shouldNotify = $isTerminalNew && !$isTerminalOld && $reporter !== null;
+        if ($shouldNotify) {
+            $useEmail = in_array($reporterStatusSnapshot, ['suspended', 'auto_suspended'], true);
+            $this->ticketNotificationService->notifyTicketProcessed(
+                $report->fresh(),
+                $newStatus,
+                $adminReply ?? '',
+                $useEmail,
+            );
+        }
 
         return response()->json([
             'success' => true,
-            'code' => 200,
-            'message' => '案件已結案',
+            'code' => 'TICKET_STATUS_UPDATED',
+            'message' => '案件狀態已更新',
             'data' => [
-                'affected_scores' => [
-                    'reporter_change' => $reporterChange,
-                    'reported_change' => $reportedChange,
+                'ticket' => [
+                    'id' => $report->id,
+                    'status' => $report->fresh()->status,
+                    'resolved_at' => $report->fresh()->resolved_at?->toISOString(),
                 ],
             ],
         ]);
-    }
-
-    private function handleAppealAction(Request $request, Report $report, int $adminId): JsonResponse
-    {
-        $action = $request->input('action', $request->input('status'));
-        $user = User::find($report->reported_user_id);
-
-        if ($action === 'approve_appeal') {
-            $request->validate([
-                'restore_score' => 'required|integer|min:30|max:100',
-                'admin_reply' => 'required|string|max:500',
-            ]);
-
-            $restoreScore = (int) $request->input('restore_score');
-
-            if ($user) {
-                CreditScoreService::adjust($user, $restoreScore, 'appeal_refund', $request->input('admin_reply'), $adminId);
-                // Observer will auto-restore if score >= 30
-            }
-
-            $report->update([
-                'status' => 'resolved',
-                'resolution_note' => $request->input('admin_reply'),
-                'resolved_by' => $adminId,
-                'resolved_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'code' => 200,
-                'message' => '申訴已核准，用戶分數已補回',
-                'data' => ['restore_score' => $restoreScore],
-            ]);
-        }
-
-        if ($action === 'reject_appeal' || $action === 'dismissed') {
-            $request->validate([
-                'admin_reply' => 'required|string|max:500',
-            ]);
-
-            $report->update([
-                'status' => 'dismissed',
-                'resolution_note' => $request->input('admin_reply'),
-                'resolved_by' => $adminId,
-                'resolved_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'code' => 200,
-                'message' => '申訴已駁回',
-            ]);
-        }
-
-        return response()->json(['success' => false, 'message' => 'Invalid action'], 422);
     }
 
     /**

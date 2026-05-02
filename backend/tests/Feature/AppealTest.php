@@ -84,53 +84,15 @@ class AppealTest extends TestCase
             ->assertJsonPath('data', null);
     }
 
-    public function test_approve_appeal_with_score_below_30_returns_422(): void
-    {
-        $admin = $this->createUser();
-        $user = $this->createUser(['status' => 'auto_suspended', 'credit_score' => 0]);
-
-        $report = Report::create([
-            'uuid' => fake()->uuid(),
-            'reporter_id' => $user->id,
-            'reported_user_id' => $user->id,
-            'type' => 'appeal',
-            'status' => 'pending',
-        ]);
-
-        $response = $this->actingAs($admin)->patchJson("/api/v1/admin/tickets/{$report->id}/status", [
-            'action' => 'approve_appeal',
-            'restore_score' => 10,
-            'admin_reply' => 'test',
-        ]);
-
-        $response->assertStatus(422);
-    }
-
-    public function test_approve_appeal_restores_user_status_to_active(): void
-    {
-        $admin = $this->createUser();
-        $user = $this->createUser(['status' => 'auto_suspended', 'credit_score' => 0]);
-
-        $report = Report::create([
-            'uuid' => fake()->uuid(),
-            'reporter_id' => $user->id,
-            'reported_user_id' => $user->id,
-            'type' => 'appeal',
-            'status' => 'pending',
-        ]);
-
-        $response = $this->actingAs($admin)->patchJson("/api/v1/admin/tickets/{$report->id}/status", [
-            'action' => 'approve_appeal',
-            'restore_score' => 35,
-            'admin_reply' => '審核通過',
-        ]);
-
-        $response->assertOk();
-
-        $user->refresh();
-        $this->assertEquals(35, $user->credit_score);
-        $this->assertEquals('active', $user->status);
-    }
+    // ── 已移除（D.3 解耦）：原本測試 approve_appeal 的兩個 case 已不適用 ──
+    //
+    //   test_approve_appeal_with_score_below_30_returns_422  → restore_score 驗證已移除
+    //   test_approve_appeal_restores_user_status_to_active   → 解耦後 ticket 處理不再變更 user.status
+    //
+    // 新版解耦行為由 backend/tests/Feature/Admin/TicketProcessingTest.php 的
+    // resolve_appeal_for_suspended_user_decouples_user_status_and_emails 等 case 覆蓋。
+    //
+    // 詳見 docs/decisions/2026-05-01-check-suspended-decision.md（D.3 段落）。
 
     public function test_reject_appeal_keeps_user_suspended(): void
     {
