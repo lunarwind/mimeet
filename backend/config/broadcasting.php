@@ -8,7 +8,14 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'default' => env('BROADCAST_DRIVER', 'reverb'),
+    /*
+     | Production 必須在 .env 顯式設 BROADCAST_DRIVER=reverb（pre-merge-check 14ae 守護）。
+     | Fallback 改為 'log' 而非 'reverb'：reverb fallback 到 Pusher SDK，
+     | 若 PUSHER_APP_KEY / REVERB_APP_KEY 未設會在 ServiceProvider boot 階段拋
+     | TypeError，連 `php artisan list` 都跑不起來。Log driver 不依賴外部連線，
+     | 適合作為「未明確設定」的安全 fallback。
+     */
+    'default' => env('BROADCAST_DRIVER', 'log'),
 
     /*
     |--------------------------------------------------------------------------

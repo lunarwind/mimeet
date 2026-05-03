@@ -929,13 +929,15 @@ DELETE /api/v1/admin/announcements/{id}
 ## 6. 問題回報 / 檢舉 Ticket API
 
 > **命名說明：** 資料庫表名為 `reports`，但在 API 路由和前端中統一以 **Ticket** 稱呼。
-> 包含兩種用途：
-> - 用戶對其他用戶的「檢舉」（`type=report` / `anon_report`）
-> - 用戶對系統的「問題回報」（`type=system` / `suggestion`）
-> - 取消訂閱申請（`type=unsubscribe`）與停權申訴（`type=appeal`）也走同一套 Ticket 系統
+> `type` 欄位以 DB ENUM 為事實來源，共 8 個值（詳見 DEV-006 §3.7「reports.type 值對照」）：
+> - 用戶對用戶的檢舉：`fake_photo` / `harassment` / `spam` / `scam` / `inappropriate` / `other`
+> - 系統問題回報：`system_issue`
+> - 停權申訴（reporter 即被檢舉者本人）：`appeal`
 >
 > 所有類型共用同一組 CRUD 端點（`/admin/tickets`、`/admin/tickets/{id}`），以 `type` 欄位區分。
 > 前端後台頁面：`TicketsPage.tsx`。
+>
+> **取消訂閱申請不走 reports 表**：由 `POST /api/v1/subscriptions/cancel-request` 直接設 `subscriptions.auto_renew=false`（見 PRD §4.3.7）。早期文件曾出現的 `type=unsubscribe` / `type=report` / `type=anon_report` / `type=system` 皆已棄用。
 
 > 所需權限：`reports.view`（查看）、`reports.process`（處理）
 
@@ -950,7 +952,7 @@ GET /api/v1/admin/tickets
 | 參數 | 類型 | 說明 |
 |------|------|------|
 | `status` | string | `pending`（預設）/ `processing` / `resolved` / `all` |
-| `type` | string | `system`（系統問題）/ `report`（一般檢舉）/ `anon_report`（匿名聊天檢舉）/ `unsubscribe`（取消訂閱）/ `appeal`（停權申訴，Sprint 8 新增） |
+| `type` | string | DB ENUM 8 值之一：`fake_photo` / `harassment` / `spam` / `scam` / `inappropriate` / `other` / `system_issue` / `appeal`（詳見 DEV-006 §3.7） |
 | `keyword` | string | 搜尋案號（R 開頭）/ 暱稱 |
 | `page` | int | 頁碼 |
 
@@ -962,8 +964,8 @@ GET /api/v1/admin/tickets
     {
       "id": 401,
       "ticket_no": "R20250115001",
-      "type": "report",
-      "type_label": "一般檢舉",
+      "type": "harassment",
+      "type_label": "騷擾檢舉",
       "status": "pending",
       "status_label": "待處理",
       "reporter": { "id": 1001, "nickname": "甜心寶貝" },
@@ -993,7 +995,7 @@ GET /api/v1/admin/tickets/{ticket_id}
   "data": {
     "id": 401,
     "ticket_no": "R20250115001",
-    "type": "report",
+    "type": "harassment",
     "status": "pending",
     "reporter": { "id": 1001, "nickname": "甜心寶貝", "credit_score": 85 },
     "reported_user": { "id": 1002, "nickname": "甜爹001", "credit_score": 60 },
