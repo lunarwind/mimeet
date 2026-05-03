@@ -97,6 +97,13 @@
 ├─ 每日聊天 30 則
 └─ 進階驗證入口（男性信用卡 / 女性自拍照）
 
+   設計意圖：Email 驗證為註冊前置流程（驗證後才能進入手機驗證階段），
+   因此到達 Lv1 升級判斷時 email_verified=true 必然為前置條件。程式碼
+   實作（AuthController::verifyPhone、User::getBaseMembershipLevel）只
+   檢查 phone_verified，不重複檢查 email_verified。production 統計顯示
+   0 個「phone_verified=true 但 email_verified=false」異常 user，證明此
+   前置流程設計已落實。
+
 驗證女會員 (Level 1.5) - 女性完成真人照片驗證後取得
 │  預設功能（可後台調整，累加 Level 1）：
 ├─ 查看對方完整個人資料
@@ -580,12 +587,14 @@ And 到期日後系統自動將用戶降級為驗證會員
 
 ### 4.3.8 歷史回報紀錄
 
-> **實作備註（A13 問題回報管理）：** 所有回報與檢舉功能（含 F43 一般用戶檢舉、F44 匿名聊天室檢舉、F45 系統問題回報、F46 歷史回報紀錄、取消訂閱申請、停權申訴）統一整合進 Ticket 系統實作，後台 API 路由為 `/admin/tickets`，前端頁面為 `TicketsPage.tsx`，DB 表名為 `reports`，以 `type` 欄位區分（`report` / `anon_report` / `system` / `unsubscribe` / `appeal`）。
+> **實作備註（A13 問題回報管理）：** 所有回報與檢舉功能（含 F43 一般用戶檢舉、F44 匿名聊天室檢舉、F45 系統問題回報、F46 歷史回報紀錄、停權申訴）統一整合進 Ticket 系統實作，後台 API 路由為 `/admin/tickets`，前端頁面為 `TicketsPage.tsx`，DB 表名為 `reports`，以 `type` 欄位區分。實際 ENUM 值與用途見 DEV-006 §3.7「reports.type 值對照」表（事實來源）：`fake_photo` / `harassment` / `spam` / `scam` / `inappropriate` / `other` / `appeal` / `system_issue` 共 8 值。
+>
+> **取消訂閱申請**不走 reports 表：由 `POST /api/v1/subscriptions/cancel-request` 直接設 `subscriptions.auto_renew=false`，到期日後由 `subscriptions:expire` 排程處理（詳 §4.3.7「實作對應」）。
 
 **功能描述**：讓用戶查詢自己曾提交的所有問題回報與檢舉的處理狀態
 
 **功能規格**：
-- **顯示欄位**：案號、回報類型（系統問題 / 一般檢舉 / 匿名聊天室檢舉 / 取消訂閱）、標題摘要、提交時間、處理狀態、管理員回覆
+- **顯示欄位**：案號、回報類型（系統問題 / 一般檢舉 / 匿名聊天室檢舉 / 申訴）、標題摘要、提交時間、處理狀態、管理員回覆
 - **狀態分類**：待處理 / 處理中 / 已處理
 - **案號追蹤**：用戶可在「再次反饋」功能中輸入案號附加補充說明
 - **排序**：依提交時間由近而遠排序

@@ -96,7 +96,10 @@ class AppealTest extends TestCase
 
     public function test_reject_appeal_keeps_user_suspended(): void
     {
-        $admin = $this->createUser();
+        // Admin 路由（/api/v1/admin/*）走 EnsureAdminUser middleware，
+        // 必須用 AdminUser::factory + Bearer token，不能用 actingAs(User)。
+        // 對應 pattern 見 CreditScoreSubTest:143-155。
+        $admin = \App\Models\AdminUser::factory()->create(['role' => 'admin']);
         $user = $this->createUser(['status' => 'auto_suspended', 'credit_score' => 0]);
 
         $report = Report::create([
@@ -107,10 +110,12 @@ class AppealTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $response = $this->actingAs($admin)->patchJson("/api/v1/admin/tickets/{$report->id}/status", [
-            'action' => 'reject_appeal',
-            'admin_reply' => '理由不充分',
-        ]);
+        $token = $admin->createToken('test')->plainTextToken;
+        $response = $this->withHeaders(['Authorization' => "Bearer {$token}"])
+            ->patchJson("/api/v1/admin/tickets/{$report->id}/status", [
+                'status' => 'dismissed',
+                'admin_reply' => '理由不充分',
+            ]);
 
         $response->assertOk();
 
