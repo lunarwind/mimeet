@@ -32,10 +32,13 @@ const statusLabel = computed(() => {
   }
 })
 
-const isWithin2Hours = computed(() => {
+// PR-QR Step 3: 對齊 PRD §4.2.3 ±30 分鐘掃碼窗口（前後端一致）
+const isInScanWindow = computed(() => {
   if (props.date.status !== 'accepted') return false
-  const diff = new Date(props.date.scheduledAt).getTime() - Date.now()
-  return diff > 0 && diff < 2 * 3600000
+  const scheduledMs = new Date(props.date.scheduledAt).getTime()
+  const nowMs = Date.now()
+  const THIRTY_MIN = 30 * 60 * 1000
+  return nowMs >= scheduledMs - THIRTY_MIN && nowMs <= scheduledMs + THIRTY_MIN
 })
 
 function formatScheduled(iso: string): string {
@@ -88,14 +91,14 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <button class="date-btn date-btn--reject" @click="emit('reject', date.id)">拒絕</button>
       </template>
 
-      <!-- 進行中 + 2小時內 -->
-      <template v-else-if="isWithin2Hours">
+      <!-- 進行中 + 在 ±30 分掃碼窗口內 -->
+      <template v-else-if="isInScanWindow">
         <span class="date-card__countdown">⏱ {{ countdown }}</span>
         <button class="date-btn date-btn--qr" @click="showQR = !showQR">{{ showQR ? '收起 QR' : '顯示 QR' }}</button>
         <button class="date-btn date-btn--scan" @click="emit('scan', date.id)">掃碼驗證</button>
       </template>
 
-      <!-- 進行中 但還不到2小時 -->
+      <!-- 進行中 但尚未進入掃碼窗口（離 scheduled 仍 >30 分） -->
       <template v-else-if="date.status === 'accepted'">
         <span class="date-card__countdown">⏱ {{ countdown }}</span>
       </template>
