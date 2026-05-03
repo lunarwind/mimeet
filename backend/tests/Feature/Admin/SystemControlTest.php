@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AdminUser;
 use App\Models\SystemSetting;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -13,14 +13,18 @@ class SystemControlTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createAdmin(): User
+    private function createAdmin(): AdminUser
     {
-        return User::factory()->create([
-            'membership_level' => 3,
-            'credit_score' => 100,
-            'status' => 'active',
+        return AdminUser::factory()->create([
+            'role' => 'super_admin',
             'password' => Hash::make('admin_password'),
         ]);
+    }
+
+    private function withAdminAuth(AdminUser $admin): self
+    {
+        $token = $admin->createToken('test')->plainTextToken;
+        return $this->withHeaders(['Authorization' => "Bearer {$token}"]);
     }
 
     private function seedSettings(): void
@@ -48,7 +52,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->getJson('/api/v1/admin/settings/system-control');
+        $response = $this->withAdminAuth($admin)->getJson('/api/v1/admin/settings/system-control');
 
         $response->assertOk()
             ->assertJsonPath('success', true)
@@ -60,7 +64,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->patchJson('/api/v1/admin/settings/app-mode', [
+        $response = $this->withAdminAuth($admin)->patchJson('/api/v1/admin/settings/app-mode', [
             'mode' => 'production',
             'confirm_password' => 'admin_password',
         ]);
@@ -76,7 +80,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->patchJson('/api/v1/admin/settings/app-mode', [
+        $response = $this->withAdminAuth($admin)->patchJson('/api/v1/admin/settings/app-mode', [
             'mode' => 'production',
             'confirm_password' => 'wrong_password',
         ]);
@@ -90,7 +94,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->patchJson('/api/v1/admin/settings/mail', [
+        $response = $this->withAdminAuth($admin)->patchJson('/api/v1/admin/settings/mail', [
             'host' => 'smtp.sendgrid.net',
             'port' => 587,
             'from_address' => 'hello@mimeet.tw',
@@ -106,7 +110,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->getJson('/api/v1/admin/settings/system-control');
+        $response = $this->withAdminAuth($admin)->getJson('/api/v1/admin/settings/system-control');
 
         $response->assertOk();
         $this->assertEquals('****', $response->json('data.mail.password'));
@@ -119,7 +123,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->patchJson('/api/v1/admin/settings/sms', [
+        $response = $this->withAdminAuth($admin)->patchJson('/api/v1/admin/settings/sms', [
             'provider' => 'mitake',
             'mitake' => ['username' => 'test_account'],
         ]);
@@ -135,7 +139,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->patchJson('/api/v1/admin/settings/sms', [
+        $response = $this->withAdminAuth($admin)->patchJson('/api/v1/admin/settings/sms', [
             'provider' => 'disabled',
         ]);
 
@@ -148,7 +152,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         Mail::fake();
 
-        $response = $this->actingAs($admin)->postJson('/api/v1/admin/settings/mail/test', [
+        $response = $this->withAdminAuth($admin)->postJson('/api/v1/admin/settings/mail/test', [
             'test_email' => 'test@example.com',
         ]);
 
@@ -161,7 +165,7 @@ class SystemControlTest extends TestCase
         $admin = $this->createAdmin();
         $this->seedSettings();
 
-        $response = $this->actingAs($admin)->getJson('/api/v1/admin/settings/system/app-mode');
+        $response = $this->withAdminAuth($admin)->getJson('/api/v1/admin/settings/system/app-mode');
 
         $response->assertOk()
             ->assertJsonPath('data.mode', 'testing')

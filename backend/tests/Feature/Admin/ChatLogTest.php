@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AdminUser;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
@@ -13,13 +14,15 @@ class ChatLogTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createAdmin(string $role = 'super_admin'): User
+    private function createAdmin(string $role = 'super_admin'): AdminUser
     {
-        return User::factory()->create([
-            'membership_level' => 3,
-            'credit_score' => 100,
-            'status' => 'active',
-        ]);
+        return AdminUser::factory()->create(['role' => $role]);
+    }
+
+    private function withAdminAuth(AdminUser $admin): self
+    {
+        $token = $admin->createToken('test')->plainTextToken;
+        return $this->withHeaders(['Authorization' => "Bearer {$token}"]);
     }
 
     private function createConversationWithMessages(User $userA, User $userB, int $count = 5): Conversation
@@ -57,7 +60,7 @@ class ChatLogTest extends TestCase
         $userB = User::factory()->create();
         $this->createConversationWithMessages($userA, $userB);
 
-        $response = $this->actingAs($admin)->getJson('/api/v1/admin/chat-logs/search?keyword=關鍵字');
+        $response = $this->withAdminAuth($admin)->getJson('/api/v1/admin/chat-logs/search?keyword=關鍵字');
 
         $response->assertOk()
             ->assertJsonPath('success', true)
@@ -68,7 +71,7 @@ class ChatLogTest extends TestCase
     {
         $admin = $this->createAdmin();
 
-        $response = $this->actingAs($admin)->getJson('/api/v1/admin/chat-logs/search?keyword=a');
+        $response = $this->withAdminAuth($admin)->getJson('/api/v1/admin/chat-logs/search?keyword=a');
         $response->assertStatus(422);
     }
 
@@ -79,7 +82,7 @@ class ChatLogTest extends TestCase
         $userB = User::factory()->create();
         $this->createConversationWithMessages($userA, $userB, 3);
 
-        $response = $this->actingAs($admin)->getJson(
+        $response = $this->withAdminAuth($admin)->getJson(
             "/api/v1/admin/chat-logs/conversations?user_a={$userA->id}&user_b={$userB->id}"
         );
 
@@ -115,7 +118,7 @@ class ChatLogTest extends TestCase
             'sent_at' => now(),
         ]);
 
-        $response = $this->actingAs($admin)->getJson(
+        $response = $this->withAdminAuth($admin)->getJson(
             "/api/v1/admin/chat-logs/conversations?user_a={$userA->id}&user_b={$userB->id}"
         );
 
@@ -132,7 +135,7 @@ class ChatLogTest extends TestCase
         $userB = User::factory()->create();
         $this->createConversationWithMessages($userA, $userB, 2);
 
-        $response = $this->actingAs($admin)->get(
+        $response = $this->withAdminAuth($admin)->get(
             "/api/v1/admin/chat-logs/export?user_a={$userA->id}&user_b={$userB->id}"
         );
 
@@ -150,7 +153,7 @@ class ChatLogTest extends TestCase
         $this->createConversationWithMessages($userA, $userB, 3);
         $this->createConversationWithMessages($userA, $userC, 2);
 
-        $response = $this->actingAs($admin)->getJson(
+        $response = $this->withAdminAuth($admin)->getJson(
             "/api/v1/admin/members/{$userA->id}/chat-logs"
         );
 
@@ -169,7 +172,7 @@ class ChatLogTest extends TestCase
     {
         $admin = $this->createAdmin();
 
-        $response = $this->actingAs($admin)->getJson(
+        $response = $this->withAdminAuth($admin)->getJson(
             '/api/v1/admin/chat-logs/conversations?user_a=99999&user_b=99998'
         );
 
