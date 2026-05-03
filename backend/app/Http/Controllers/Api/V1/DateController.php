@@ -15,31 +15,50 @@ class DateController extends Controller
     ) {}
 
     /**
-     * GET /api/v1/dates — list invitations grouped by status
+     * GET /api/v1/dates — list invitations (flat array, for current user only).
+     *
+     * Cleanup PR-QR Step 2: 改為扁平陣列，明確 map 每個欄位（含 qr_token + expires_at）。
+     *  - 不再回 Eloquent raw model（避免 leak 不該對外的欄位）
+     *  - response 結構與 DateInvitationController::index 對齊，多 qr_token + expires_at
+     *  - query 已用 inviter_id/invitee_id 過濾，僅回該 user 自己的邀請
      */
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
 
-        $invitations = DateInvitation::where('inviter_id', $userId)
-            ->orWhere('invitee_id', $userId)
+        $invitations = DateInvitation::where(function ($q) use ($userId) {
+                $q->where('inviter_id', $userId)
+                  ->orWhere('invitee_id', $userId);
+            })
             ->with(['inviter:id,nickname,avatar_url', 'invitee:id,nickname,avatar_url'])
             ->orderByDesc('created_at')
             ->get();
-
-        $grouped = [
-            'pending' => $invitations->where('status', 'pending')->values(),
-            'accepted' => $invitations->where('status', 'accepted')->values(),
-            'verified' => $invitations->where('status', 'verified')->values(),
-            'cancelled' => $invitations->where('status', 'cancelled')->values(),
-            'expired' => $invitations->where('status', 'expired')->values(),
-        ];
 
         return response()->json([
             'success' => true,
             'code' => 200,
             'message' => '約會列表查詢成功',
-            'data' => ['invitations' => $grouped],
+            'data' => [
+                'invitations' => $invitations->map(fn ($inv) => [
+                    'id' => $inv->id,
+                    'inviter' => $inv->inviter ? [
+                        'id' => $inv->inviter->id,
+                        'nickname' => $inv->inviter->nickname,
+                        'avatar' => $inv->inviter->avatar_url,
+                    ] : null,
+                    'invitee' => $inv->invitee ? [
+                        'id' => $inv->invitee->id,
+                        'nickname' => $inv->invitee->nickname,
+                        'avatar' => $inv->invitee->avatar_url,
+                    ] : null,
+                    'scheduled_at' => $inv->date_time?->toISOString(),
+                    'location' => $inv->location_name,
+                    'status' => $inv->status,
+                    'qr_token' => $inv->qr_token,
+                    'expires_at' => $inv->expires_at?->toISOString(),
+                    'created_at' => $inv->created_at,
+                ])->values(),
+            ],
         ]);
     }
 
