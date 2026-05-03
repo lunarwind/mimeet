@@ -406,13 +406,32 @@ class AdminController extends Controller
             }
         } elseif ($action === 'verify_advanced') {
             $target = $user->gender === 'female' ? 1.5 : 2;
+            $updates = [];
             if ((float) $user->membership_level < $target) {
-                $user->forceFill(['membership_level' => $target])->save();
+                $updates['membership_level'] = $target;
+            }
+            // 男性：同步寫 credit_card_verified_at（Cleanup PR-C 決議）。
+            // admin 手動授權等同於系統認可信用卡可用，與正常 NT$100 驗證一致。
+            if ($user->gender === 'male' && $user->credit_card_verified_at === null) {
+                $updates['credit_card_verified_at'] = now();
+            }
+            if (!empty($updates)) {
+                $user->forceFill($updates)->save();
             }
         } elseif ($action === 'unverify_advanced') {
             $current = (float) $user->membership_level;
+            $updates = [];
             if ($current === 1.5 || $current === 2.0) {
-                $user->forceFill(['membership_level' => 1])->save();
+                $updates['membership_level'] = 1;
+            }
+            // 男性：同步清 credit_card_verified_at（弱化版設計，PR-C）。
+            // 注意：base level 推導擴充後，已有 paid payment 的 user 仍會回 Lv2，
+            // admin UI 已加 confirm modal 提示此行為。
+            if ($user->gender === 'male' && $user->credit_card_verified_at !== null) {
+                $updates['credit_card_verified_at'] = null;
+            }
+            if (!empty($updates)) {
+                $user->forceFill($updates)->save();
             }
         } elseif ($action === 'set_level') {
             $user->forceFill(['membership_level' => (float) $request->input('level')])->save();

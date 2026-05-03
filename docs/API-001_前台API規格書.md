@@ -3201,14 +3201,27 @@ stripping `check.suspended` 的 4 條 whitelist：`/auth/me`、`/auth/logout`、
 }
 ```
 
-**錯誤回應：**
+**錯誤回應（皆 422）：**
+
+| Code | 說明 |
+|---|---|
+| `NOT_SUSPENDED` | 帳號目前非停權狀態 |
+| `APPEAL_EXISTS` | 此停權期間已有進行中的申訴（pending / investigating） |
+| `APPEAL_LIMIT_REACHED` | 本次停權期間已達申訴次數上限（3 次） |
+
 ```json
 // 非停權用戶
 { "success": false, "error": { "code": "NOT_SUSPENDED", "message": "帳號目前非停權狀態" } }
 
-// 同一停權期間重複提交
+// 同一停權期間重複提交（active 申訴存在）
 { "success": false, "error": { "code": "APPEAL_EXISTS", "message": "此停權期間已有進行中的申訴" } }
+
+// 同一停權期間已申訴 3 次（PR-C 新增）
+{ "success": false, "error": { "code": "APPEAL_LIMIT_REACHED", "message": "本次停權期間已達申訴次數上限（3 次）" } }
 ```
+
+> **頻率限制規格**：同停權期間（user.suspended_at 起算）最多 3 次，
+> 同時最多 1 筆 active。詳見 PRD §4.4.6「申訴頻率限制」。
 
 #### 10.8.2 取得我的申訴狀態
 ```http

@@ -31,9 +31,10 @@ class AppealController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => ['code' => $e->getMessage(), 'message' => match ($e->getMessage()) {
-                    'NOT_SUSPENDED' => '帳號目前非停權狀態',
-                    'APPEAL_EXISTS' => '此停權期間已有進行中的申訴',
-                    default => $e->getMessage(),
+                    'NOT_SUSPENDED'        => '帳號目前非停權狀態',
+                    'APPEAL_EXISTS'        => '此停權期間已有進行中的申訴',
+                    'APPEAL_LIMIT_REACHED' => '本次停權期間已達申訴次數上限（' . AppealService::APPEAL_LIMIT_PER_SUSPENSION . ' 次）',
+                    default                => $e->getMessage(),
                 }],
             ], 422);
         }

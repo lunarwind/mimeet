@@ -3,6 +3,7 @@
 namespace Tests\Feature\Subscription;
 
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -245,5 +246,81 @@ class ExpireSubscriptionsTest extends TestCase
             ->first();
         $this->assertNotNull($sub);
         $this->assertTrue((bool) $sub->auto_renew, 'Regular subscription must have auto_renew=true');
+    }
+
+    // ─── PR-C 補強：base level 對男性的 Lv2 推導 ─────────────────
+
+    private function makeBackgroundPayment(User $user): Payment
+    {
+        return Payment::create([
+            'user_id'      => $user->id,
+            'type'         => 'subscription',
+            'order_no'     => 'OLD_' . uniqid(),
+            'item_name'    => 'past subscription',
+            'amount'       => 600,
+            'currency'     => 'TWD',
+            'status'       => 'paid',
+            'gateway'      => 'ecpay',
+            'environment'  => 'sandbox',
+            'reference_id' => 1,
+            'paid_at'      => now()->subDays(60),
+        ]);
+    }
+
+    // ─── Case 17 (PR-C): 男性 + 訂閱到期 + 有 paid payment（無 cc_verified_at）→ 降至 Lv2 ───
+    public function test_male_with_paid_payment_falls_to_lv2_on_expire(): void
+    {
+        $this->seedPlans();
+        $monthly = SubscriptionPlan::where('slug', 'plan_monthly')->first();
+        $user = User::factory()->create([
+            'gender'                  => 'male',
+            'membership_level'        => 3,
+            'phone_verified'          => true,
+            'credit_card_verified_at' => null,
+        ]);
+        $this->makeBackgroundPayment($user);
+        $this->makeSubscription($user, $monthly);
+
+        $this->artisan('subscriptions:expire')->assertSuccessful();
+
+        // 推導為 Lv2（base level 條件 B）
+        $this->assertEquals(2.0, (float) $user->fresh()->membership_level);
+    }
+
+    // ─── Case 18 (PR-C): 男性 + 訂閱到期 + 無 paid payment + cc_verified_at=null → 降至 Lv1 ───
+    public function test_male_without_payment_or_cc_falls_to_lv1_on_expire(): void
+    {
+        $this->seedPlans();
+        $monthly = SubscriptionPlan::where('slug', 'plan_monthly')->first();
+        $user = User::factory()->create([
+            'gender'                  => 'male',
+            'membership_level'        => 3,
+            'phone_verified'          => true,
+            'credit_card_verified_at' => null,
+        ]);
+        // 不建 background payment
+        $this->makeSubscription($user, $monthly);
+
+        $this->artisan('subscriptions:expire')->assertSuccessful();
+
+        $this->assertEquals(1.0, (float) $user->fresh()->membership_level);
+    }
+
+    // ─── Case 19 (PR-C): 男性 + 訂閱到期 + cc_verified_at 設值 → 降至 Lv2（既有條件 A）───
+    public function test_male_with_cc_verified_at_falls_to_lv2_on_expire(): void
+    {
+        $this->seedPlans();
+        $monthly = SubscriptionPlan::where('slug', 'plan_monthly')->first();
+        $user = User::factory()->create([
+            'gender'                  => 'male',
+            'membership_level'        => 3,
+            'phone_verified'          => true,
+            'credit_card_verified_at' => now()->subDays(60),
+        ]);
+        $this->makeSubscription($user, $monthly);
+
+        $this->artisan('subscriptions:expire')->assertSuccessful();
+
+        $this->assertEquals(2.0, (float) $user->fresh()->membership_level);
     }
 }
