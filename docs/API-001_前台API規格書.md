@@ -1356,6 +1356,12 @@ echo.private(`chat.${conversationId}`)
 
 ### 5.1 約會邀請管理
 
+> **Endpoint 主從關係（Cleanup PR-QR Step 2，2026-05-04）：**
+> - **`/api/v1/dates`** 為主要 endpoint（list / create / accept / decline）。
+> - **`/api/v1/date-invitations`** 為 legacy（store / index / respond / verify），仍維護向下相容但**已 deprecated**。下個版本評估收斂。
+> - 兩條路由共用 `DateService`，response 結構在本次 PR 已對齊：list endpoint 皆回扁平 `{ data: { invitations: [...] } }`，每筆含 `qr_token` 與 `expires_at`。
+> - 命名統一：wire format 採 `qr_token` + `expires_at`（對齊 DB schema 與 PHP model）。早期文件用過 `qr_code` / `qr_expires_at` 已棄用。
+
 #### 5.1.1 創建約會邀請
 
 > **觸發場景（v1.3 更新）：**
@@ -1399,7 +1405,7 @@ Content-Type: application/json
       "location_lng": 121.5645,
       "status": "pending",
       "qr_token": "a3f9c2d1e8b4...",
-      "qr_expires_at": "2024-12-25T20:00:00Z",
+      "expires_at": "2024-12-25T20:00:00Z",
       "created_at": "2024-12-20T10:30:00Z"
     }
   }
@@ -1443,12 +1449,22 @@ Content-Type: application/json
 ```
 
 #### 5.1.3 獲取約會邀請列表
+
+> **主 endpoint：`GET /api/v1/dates`**（PR-QR Step 2 起為主推薦）。
+> Legacy `GET /api/v1/date-invitations` 仍可用且 response 結構等價（query 參數 `status` / `type` / `page` / `per_page` 僅 legacy 支援），但已 deprecated。
+
+```http
+GET /api/v1/dates
+Authorization: Bearer {access_token}
+```
+
+**Legacy（同步維護）：**
 ```http
 GET /api/v1/date-invitations
 Authorization: Bearer {access_token}
 ```
 
-**查詢參數：**
+**Legacy 查詢參數：**
 ```
 status: pending|accepted|rejected|completed|expired|cancelled
 type: sent|received  # 發送的邀請或收到的邀請
@@ -1456,7 +1472,7 @@ page: 1
 per_page: 20
 ```
 
-**成功回應 (200)：**
+**成功回應 (200) — `/dates` 與 `/date-invitations` 共用結構：**
 ```json
 {
   "success": true,
@@ -1479,12 +1495,17 @@ per_page: 20
         "scheduled_at": "2024-12-25T19:00:00Z",
         "location": "台北101美食街",
         "status": "accepted",
+        "qr_token": "a3f9c2d1e8b4...",
+        "expires_at": "2024-12-25T20:00:00Z",
         "created_at": "2024-12-20T10:30:00Z"
       }
     ]
   }
 }
 ```
+
+> `qr_token` / `expires_at` 為 PR-QR Step 2 補入，前端 DateCard「顯示 QR」與 QRCodeDisplay 渲染依此兩欄位。
+> `qr_token` 是 64 字元 hex（`bin2hex(random_bytes(32))`），與 §5.1.1 store 回的同欄位一致。
 
 #### 5.1.4 接受約會邀請
 ```http

@@ -8,6 +8,14 @@ use App\Services\DateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Legacy controller for /api/v1/date-invitations.
+ *
+ * @deprecated Cleanup PR-QR Step 2 — 改用 DateController（/api/v1/dates）。
+ *   本 controller 仍保留向下相容（store / index / respond / verify），但 index 已補上
+ *   qr_token + expires_at；store 命名亦統一為 qr_token + expires_at（早期欄位名已棄用，
+ *   詳見 API-001 §5.1 deprecation 註記）。下個版本評估移除整支 controller。
+ */
 class DateInvitationController extends Controller
 {
     public function __construct(
@@ -57,8 +65,8 @@ class DateInvitationController extends Controller
                     'location_lat' => $invitation->latitude,
                     'location_lng' => $invitation->longitude,
                     'status' => $invitation->status,
-                    'qr_code' => $invitation->qr_token,
-                    'qr_expires_at' => $invitation->expires_at->toISOString(),
+                    'qr_token' => $invitation->qr_token,
+                    'expires_at' => $invitation->expires_at->toISOString(),
                     'created_at' => $invitation->created_at,
                 ],
             ],
@@ -112,6 +120,8 @@ class DateInvitationController extends Controller
                     'scheduled_at' => $inv->date_time?->toISOString(),
                     'location' => $inv->location_name,
                     'status' => $inv->status,
+                    'qr_token' => $inv->qr_token,
+                    'expires_at' => $inv->expires_at?->toISOString(),
                     'created_at' => $inv->created_at,
                 ]),
             ],

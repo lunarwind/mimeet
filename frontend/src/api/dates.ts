@@ -6,6 +6,7 @@ import client from './client'
 import type { DateInvitation } from '@/types/chat'
 
 // ── Raw API response type (snake_case) ───────────────────
+// Cleanup PR-QR Step 2: response 含 qr_token + expires_at（DateController::index）
 interface RawDateInvitation {
   id: number
   inviter: { id: number; nickname: string; avatar: string | null } | null
@@ -13,6 +14,8 @@ interface RawDateInvitation {
   scheduled_at: string | null
   location: string | null
   status: string
+  qr_token: string | null
+  expires_at: string | null
   created_at: string
 }
 
@@ -28,15 +31,17 @@ function transformInvitation(raw: RawDateInvitation): DateInvitation {
     status: raw.status as DateInvitation['status'],
     scheduledAt: raw.scheduled_at ?? '',
     location: raw.location,
-    qrToken: null,
-    expiresAt: null,
+    qrToken: raw.qr_token ?? null,
+    expiresAt: raw.expires_at ?? null,
     creditScoreChange: null,
     createdAt: raw.created_at,
   }
 }
 
 export async function fetchDates(): Promise<DateInvitation[]> {
-  const res = await client.get<{ data: { invitations: RawDateInvitation[] } }>('/date-invitations')
+  // Cleanup PR-QR Step 2: 改打 /dates（主 endpoint）；
+  // /date-invitations 仍維護向下相容供 respondToDate 使用，但 list 由此切走。
+  const res = await client.get<{ data: { invitations: RawDateInvitation[] } }>('/dates')
   return res.data.data.invitations.map(transformInvitation)
 }
 
