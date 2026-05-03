@@ -64,7 +64,7 @@
 | ID | 功能 | 後端 | 前端 | 狀態 | 說明 |
 |----|------|------|------|------|------|
 | F23 | 約會邀請發起 | ✅ DateService + DateController（list 已補 qr_token + expires_at） | ⚠️ DatesView.vue + ProfileView BottomSheet（QRCodeDisplay 仍為 mock，real QR pending Step 4） | ⚠️ Step 2 完成 | PR-QR Step 2：list response 已對齊，前端 fetchDates 切到 /dates；Step 4 補 real QR |
-| F24 | QR 掃碼驗證 | ⚠️ DateService::verify（時間窗下限尚未補，pending Step 3）| ✅ QRScanView.vue (jsQR + 相機) | ⚠️ Step 3 pending | 後端僅檢查 expires_at，未檢查 scheduled_at-30min 下限；前端 isWithin2Hours 規格不一致，PR-QR Step 3 對齊 ±30 min |
+| F24 | QR 掃碼驗證 | ✅ DateService::verify (±30min 雙向時間窗 + SCAN_WINDOW_NOT_OPEN/TOKEN_EXPIRED) | ✅ QRScanView.vue (jsQR + 相機) | ✅ Step 3 完成 | PR-QR Step 3：後端補時間窗下限檢查、前端 isInScanWindow 對齊 ±30min |
 | F25 | 分數獎勵 | ✅ GPS +5 / 無 GPS +2 (SystemSetting) | ✅ 驗證結果顯示 | ✅ | 後台可調分數值 |
 
 ### 搜尋配對

@@ -88,6 +88,11 @@ class DateService
             $inv->update(['status' => 'expired']);
             throw new \Exception('TOKEN_EXPIRED');
         }
+        // PR-QR Step 3: 時間窗下限（PRD §4.2.3 ±30 分鐘窗口的下限），
+        // 與 TOKEN_EXPIRED（上限）對稱。用 ->copy() 避免突變 $inv->date_time。
+        if (now()->lt($inv->date_time->copy()->subMinutes(30))) {
+            throw new \Exception('SCAN_WINDOW_NOT_OPEN');
+        }
 
         $isInviter = $inv->inviter_id === $scanner->id;
         $isInvitee = $inv->invitee_id === $scanner->id;

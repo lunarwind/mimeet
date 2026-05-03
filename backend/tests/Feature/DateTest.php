@@ -104,10 +104,14 @@ class DateTest extends TestCase
     {
         $inviter = $this->createUser(['credit_score' => 50]);
         $invitee = $this->createUser(['credit_score' => 50]);
+        // PR-QR Step 3: 落在 ±30 分窗口內（剛到場掃碼），expires_at 對齊 production invariant
+        $dateTime = now()->subMinutes(5);
         $inv = $this->createInvitation($inviter, $invitee, [
             'status' => 'accepted',
             'latitude' => 25.0340,
             'longitude' => 121.5645,
+            'date_time' => $dateTime,
+            'expires_at' => $dateTime->copy()->addMinutes(30),
         ]);
 
         // Inviter scans with GPS within 500m
@@ -139,8 +143,11 @@ class DateTest extends TestCase
     {
         $inviter = $this->createUser(['credit_score' => 50]);
         $invitee = $this->createUser(['credit_score' => 50]);
+        $dateTime = now()->subMinutes(5);
         $inv = $this->createInvitation($inviter, $invitee, [
             'status' => 'accepted',
+            'date_time' => $dateTime,
+            'expires_at' => $dateTime->copy()->addMinutes(30),
         ]);
 
         // Both scan without GPS
@@ -173,8 +180,11 @@ class DateTest extends TestCase
         $maxId = max($inviter->id, $invitee->id);
         Cache::put("date_score:{$minId}:{$maxId}", 1, 86400);
 
+        $dateTime = now()->subMinutes(5);
         $inv = $this->createInvitation($inviter, $invitee, [
             'status' => 'accepted',
+            'date_time' => $dateTime,
+            'expires_at' => $dateTime->copy()->addMinutes(30),
         ]);
 
         $this->actingAs($inviter)->postJson('/api/v1/dates/verify', [
@@ -198,7 +208,11 @@ class DateTest extends TestCase
         $inviter = $this->createUser();
         $invitee = $this->createUser();
         $outsider = $this->createUser();
-        $inv = $this->createInvitation($inviter, $invitee);
+        $dateTime = now()->subMinutes(5);
+        $inv = $this->createInvitation($inviter, $invitee, [
+            'date_time' => $dateTime,
+            'expires_at' => $dateTime->copy()->addMinutes(30),
+        ]);
 
         $response = $this->actingAs($outsider)->postJson('/api/v1/dates/verify', [
             'token' => $inv->qr_token,
@@ -206,5 +220,25 @@ class DateTest extends TestCase
 
         $response->assertStatus(403)
             ->assertJsonPath('error.code', 'NOT_PARTICIPANT');
+    }
+
+    public function test_too_early_returns_422_scan_window_not_open(): void
+    {
+        // PR-QR Step 3: 時間窗下限（PRD §4.2.3 ±30 分），與 TOKEN_EXPIRED 對稱。
+        $inviter = $this->createUser();
+        $invitee = $this->createUser();
+        $dateTime = now()->addHours(2); // 2 小時後 → 早於窗口開啟（窗口開啟在 -30min = 1.5 小時後）
+        $inv = $this->createInvitation($inviter, $invitee, [
+            'status' => 'accepted',
+            'date_time' => $dateTime,
+            'expires_at' => $dateTime->copy()->addMinutes(30),
+        ]);
+
+        $response = $this->actingAs($inviter)->postJson('/api/v1/dates/verify', [
+            'token' => $inv->qr_token,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('error.code', 'SCAN_WINDOW_NOT_OPEN');
     }
 }

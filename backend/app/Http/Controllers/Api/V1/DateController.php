@@ -173,6 +173,7 @@ class DateController extends Controller
                 'TOKEN_EXPIRED' => 422,
                 'TOKEN_ALREADY_USED' => 422,
                 'TOKEN_CANCELLED' => 422,
+                'SCAN_WINDOW_NOT_OPEN' => 422,
                 'NOT_PARTICIPANT' => 403,
             ];
             $httpCode = $errorMap[$e->getMessage()] ?? 400;
