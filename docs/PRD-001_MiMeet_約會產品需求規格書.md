@@ -239,6 +239,14 @@
   - **男性進階驗證**：信用卡驗證（收費 NT$100，串接綠界）→ 付款成功後升為「進階驗證男會員 Lv2」
   - **驗證碼系統**：隨機 6 位數字。**Email 驗證碼 10 分鐘有效**；**手機 SMS OTP 5 分鐘有效**（業界慣例 + 簡訊成本控制）；**女性進階驗證隨機碼 10 分鐘有效**
 
+> **實作註記（Phone uniqueness — Cleanup PR-5）**：
+> - phone 唯一性以 SHA-256(E.164 normalized phone) 索引比對（`users.phone_hash`）
+> - 不直接比對 encrypted phone（IV 隨機導致無法直接 SQL 比對 — 是 PR-5 之前的 production bug）
+> - normalize 規則：去空白/dash → 加台灣 country code（+886）
+> - 此 normalize 邏輯由 `User::normalizePhone()` 統一管理（SSOT）
+> - SMS 寄送（`TwilioDriver::toE164`）、OTP 驗證（`AuthController::toE164`）、phone uniqueness check 均使用同一份 normalize 邏輯
+> - phone_hash 由 `User::booted()` saving event 自動同步（phone 一變動就重算）
+
 **驗收標準**：
 ```
 Given 用戶訪問註冊頁面

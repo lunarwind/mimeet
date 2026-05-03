@@ -82,7 +82,10 @@ class AuthController extends Controller
             ], 422);
         }
 
-        if (!empty($phone) && User::where('phone', $phone)->whereNotNull('phone')->where('status', '!=', 'deleted')->exists()) {
+        // PR-5: 用 phone_hash（SHA-256 of E.164）查重，
+        // 不能用明文 phone（encrypted cast IV 隨機，SQL = 永遠 false → bug）。
+        $phoneHash = User::computePhoneHash($phone);
+        if ($phoneHash && User::where('phone_hash', $phoneHash)->whereNotNull('phone_hash')->where('status', '!=', 'deleted')->exists()) {
             return response()->json([
                 'success' => false,
                 'code'    => 400,
@@ -509,16 +512,13 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Thin wrapper — SSOT 統一在 User::normalizePhone（PR-5）。
+     * 已驗證的非空 string 輸入永不會 normalize 為 null，?? 是 defensive fallback。
+     */
     private function toE164(string $phone): string
     {
-        $phone = preg_replace('/[\s\-]/', '', $phone);
-        if (str_starts_with($phone, '09')) {
-            return '+886' . substr($phone, 1);
-        }
-        if (str_starts_with($phone, '+')) {
-            return $phone;
-        }
-        return '+886' . ltrim($phone, '0');
+        return User::normalizePhone($phone) ?? $phone;
     }
 
     /**

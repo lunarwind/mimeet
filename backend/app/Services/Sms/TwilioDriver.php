@@ -3,6 +3,7 @@
 namespace App\Services\Sms;
 
 use App\Models\SystemSetting;
+use App\Models\User;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -76,18 +77,11 @@ class TwilioDriver implements SmsDriverInterface
 
     /**
      * Convert Taiwan phone number to E.164 format.
-     * 0983144094 → +886983144094
+     * Thin wrapper — SSOT in User::normalizePhone (PR-5).
      */
     private function toE164(string $phone): string
     {
-        $phone = preg_replace('/[\s\-]/', '', $phone);
-        if (str_starts_with($phone, '09')) {
-            return '+886' . substr($phone, 1);
-        }
-        if (str_starts_with($phone, '+')) {
-            return $phone; // Already E.164
-        }
-        return '+886' . ltrim($phone, '0');
+        return User::normalizePhone($phone) ?? $phone;
     }
 
     private function getToken(): string

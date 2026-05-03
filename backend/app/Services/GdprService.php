@@ -60,6 +60,7 @@ class GdprService
             $user->forceFill([
                 'email' => "deleted_{$user->id}@removed.mimeet",
                 'phone' => null,
+                'phone_hash' => null, // PR-5：與 phone 同步清空，釋出 unique 索引給新註冊
                 'nickname' => '已刪除用戶',
                 'avatar_url' => null,
                 'profile' => null,

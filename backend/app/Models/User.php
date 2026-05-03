@@ -19,6 +19,53 @@ class User extends Authenticatable
                 throw new \RuntimeException('Cannot delete system user (id=1). This account is protected.');
             }
         });
+
+        // Cleanup PR-5: phone 變動時自動同步 phone_hash（SSOT），
+        // 確保註冊（"0912345678"）與 OTP 驗證（"+886912345678"）後 hash 相同。
+        static::saving(function (User $user) {
+            if ($user->isDirty('phone')) {
+                $user->phone_hash = self::computePhoneHash($user->phone);
+            }
+        });
+    }
+
+    /**
+     * 將 phone 標準化為 E.164 格式（與既有 AuthController::toE164 / TwilioDriver::toE164 一致）。
+     *
+     * 規則：
+     *   去空白與 dash → 加台灣 country code (+886)
+     *   "0912-345-678" → "+886912345678"
+     *   "0912345678"   → "+886912345678"
+     *   "+886912345678"→ "+886912345678"（已是 E.164）
+     *   "912345678"    → "+886912345678"
+     *
+     * 用途：phone uniqueness 索引比對（phone_hash）+ SMS / OTP 寄送。
+     */
+    public static function normalizePhone(?string $phone): ?string
+    {
+        if (empty($phone)) {
+            return null;
+        }
+        $phone = preg_replace('/[\s\-]/', '', $phone);
+        if (str_starts_with($phone, '09')) {
+            return '+886' . substr($phone, 1);
+        }
+        if (str_starts_with($phone, '+')) {
+            return $phone;
+        }
+        return '+886' . ltrim($phone, '0');
+    }
+
+    /**
+     * 計算 phone 的 SHA-256 hash，用於 users.phone_hash 索引（避開 encrypted phone 無法比對的問題）。
+     */
+    public static function computePhoneHash(?string $phone): ?string
+    {
+        $normalized = self::normalizePhone($phone);
+        if (!$normalized) {
+            return null;
+        }
+        return hash('sha256', $normalized);
     }
 
     /**
