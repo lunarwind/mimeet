@@ -60,9 +60,7 @@ return new class extends Migration
             'created_at'       => now(),
             'updated_at'       => now(),
         ]);
-        if (DB::getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE users AUTO_INCREMENT = 2');
-        }
+        DB::statement('ALTER TABLE users AUTO_INCREMENT = 2');
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();

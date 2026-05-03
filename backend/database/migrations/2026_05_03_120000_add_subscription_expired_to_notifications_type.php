@@ -13,10 +13,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return; // SQLite 不是 ENUM，不需要改
-        }
-
         DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM("
             . "'new_message','new_favorite','profile_visited','ticket_replied',"
             . "'date_invitation','date_verified','subscription_expiring',"
@@ -27,9 +23,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
         DB::statement("ALTER TABLE notifications MODIFY COLUMN type ENUM("
             . "'new_message','new_favorite','profile_visited','ticket_replied',"
             . "'date_invitation','date_verified','subscription_expiring',"

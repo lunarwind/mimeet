@@ -8,12 +8,6 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // MySQL-specific column modifications — SQLite doesn't need them
-        // (SQLite has no ENUM and columns are already flexible)
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
-
         // P1-A: Add system_issue to type ENUM
         DB::statement("
             ALTER TABLE reports
@@ -30,10 +24,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
-
         DB::statement("
             ALTER TABLE reports
             MODIFY COLUMN type
