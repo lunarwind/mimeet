@@ -659,7 +659,16 @@ export default function MemberDetailPage() {
                         {Number(member.membership_level) >= 1.5 && Number(member.membership_level) < 3 && (
                           <Popconfirm
                             title="確定要撤銷此用戶的進階驗證？"
-                            description="會降回 Lv1"
+                            description={
+                              <div style={{ maxWidth: 360 }}>
+                                <p style={{ margin: '0 0 8px' }}>會清除 cc_verified_at 並降回 Lv1。</p>
+                                <p style={{ margin: 0, color: '#d4380d', fontSize: 12 }}>
+                                  ⚠️ 注意：若此用戶已有任何成功付款紀錄（訂閱／體驗／點數），
+                                  訂閱到期降級時 base level 仍會推導為 Lv2，此操作對其特權影響有限。
+                                  如需強制限制使用者，請改走「停權」流程。
+                                </p>
+                              </div>
+                            }
                             onConfirm={() => runVerifyAction('unverify_advanced')}
                           >
                             <Button danger ghost>❌ 撤銷進階驗證</Button>

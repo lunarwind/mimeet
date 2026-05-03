@@ -156,24 +156,40 @@ class User extends Authenticatable
     }
 
     /**
-     * 推導用戶「不靠訂閱」應有的 membership_level。
+     * 推導用戶「不靠訂閱」應有的 membership_level（base level）。
      *
      * 訂閱到期降級時用此值取代 Lv3，避免直接寫死成 Lv1 而誤刪驗證升級的成果。
      *
-     * 規則（PRD §3.2 + 程式碼 ground truth 雙向驗證）：
-     * - Lv2  : 男性 + 信用卡驗證（credit_card_verified_at 不為 null）
-     * - Lv1.5: 女性 + 照片驗證已通過（user_verifications.status='approved'）
-     * - Lv1  : 已驗證手機（phone_verified=true）
+     * 業務語意（PRD §3.2 v3 + Cleanup PR-C 拍板）：
+     * - Lv2 = 「信用卡付款方式可用」（不限定為「驗證身份」）
+     *   條件 A：credit_card_verified_at（NT$100 驗證 / admin verify_advanced）
+     *   條件 B：曾有任一 ECPay 付款成功（type=subscription/points/verification 一視同仁，
+     *           以 payments.paid_at 不為 null 判定，涵蓋 paid + refunded + refund_failed
+     *           三種「曾付款」狀態）
+     *   兩條件任一成立即可
+     * - Lv1.5: 女性 + 照片驗證 approved
+     * - Lv1  : phone_verified（email_verified 為註冊前置流程必然滿足）
      * - Lv0  : 剛註冊
      *
-     * 不檢查 email_verified 的原因：
-     *   email_verified 為 phone_verified 的註冊前置條件，
-     *   到達此判斷時必然為 true，故不重複檢查（已驗證 production 無例外資料）。
+     * 設計影響：
+     * - admin unverify_advanced 清除 cc_verified_at 後，若 user 已有 paid payment，
+     *   base level 仍會推導為 Lv2。admin 想真正限制 user 應走停權流程。
+     *   此 trade-off 已在 admin UI confirm modal 與 docs/decisions 中註記。
      */
     public function getBaseMembershipLevel(): float
     {
-        if ($this->gender === 'male' && $this->credit_card_verified_at !== null) {
-            return 2.0;
+        if ($this->gender === 'male') {
+            // 條件 A：信用卡驗證 / admin verify_advanced
+            if ($this->credit_card_verified_at !== null) {
+                return 2.0;
+            }
+            // 條件 B：曾有任一 ECPay 付款成功（信用卡可用證明）
+            $hasSuccessfulPayment = Payment::where('user_id', $this->id)
+                ->whereNotNull('paid_at')
+                ->exists();
+            if ($hasSuccessfulPayment) {
+                return 2.0;
+            }
         }
 
         if ($this->gender === 'female') {

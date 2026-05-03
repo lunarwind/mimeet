@@ -11,13 +11,19 @@ use Illuminate\Support\Str;
 
 class AppealService
 {
+    /**
+     * 同停權期間最多 3 次申訴（含已處理）+ 同時最多 1 筆 active。
+     * 「停權期間」起算 = user.suspended_at（最近一次被停權的時間）。
+     */
+    public const APPEAL_LIMIT_PER_SUSPENSION = 3;
+
     public function submitAppeal(User $user, string $reason, array $imageFiles = []): Report
     {
         if (!in_array($user->status, ['auto_suspended', 'suspended'])) {
             throw new \Exception('NOT_SUSPENDED');
         }
 
-        // Check duplicate appeal in same suspension period
+        // ── 1. 同時最多 1 筆 active appeal ──
         $existingAppeal = Report::where('type', 'appeal')
             ->where('reporter_id', $user->id)
             ->when($user->suspended_at, fn ($q) => $q->where('created_at', '>', $user->suspended_at))
@@ -26,6 +32,18 @@ class AppealService
 
         if ($existingAppeal) {
             throw new \Exception('APPEAL_EXISTS');
+        }
+
+        // ── 2. 同停權期間最多 3 次申訴（不論已處理或審核中）── PR-C
+        if ($user->suspended_at) {
+            $appealCount = Report::where('type', 'appeal')
+                ->where('reporter_id', $user->id)
+                ->where('created_at', '>=', $user->suspended_at)
+                ->count();
+
+            if ($appealCount >= self::APPEAL_LIMIT_PER_SUSPENSION) {
+                throw new \Exception('APPEAL_LIMIT_REACHED');
+            }
         }
 
         $report = Report::create([

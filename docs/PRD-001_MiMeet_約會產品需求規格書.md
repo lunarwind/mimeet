@@ -117,7 +117,12 @@
 4. 核准 → membership_level=1.5，credit_score+15，Email 通知
 5. 拒絕 → 附原因，Email 通知，用戶可重新申請
 
-進階驗證男會員 (Level 2) - 男性完成信用卡驗證（NT$100）後取得
+進階驗證男會員 (Level 2) - 男性「信用卡付款方式可用」即取得
+│  條件（任一即可）：
+│  - 完成 NT$100 信用卡驗證（付款後可退還）
+│  - 曾有任何 ECPay 付款成功（訂閱方案 / 體驗方案 / 點數購買）
+│  - Admin 後台手動授予（fallback 用，子系統故障時使用）
+│  業務語意：Lv2 = 信用卡付款方式可用，不論透過驗證或實際付款證明。
 │  預設功能（可後台調整，累加 Level 1）：
 ├─ 查看對方完整個人資料
 └─ 發送動態：最多 1 則
@@ -138,7 +143,7 @@
 | Lv0 | 註冊完成 Email 驗證 | `users.email_verified=true` | 註冊流程 |
 | Lv1 | 手機 SMS 驗證 | `users.phone_verified=true` | `AuthController::verifyPhone` |
 | Lv1.5 | 女性完成真人照片驗證 | `user_verifications.status='approved'`（gender=female）| `Admin/V1/VerificationController::review` |
-| Lv2 | 男性完成信用卡驗證 NT$100 | `users.credit_card_verified_at IS NOT NULL`（gender=male）| `VerificationHandler::onPaid`（ECPay callback 成功時） |
+| Lv2 | 男性信用卡付款方式可用（NT$100 驗證 OR 任一 ECPay 付款 OR admin 升） | `gender='male'` 且（`users.credit_card_verified_at IS NOT NULL` OR exists `payments.paid_at IS NOT NULL`） | `VerificationHandler::onPaid` / 任一 ECPay 付款 callback / `AdminController::moderateUser` action=verify_advanced |
 | Lv3 | 購買任一訂閱方案 | `subscriptions.status='active' AND expires_at > now()` | `PaymentService::activateSubscription` |
 
 訂閱到期降級邏輯（`subscriptions:expire` job）依此表反推 base level：
@@ -756,8 +761,15 @@ Then 帳號自動解除停權，恢復正常功能
 - 必填：申訴說明（最多 500 字）
 - 選填：上傳佐證截圖（最多 3 張，每張 5MB 以內）
 - 提交後：顯示案號（格式 A + 年份 + 5 位流水號，如 A202600001）
-- 同一停權期間限提交一次申訴（再次提交回傳 422）
 - 申訴送出後顯示：「申訴已送出，我們將在 3 個工作天內回覆，請保持 Email 通暢。」
+
+**申訴頻率限制（PR-C 拍板）**：
+- 同停權期間最多 **3 次** 申訴（不論已處理 / 審核中均計入）
+- 同時最多 **1 筆** 審核中（pending / investigating）
+- 「停權期間」起算 = `users.suspended_at`（user 最近一次被停權的時間）
+- 達到 3 次後拒絕新申訴 → 422 + `code='APPEAL_LIMIT_REACHED'`
+- 已有審核中申訴時送出新申訴 → 422 + `code='APPEAL_EXISTS'`
+- user 解停後若再次觸發停權，計數從新的 `suspended_at` 起算（自然歸零）
 
 **後台審核流程（管理員端，D.3 解耦版 — 2026-05-02 起）**：
 

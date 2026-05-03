@@ -1,11 +1,40 @@
 # Decision Memo — Admin Membership Action Edge Cases
 
-**狀態：** 🟡 **待 PM 拍板 + 專門 sprint 處理**
+**狀態：** ✅ **已解決（2026-05-03）— 採 A1 + B1 弱化版（Cleanup PR-C）**
 **建立日期：** 2026-05-03
+**簽核日期：** 2026-05-03
 **作者：** Claude Code（依男性 Lv2 規格查證 Phase A-C 揭露）
-**程式碼基準：** branch `develop` HEAD `17c11b8`
-**相關 PR：** 訂閱到期降級 PR (commit `17c11b8`)
-**相關規格：** PRD-001 §3.2、DEV-005 §10.4
+**程式碼基準（決議時）：** branch `develop` HEAD `17c11b8`
+**實作 PR：** Cleanup PR-C（base level 改寫 + admin edge cases + 申訴頻率限制）
+**相關規格：** PRD-001 §3.2 / §4.4.6、API-001 §10.8
+
+---
+
+## 簽核決議（2026-05-03）
+
+### Edge A：admin verify_advanced 採 **A1**
+同步寫 `credit_card_verified_at = now()` + `membership_level = 2`（男性）。
+**理由**：admin 手動授權是賦予管理者的特權，子系統故障時可即時 fallback。
+admin grant 等同於系統認可的「信用卡可用」，與正常 NT$100 驗證寫入相同欄位。
+實作：`AdminController::moderateUser` action='verify_advanced'。
+
+### Edge B：admin unverify_advanced 採 **B1 弱化版**
+同步清 `credit_card_verified_at = null` + `membership_level = 1`（男性），
+**但** base level 推導擴充後，已有 paid payment 的 user 仍會回到 Lv2。
+**理由**：Lv2 本質改定義為「信用卡付款方式可用」（PR-C），付款歷史也是
+可用證明，不應被 admin action 抹除。要真正限制 user 應走停權流程。
+admin UI 已在 confirm modal 顯式提示此 trade-off。
+實作：`AdminController::moderateUser` action='unverify_advanced' + `MemberDetailPage.tsx`。
+
+### 配套：base level 重新定義（PR-C 主軸）
+`User::getBaseMembershipLevel()` 對男性 Lv2 條件擴充：
+- 條件 A：`credit_card_verified_at IS NOT NULL`
+- 條件 B：`exists(payments where paid_at IS NOT NULL)`（涵蓋 paid + refunded + refund_failed）
+任一成立即為 Lv2。
+
+### 配套：申訴頻率限制
+同停權期間最多 3 次申訴（自 `user.suspended_at` 起算）。
+詳見 PRD §4.4.6「申訴頻率限制」。
 
 ---
 
