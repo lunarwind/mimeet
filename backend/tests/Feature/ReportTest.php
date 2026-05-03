@@ -122,7 +122,7 @@ class ReportTest extends TestCase
             'uuid' => fake()->uuid(),
             'reporter_id' => $reporter->id,
             'reported_user_id' => $reported->id,
-            'type' => 'impersonation',
+            'type' => 'inappropriate',
             'status' => 'pending',
         ]);
 
