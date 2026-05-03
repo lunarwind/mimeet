@@ -59,7 +59,7 @@ class ReportTest extends TestCase
         $this->assertDatabaseHas('credit_score_histories', [
             'user_id' => $reporter->id,
             'delta' => -10,
-            'type' => 'report_filed',
+            'type' => 'report_submit',
         ]);
     }
 
@@ -79,7 +79,7 @@ class ReportTest extends TestCase
         $this->assertDatabaseHas('credit_score_histories', [
             'user_id' => $reported->id,
             'delta' => -10,
-            'type' => 'report_received',
+            'type' => 'report_submit',
         ]);
     }
 

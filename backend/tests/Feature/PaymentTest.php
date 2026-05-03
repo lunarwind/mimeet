@@ -50,7 +50,18 @@ class PaymentTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonPath('success', true)
-            ->assertJsonStructure(['data' => ['order' => ['order_number', 'amount'], 'payment_url']]);
+            ->assertJsonStructure([
+                'data' => [
+                    'payment_id',
+                    'aio_url',
+                    'params' => [
+                        'MerchantTradeNo',
+                        'TotalAmount',
+                        'CheckMacValue',
+                    ],
+                    'order' => ['order_number', 'amount'],
+                ],
+            ]);
 
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
