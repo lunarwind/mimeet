@@ -19,10 +19,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return; // SQLite 不支援 MODIFY COLUMN，schema 由原始 create migration 決定
-        }
-
         // orders.payment_id: NOT NULL → nullable
         DB::statement("ALTER TABLE `orders`
             MODIFY COLUMN `payment_id` BIGINT UNSIGNED NULL");

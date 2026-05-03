@@ -20,7 +20,14 @@ trait CreatesApplication
             'QUEUE_CONNECTION' => 'sync',
             'MAIL_MAILER'      => 'array',
             'SESSION_DRIVER'   => 'array',
-            'DB_CONNECTION'    => 'sqlite',
+            // PR-Revert: 測試環境改用 MySQL（與 production 一致）。
+            // 詳見 docs/decisions/2026-05-03-test-environment-mysql-migration.md
+            'DB_CONNECTION'    => 'mysql',
+            'DB_HOST'          => 'mysql',  // docker-compose service name; from host machine override to 127.0.0.1
+            'DB_PORT'          => '3306',
+            'DB_DATABASE'      => 'mimeet_test',
+            'DB_USERNAME'      => 'root',
+            'DB_PASSWORD'      => 'root_secret_2024',
         ];
         foreach ($testEnv as $key => $value) {
             putenv("{$key}={$value}");

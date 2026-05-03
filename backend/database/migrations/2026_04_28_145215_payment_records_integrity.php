@@ -22,10 +22,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return; // SQLite 不支援 ENUM/MODIFY COLUMN，schema 由原始 create migration 決定
-        }
-
         // ── 1. payments.environment：移除 legacy ──────────────────────
         DB::statement("ALTER TABLE `payments`
             MODIFY COLUMN `environment`
