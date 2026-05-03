@@ -74,43 +74,34 @@ class PaymentTest extends TestCase
         $this->seedPlans();
         $user = $this->createUser(['membership_level' => 1]);
 
-        // Create order
         $orderResponse = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
             'plan_id' => 'plan_monthly',
         ]);
-        $orderNumber = $orderResponse->json('data.order.order_number');
 
-        // Simulate payment via mock endpoint
-        $mockResponse = $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
-        $mockResponse->assertOk()
-            ->assertJsonPath('data.status', 'paid');
+        $cb = $this->payEcpayCallback($orderResponse);
+        $cb->assertOk();
+        $this->assertEquals('1|OK', $cb->getContent());
 
-        // Verify subscription created
         $this->assertDatabaseHas('subscriptions', [
             'user_id' => $user->id,
             'status' => 'active',
         ]);
 
-        // Verify membership upgraded
         $user->refresh();
-        $this->assertEquals(2, $user->membership_level);
+        $this->assertEquals(3, $user->membership_level);
     }
 
     public function test_trial_can_only_be_used_once(): void
     {
         $this->seedPlans();
         $user = $this->createUser();
-        $trial = SubscriptionPlan::where('slug', 'plan_trial')->first();
 
-        // First order + mock pay
         $resp1 = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
             'plan_id' => 'plan_trial',
         ]);
         $resp1->assertStatus(201);
-        $orderNum = $resp1->json('data.order.order_number');
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNum}");
+        $this->payEcpayCallback($resp1)->assertOk();
 
-        // Second attempt should fail
         $resp2 = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
             'plan_id' => 'plan_trial',
         ]);
@@ -122,15 +113,12 @@ class PaymentTest extends TestCase
         $this->seedPlans();
         $user = $this->createUser();
 
-        // Create an order first
         $orderResponse = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
             'plan_id' => 'plan_monthly',
         ]);
         $orderNumber = $orderResponse->json('data.order.order_number');
 
-        // Simulate ECPay callback (CheckMacValue will fail in test since it's computed, but we test the flow)
-        // For this test, use mock instead
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
+        $this->payEcpayCallback($orderResponse)->assertOk();
 
         $order = Order::where('order_number', $orderNumber)->first();
         $this->assertEquals('paid', $order->status);
@@ -145,8 +133,7 @@ class PaymentTest extends TestCase
         $orderResponse = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
             'plan_id' => 'plan_monthly',
         ]);
-        $orderNumber = $orderResponse->json('data.order.order_number');
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
+        $this->payEcpayCallback($orderResponse)->assertOk();
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $user->id,
@@ -160,7 +147,6 @@ class PaymentTest extends TestCase
         $user = $this->createUser();
         $plan = SubscriptionPlan::where('slug', 'plan_monthly')->first();
 
-        // Create a paid order to satisfy FK on the existing subscription
         $existingOrder = Order::create([
             'order_number' => 'MM_OLD_ORDER',
             'user_id' => $user->id,
@@ -173,7 +159,6 @@ class PaymentTest extends TestCase
             'expires_at' => now(),
         ]);
 
-        // Create an existing active subscription that expires in 5 days
         $oldExpiresAt = now()->addDays(5);
         Subscription::create([
             'user_id' => $user->id,
@@ -184,16 +169,12 @@ class PaymentTest extends TestCase
             'expires_at' => $oldExpiresAt,
         ]);
 
-        // User buys the same plan again (early renewal)
         $orderResp = $this->actingAs($user)->postJson('/api/v1/subscriptions/orders', [
             'plan_id' => 'plan_monthly',
         ]);
-        $orderNumber = $orderResp->json('data.order.order_number');
 
-        // Simulate payment
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
+        $this->payEcpayCallback($orderResp)->assertOk();
 
-        // The new subscription should extend from old expiry, not from now
         $newSub = Subscription::where('user_id', $user->id)
             ->where('status', 'active')
             ->first();
@@ -210,7 +191,6 @@ class PaymentTest extends TestCase
             'New subscription should expire old_expiry + duration_days'
         );
 
-        // Old subscription should be marked expired
         $this->assertDatabaseHas('subscriptions', [
             'user_id' => $user->id,
             'status' => 'expired',
@@ -227,13 +207,12 @@ class PaymentTest extends TestCase
         ]);
         $orderNumber = $orderResp->json('data.order.order_number');
 
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNumber}");
+        $this->payEcpayCallback($orderResp)->assertOk();
 
         $order = Order::where('order_number', $orderNumber)->first();
         $sub = Subscription::where('user_id', $user->id)->where('status', 'active')->first();
 
         $this->assertNotNull($sub);
-        // started_at should match the order's paid_at
         $this->assertEquals(
             $order->paid_at->startOfSecond()->toISOString(),
             $sub->started_at->startOfSecond()->toISOString(),

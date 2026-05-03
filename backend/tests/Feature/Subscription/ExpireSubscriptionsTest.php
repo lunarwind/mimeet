@@ -218,8 +218,7 @@ class ExpireSubscriptionsTest extends TestCase
             'plan_id' => 'plan_trial',
         ]);
         $orderResp->assertStatus(201);
-        $orderNum = $orderResp->json('data.order.order_number');
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNum}");
+        $this->payEcpayCallback($orderResp)->assertOk();
 
         $sub = Subscription::where('user_id', $user->id)
             ->where('status', 'active')
@@ -238,8 +237,7 @@ class ExpireSubscriptionsTest extends TestCase
             'plan_id' => 'plan_monthly',
         ]);
         $orderResp->assertStatus(201);
-        $orderNum = $orderResp->json('data.order.order_number');
-        $this->getJson("/api/v1/payments/ecpay/mock?trade_no={$orderNum}");
+        $this->payEcpayCallback($orderResp)->assertOk();
 
         $sub = Subscription::where('user_id', $user->id)
             ->where('status', 'active')
