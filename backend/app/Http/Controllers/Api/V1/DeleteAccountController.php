@@ -38,7 +38,7 @@ class DeleteAccountController extends Controller
             'success' => true,
             'data' => [
                 'status' => 'pending_deletion',
-                'delete_at' => $user->delete_requested_at->addDays(7)->toISOString(),
+                'delete_at' => $user->delete_requested_at->copy()->addDays(7)->toISOString(),
                 'message' => '您的帳號將於 7 天後永久刪除，期間可隨時取消',
             ],
         ]);
