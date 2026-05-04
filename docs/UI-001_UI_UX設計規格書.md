@@ -439,8 +439,27 @@ Hover/Active：整體 scale(0.99)，陰影加深
 結構：
   頂部：QR 碼圖示 + 狀態標籤
   中間：對方暱稱 + 約定時間 + 地點名稱
-  底部：倒數計時（即將見面時顯示）/ 掃碼按鈕
+  底部：倒數計時（即將見面時顯示）/ 顯示 QR / 掃碼驗證按鈕
+        （顯示 QR / 掃碼按鈕僅在進入 ±30 分掃碼窗口時顯示，PR-QR Step 3 起對齊 PRD §4.2.3）
 ```
+
+**QR 展開區規格（PR-QR Step 4）**：
+- 展開觸發：DateCard 底部「顯示 QR」按鈕（toggle）
+- 容器：白底 14px 圓角，內距 4px
+- QR 圖：120×120 顯示（內部 240×240 retina），白底 12px 圓角，box-shadow 內凹
+  - 採 `qrcode` 套件 `toDataURL`，errorCorrectionLevel='H'（30% 容錯，手機對手機掃最穩）
+  - margin=2（標準最小 quiet zone）
+- 倒數計時：QR 下方顯示「有效時間」+ MM:SS 大字（28px Bold tabular-nums）
+- 過期 overlay：QR opacity 0.4 + 中央顯示「已過期」紅字
+- 文字代碼區塊（手動輸入 fallback / 對方無法掃碼時用）：
+  - 提示文字：「對方可掃描上方 QR Code，或手動輸入此代碼：」（12px 灰）
+  - token 顯示：完整 64 字元 hex，monospace 字型，11px，淺灰底（#F3F4F6）8px 圓角，break-all 換行
+  - 「複製代碼」膠囊按鈕：粉紅描邊（#F0294E），按下變綠（#10B981）顯示「✓ 已複製」2 秒
+  - 複製機制：`navigator.clipboard.writeText` 主路徑 + 老瀏覽器 / insecure context 用 hidden textarea + execCommand fallback
+
+> **v1 安全權衡（PR-QR Step 4）**：v1 預設完整顯示 64 字元 token + 複製按鈕，**優先易用性**。
+> 已知風險：肩攻擊（旁人偷看畫面）、截圖外流。
+> Phase 2 follow-up：評估遮罩 + 點擊顯示 / 短碼 + 後端 lookup / 限時顯示等強化方案。
 
 > **QR 掃碼驗證頁（`/app/dates/scan`）— v1.4 GPS 授權提示規格**：
 > 全螢幕深色背景，含相機掃碼框（4 角粉紅邊框）。
