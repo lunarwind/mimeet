@@ -112,8 +112,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <!-- QR Code 展開區 -->
     <div v-if="showQR && date.expiresAt" class="date-card__qr">
       <QRCodeDisplay
+        :qr-token="date.qrToken ?? ''"
         :expires-at="date.expiresAt"
-        :on-refresh="() => { /* mock refresh */ }"
       />
     </div>
   </div>
