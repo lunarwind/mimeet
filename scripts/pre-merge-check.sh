@@ -367,6 +367,51 @@ check \
   "^[1-9]"
 
 echo ""
+echo "-- QR flow drift guards (14ae-14ag) --"
+
+# ============================================================
+# 14ae：QR 命名漂移守護
+# ============================================================
+# wire format 統一採 qr_token / expires_at（對齊 DB schema 與 PHP model）。
+# 早期文件用過 qr_code / qrCode / qrExpiresAt / qr_expires_at，PR-QR Step 2
+# 已全面汰換。本檢查防止任何端的命名漂移再次出現。
+# 詳見 API-001 §5.1（Endpoint 主從關係）。
+
+check \
+  "14ae 不出現舊命名 qr_code/qrCode/qrExpiresAt/qr_expires_at" \
+  "grep -rnE 'qr_code|qrCode|qrExpiresAt|qr_expires_at' backend/app frontend/src admin/src 2>/dev/null | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14af：Carbon datetime mutator 守護
+# ============================================================
+# Eloquent model 帶 datetime cast 的屬性回傳的是 Carbon 實例，
+# 直接呼叫 ->addDays() / ->subMinutes() 等會 mutate 該屬性，
+# 後續對同一 instance 讀取會拿到被改過的值。修法：先 ->copy() 再 mutate。
+# 此 grep 只攔截 $var->attr->mutator() 形式（兩段以上 -> 鏈），
+# 自然排除 now()->subMinutes() / Carbon::parse(...)->addDays() 等合法用法。
+
+check \
+  "14af 禁止對 model datetime attribute 直接 mutate（需 ->copy()/->clone()）" \
+  "grep -rnE '\\\$[a-zA-Z_][a-zA-Z_0-9]*->[a-zA-Z_][a-zA-Z_0-9]*->(sub|add)(Seconds|Minutes|Hours|Days|Weeks|Months|Years)\\(' backend/app 2>/dev/null | grep -vE 'copy\\(\\)->|clone\\(\\)->' | wc -l | tr -d ' '" \
+  "^0$"
+
+# ============================================================
+# 14ag：Transformer hardcoded null 警告（warning，不阻擋 merge）
+# ============================================================
+# frontend/src/api/*.ts 的 transformer 內若出現裸 `field: null,` 賦值，
+# 多半代表 API 該欄位被遺漏映射或暫以 null 占位（如 list endpoint 不返回
+# 該欄位）。少數情況是合法的（如 dates.ts 的 creditScoreChange），故僅警告。
+
+WARN_14AG=$(grep -rnE ':[[:space:]]*null,?[[:space:]]*(//|$)' frontend/src/api 2>/dev/null || true)
+if [ -n "$WARN_14AG" ]; then
+  echo "  [WARN 14ag] frontend/src/api transformer 出現 hardcoded null（請確認是否為刻意 fallback）："
+  echo "$WARN_14AG" | sed 's/^/    /'
+else
+  echo "  [OK] 14ag frontend/src/api transformer 無 hardcoded null"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

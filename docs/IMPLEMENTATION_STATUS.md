@@ -191,4 +191,25 @@
 
 ---
 
+## 七、Pre-merge Guard Follow-ups（2026-05-05 新增）
+
+### 14ag — Transformer hardcoded null（warning 級）
+
+- **狀態**：已實作為 warning，不阻擋 merge。
+- **目前命中**：`frontend/src/api/dates.ts:36 — creditScoreChange: null`（合法 fallback：list endpoint 不返回該欄位）。
+- **追蹤項**：日後若新增類似 transformer，需在 PR 描述中說明命中原因；reviewer 在 PR 審查時人工判斷是漏映射還是刻意 fallback。
+- **升級為 fail 級的觸發條件**：當 codebase 內合法 fallback 全部加上 `// reason` 註解後，可改成「裸 null（不帶註解）」才報 fail。本次暫不啟用。
+
+### 14ah — IMPLEMENTATION_STATUS 一致性守護（待實作）
+
+- **狀態**：**TODO**，本份 IMPLEMENTATION_STATUS.md 結構需先標準化才能機械比對。
+- **目標語意**：當 PRD / API-001 / API-002 中標 `[實作]` / `Phase 1` 的功能與本檔的條目不一致時，pre-merge 提示。
+- **前置條件**：
+  1. 本檔每個功能行需有穩定的 ID（如 F01 / A03）— 已具備。
+  2. 規格書內 `[實作]` 標記需採固定格式（待規範化）。
+  3. 設計 awk/grep 切片從規格書抽出 `[實作]` 項目，與本檔比對 ID 集合。
+- **後續責任**：規格書標記格式統一後，由 pre-merge-check 維護者新增 14ah 條目。
+
+---
+
 *本報告由程式碼掃描自動產出，建議定期更新。*
