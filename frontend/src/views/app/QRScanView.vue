@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { verifyDateQR, getCurrentPosition } from '@/api/dates'
 import jsQR from 'jsqr'
@@ -15,24 +15,84 @@ const gpsStatus = ref<'idle' | 'fetching' | 'got' | 'denied'>('idle')
 const pendingToken = ref('')  // QR code scanned but not yet verified
 const errorMsg = ref('')
 const scanStatus = ref('') // 即時掃描狀態提示
+// PR-QR Step 5: 相機 error 分流 ref（具體 DOMException name）
+const cameraErrorType = ref<string>('')
 const videoRef = ref<HTMLVideoElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let mediaStream: MediaStream | null = null
 let scanRafId: number | null = null
+let timeoutId: number | undefined  // PR-QR Step 5: getUserMedia 8s timeout 用
+
+// PR-QR Step 5: in-app webview 偵測（FB/IG/LINE/微信等內建瀏覽器對 getUserMedia 限制較嚴）
+const isInAppWebview = computed(() => {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|TwitterAndroid/i.test(ua)
+})
+
+// PR-QR Step 5: cameraErrorType → 用戶友善文案 mapping
+const cameraErrorMessage = computed((): string => {
+  switch (cameraErrorType.value) {
+    case 'NotAllowedError':       return '相機權限被拒絕，請在瀏覽器設定中開啟相機權限後重試'
+    case 'NotFoundError':         return '找不到相機裝置'
+    case 'NotReadableError':      return '相機被其他應用程式佔用，請關閉後重試'
+    case 'OverconstrainedError':  return '相機不支援所需設定，請改用手動輸入'
+    case 'SecurityError':         return '需 HTTPS 連線才能使用相機'
+    case 'NoMediaDevices':        return '此瀏覽器不支援相機 API，請使用 Chrome / Safari 等主流瀏覽器'
+    case 'Timeout':               return '相機載入逾時（8 秒），請重試或改用手動輸入'
+    default:                      return '相機無法啟動，請改用手動輸入代碼'
+  }
+})
 
 // ── 相機 ──────────────────────────────────────────────────
+// PR-QR Step 5: 補充 C 完整資源清理版本
+//   timeout 8s + abandoned stream cleanup（timeout 後 promise resolve 仍會清）
+//   OverconstrainedError 自動去 facingMode 重試一次
+//   error 分流（DOMException name → cameraErrorType）
 async function startCamera() {
+  // 重試前先確保乾淨狀態
+  if (timeoutId !== undefined) {
+    window.clearTimeout(timeoutId)
+    timeoutId = undefined
+  }
+  cameraErrorType.value = ''
+
   try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraErrorType.value = 'NoMediaDevices'
+      viewState.value = 'denied'
+      return
+    }
+
     scanStatus.value = '正在開啟相機…'
-    mediaStream = await navigator.mediaDevices.getUserMedia({
+
+    const streamPromise = navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
     })
+
+    let timedOut = false
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        timedOut = true
+        reject(Object.assign(new Error('Timeout'), { name: 'Timeout' }))
+      }, 8000)
+    })
+
+    // Abandoned stream cleanup: timeout 觸發後 stream 仍可能 resolve，要立即 stop tracks
+    streamPromise.then(stream => {
+      if (timedOut) {
+        stream.getTracks().forEach(t => t.stop())
+      }
+    }).catch(() => { /* swallowed; 主流程已處理 */ })
+
+    mediaStream = await Promise.race([streamPromise, timeoutPromise])
+    window.clearTimeout(timeoutId)
+    timeoutId = undefined
 
     // 先切到 camera 狀態，讓 v-if 渲染 <video>
     viewState.value = 'camera'
     await nextTick()
 
-    // 現在 videoRef 已經存在於 DOM
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream
       videoRef.value.onloadedmetadata = () => {
@@ -41,15 +101,50 @@ async function startCamera() {
       }
     }
     scanStatus.value = '對準 QR Code…'
-  } catch (e) {
+  } catch (e: unknown) {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+      timeoutId = undefined
+    }
+    const err = e as { name?: string; message?: string }
+    console.error('[QRScan] camera failed', err?.name, err?.message)
+    cameraErrorType.value = err?.name || 'UnknownError'
+
+    // OverconstrainedError 去 facingMode 重試一次（單前鏡頭裝置常見）
+    if (err?.name === 'OverconstrainedError') {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true })
+        viewState.value = 'camera'
+        await nextTick()
+        if (videoRef.value) {
+          videoRef.value.srcObject = mediaStream
+          videoRef.value.onloadedmetadata = () => {
+            videoRef.value!.play()
+            startScanning()
+          }
+        }
+        cameraErrorType.value = ''
+        scanStatus.value = '對準 QR Code…'
+        return
+      } catch (retryErr: unknown) {
+        const r = retryErr as { name?: string }
+        cameraErrorType.value = r?.name || 'UnknownError'
+      }
+    }
     viewState.value = 'denied'
   }
 }
 
 function stopCamera() {
+  if (timeoutId !== undefined) {
+    window.clearTimeout(timeoutId)
+    timeoutId = undefined
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop())
+    mediaStream = null
+  }
   stopScanning()
-  mediaStream?.getTracks().forEach(t => t.stop())
-  mediaStream = null
 }
 
 // ── QR 掃描迴圈 ──────────────────────────────────────────
@@ -165,13 +260,28 @@ onUnmounted(stopCamera)
 
 <template>
   <div class="scan-view">
-    <!-- TopBar -->
+    <!-- TopBar — PR-QR Step 5: 加永遠可見的「⌨️ 手動輸入」icon button -->
     <header class="scan-topbar">
       <button class="scan-topbar__back" @click="goBack">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <span class="scan-topbar__title">掃碼驗證</span>
+      <button
+        class="scan-topbar__manual"
+        title="手動輸入代碼"
+        @click="stopCamera(); viewState = 'manual'"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/>
+          <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>
+        </svg>
+      </button>
     </header>
+
+    <!-- PR-QR Step 5: in-app webview 提示（FB/IG/LINE/微信內建瀏覽器對相機限制嚴）-->
+    <div v-if="isInAppWebview" class="scan-webview-banner">
+      ⚠️ 偵測到內建瀏覽器，建議在外部瀏覽器（Chrome / Safari）開啟以獲得最佳體驗
+    </div>
 
     <!-- 相機模式 -->
     <template v-if="viewState === 'camera'">
@@ -219,8 +329,10 @@ onUnmounted(stopCamera)
             <line x1="1" y1="1" x2="23" y2="23" stroke="#EF4444" stroke-width="2"/>
           </svg>
         </div>
-        <p class="denied-title">需要相機權限</p>
-        <p class="denied-text">需要相機權限才能掃描 QR Code，請在瀏覽器設定中允許相機存取。</p>
+        <p class="denied-title">{{ cameraErrorType === 'NotFoundError' ? '找不到相機' : cameraErrorType === 'Timeout' ? '相機載入逾時' : '相機無法使用' }}</p>
+        <!-- PR-QR Step 5: 動態文案，依 cameraErrorType 分流 -->
+        <p class="denied-text">{{ cameraErrorMessage }}</p>
+        <p v-if="cameraErrorType" class="denied-error-code">錯誤代碼：{{ cameraErrorType }}</p>
         <button class="denied-btn" @click="startCamera">重試</button>
         <button class="denied-btn denied-btn--manual" @click="viewState = 'manual'">手動輸入代碼</button>
       </div>
@@ -287,6 +399,8 @@ onUnmounted(stopCamera)
         <h2 class="result-title">驗證失敗</h2>
         <p class="result-text">{{ errorMsg }}</p>
         <button class="result-btn" @click="viewState = 'camera'">重試</button>
+        <!-- PR-QR Step 5: error state 也提供手動輸入入口（不必走重試→相機→失敗循環） -->
+        <button class="result-btn result-btn--manual" @click="viewState = 'manual'">手動輸入代碼</button>
       </div>
     </template>
   </div>
@@ -298,7 +412,12 @@ onUnmounted(stopCamera)
 /* ── TopBar ──────────────────────────────────────────────── */
 .scan-topbar { display:flex; align-items:center; gap:10px; height:56px; padding:0 16px; flex-shrink:0; }
 .scan-topbar__back { background:none; border:none; padding:4px; cursor:pointer; display:flex; }
-.scan-topbar__title { font-size:17px; font-weight:600; }
+.scan-topbar__title { font-size:17px; font-weight:600; flex:1; }
+.scan-topbar__manual { background:rgba(255,255,255,0.12); border:none; width:36px; height:36px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.scan-topbar__manual:active { background:rgba(255,255,255,0.2); transform:scale(0.94); }
+
+/* PR-QR Step 5: in-app webview 提示 banner */
+.scan-webview-banner { background:#7C2D12; color:#FFEDD5; padding:8px 16px; font-size:12px; text-align:center; line-height:1.5; flex-shrink:0; }
 
 /* ── Camera ──────────────────────────────────────────────── */
 .camera-area { flex:1; position:relative; overflow:hidden; }
@@ -331,6 +450,7 @@ onUnmounted(stopCamera)
 .denied-icon { margin-bottom:8px; }
 .denied-title { font-size:18px; font-weight:700; }
 .denied-text { font-size:13px; color:#9CA3AF; max-width:280px; line-height:1.5; }
+.denied-error-code { font-size:11px; color:#6B7280; font-family:monospace; margin-top:-4px; }
 .denied-btn { width:100%; max-width:260px; height:44px; border-radius:10px; border:none; background:#F0294E; color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
 .denied-btn--manual { background:#374151; }
 
@@ -357,7 +477,8 @@ onUnmounted(stopCamera)
 .result-gps { font-size:13px; margin-top:4px; }
 .result-gps--ok { color:#10B981; }
 .result-gps--no { color:#F59E0B; }
-.result-btn { width:100%; max-width:260px; height:44px; border-radius:10px; border:none; background:#F0294E; color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+.result-btn { width:100%; max-width:260px; height:44px; border-radius:10px; border:none; background:#F0294E; color:#fff; font-size:15px; font-weight:600; cursor:pointer; margin-top:4px; }
+.result-btn--manual { background:transparent; border:1.5px solid #F0294E; color:#F0294E; }
 
 .spinner { width:32px; height:32px; border-radius:50%; border:3px solid #374151; border-top-color:#F0294E; animation:spin 0.7s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
