@@ -3,19 +3,27 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminOperationLog;
 use App\Models\AdminUser;
 use App\Models\Order;
 use App\Models\Report;
 use App\Models\Subscription;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\GdprService;
 use App\Services\UserActivityLogService;
+use App\Support\Mask;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
+    public function __construct(
+        private readonly GdprService $gdprService,
+    ) {}
+
     /**
      * Admin login — authenticates against admin_users table,
      * issues a Sanctum token scoped to the 'admin' guard.
@@ -568,18 +576,43 @@ class AdminController extends Controller
 
     /**
      * DELETE /api/v1/admin/members/{id}
+     *
+     * v3.6: 改走 GdprService::anonymizeUser 立即匿名化（不可逆），
+     * 釋放 email / phone_hash unique 索引讓對方可重新註冊。
+     * 整個 handler 包在 DB::transaction 內讓 lockForUpdate 真的鎖到 row，
+     * 防併發 admin 同時刪同一個 user。
      */
     public function deleteMember(Request $request, int $id): JsonResponse
     {
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json(['success' => false, 'message' => '會員不存在'], 404);
-        }
+        return DB::transaction(function () use ($request, $id) {
+            $user = User::lockForUpdate()->find($id);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => '會員不存在'], 404);
+            }
 
-        try { Log::info('[Admin] Member deleted', ['member_id' => $id, 'by' => $request->user()?->id]); } catch (\Throwable) {}
-        $user->delete();
+            $originalEmailMasked = Mask::email($user->email);
+            $originalPhoneMasked = Mask::phone($user->phone);
 
-        return response()->json(['success' => true, 'message' => '會員已刪除']);
+            $this->gdprService->anonymizeUser($user);
+
+            AdminOperationLog::create([
+                'admin_id' => $request->user()?->id,
+                'action' => 'delete_member',
+                'resource_type' => 'member',
+                'resource_id' => $id,
+                'description' => "DELETE admin/members/{$id} (anonymized)",
+                'ip_address' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 500),
+                'request_summary' => [
+                    'original_email_masked' => $originalEmailMasked,
+                    'original_phone_masked' => $originalPhoneMasked,
+                    'anonymized' => true,
+                ],
+                'created_at' => now(),
+            ]);
+
+            return response()->json(['success' => true, 'message' => '會員已刪除']);
+        });
     }
 
     /**

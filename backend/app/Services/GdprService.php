@@ -45,9 +45,9 @@ class GdprService
         Log::info("[GDPR] User #{$user->id} cancelled deletion request");
     }
 
-    public function anonymizeUser(User $user): void
+    public function anonymizeUser(User $user, bool $force = false): void
     {
-        if ($user->status === 'deleted') {
+        if ($user->status === 'deleted' && !$force) {
             return;
         }
 

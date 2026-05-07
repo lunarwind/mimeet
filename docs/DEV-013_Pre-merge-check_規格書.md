@@ -212,6 +212,23 @@ check() {
 - **狀態**：**待實作**。`IMPLEMENTATION_STATUS.md` 結構需先標準化才能機械比對。
 - **追蹤**：見 `docs/IMPLEMENTATION_STATUS.md` 的 follow-up 條目。
 
+### 1.15 14ai ~ 14aj — PR-1 admin delete + SMS issue report 守護（2026-05-07 新增）
+
+#### 14ai — 強守護 deleteMember 必須走 anonymizeUser
+
+- **語意**：`AdminController::deleteMember` 方法區段內必須含 `->anonymizeUser(` 呼叫，且不能出現裸 `$user->delete()` / `$user->forceDelete()`。用 awk 切方法區段執行，避免註解誤觸與防退化。
+- **依據**：PR-1（2026-05-07）。Admin 刪會員必須匿名化以釋出 email/phone_hash unique 索引讓對方可重新註冊；soft delete 不釋出索引會讓 user 永久無法重註冊（觸發 422「此帳號資料可能已被使用」），且歷史 admin_operation_logs 中的明文 PII 留下 GDPR 風險。
+- **觸發背景**：原 `deleteMember` 只呼叫 `$user->delete()`（soft delete），導致刪除後的 email / phone_hash 仍佔住 unique 索引。修法是改走 `GdprService::anonymizeUser`，並在 controller 寫入 `admin_operation_logs`（masked email/phone）。包在 `DB::transaction` 內 + `lockForUpdate` 防併發 admin 同時刪。
+
+#### 14aj — ReportService system_issue 必須有 cache rate limit + sms_verification 標記
+
+- **語意**：`ReportService` 內處理 `system_issue` type 的區段必須有：
+  1. `Cache::has` 或 `Cache::get`（檢查 cooldown）
+  2. `Cache::put` 或 `Cache::add`（成功後寫入 cooldown）
+  3. `sms_verification` 字串（[META] sub-category 標記）
+- **依據**：PR-1（2026-05-07）。SMS 驗證問題回報沿用既有 `system_issue` type，須有 24h cache 防 spam（throttle 不分成功/失敗，須用 cache 才能精確控制成功提交）+ metadata 中 `category=sms_verification` 供未來 admin filter 用。
+- **觸發背景**：v3.x 設計反覆討論「沿用 vs 新增 type」，最終採沿用 + sub-category；本 guard 守住此設計不被退化（例如有人改成 `cache` 換 `Redis::set` 直接呼叫繞過 Cache facade，或忘記加 sub-category 標記）。
+
 ---
 
 ## 2. 修復指引
@@ -254,6 +271,7 @@ check() {
 - **2026-05-04**：QR flow Cleanup PR-QR Step 2，wire format 統一 `qr_token` + `expires_at`，移除舊命名 → 觸發 14ae
 - **2026-05-04**：QR flow Step 5–6 expires_at mutator drift；本次擴大掃描發現 DeleteAccountController.php:41 同樣問題 → 觸發 14af + 同 commit 修復
 - **2026-05-04**：QR flow list endpoint transformer 漏映射 qrToken → 觸發 14ag
+- **2026-05-07**：PR-1 — Admin 刪會員 API 只 soft delete 導致 email/phone 永遠無法重新註冊;同時 SMS 驗證沒「逃生門」讓 SMS 故障時 user 卡死。修法:`AdminController::deleteMember` 改走 `GdprService::anonymizeUser` + `users:cleanup-zombies` artisan command + SMS verify 加「回報問題」入口（type=`system_issue` + `[META]` sub-category=`sms_verification`）+ `/app/settings/verify` minLevel 1→0 + BottomNav 對 Lv0 隱藏 → 觸發 14ai / 14aj
 
 ---
 

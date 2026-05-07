@@ -19,13 +19,20 @@ class ReportController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $request->validate([
-            'type' => 'required|in:harassment,impersonation,scam,inappropriate,other',
+        // v3.6: validation list 加上 system_issue (修既有 controller/service drift；
+        // 同時是 SMS 驗證問題回報的承載 type，sub-category 在 service 內以 [META] 標記)
+        $rules = [
+            'type' => 'required|in:harassment,impersonation,scam,inappropriate,other,system_issue',
             'reported_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'description' => 'nullable|string|max:2000',
             'images' => 'nullable|array|max:3',
             'images.*' => 'image|mimes:jpeg,png,gif,webp|max:5120',
-        ]);
+        ];
+        // system_issue：description 必填 10-1000 字（SMS 驗證問題規範）
+        if ($request->input('type') === 'system_issue') {
+            $rules['description'] = 'required|string|min:10|max:1000';
+        }
+        $request->validate($rules);
 
         $userId = $request->user()->id;
         if ($request->input('reported_user_id') && $userId === (int) $request->input('reported_user_id')) {
@@ -36,11 +43,20 @@ class ReportController extends Controller
             ], 422);
         }
 
-        $report = $this->reportService->createReport(
-            $request->user(),
-            $request->only(['reported_user_id', 'type', 'description']),
-            $request->file('images', []),
-        );
+        try {
+            $report = $this->reportService->createReport(
+                $request->user(),
+                $request->only(['reported_user_id', 'type', 'description']),
+                $request->file('images', []),
+                $request,
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException $e) {
+            return response()->json([
+                'success' => false,
+                'code' => 429,
+                'error' => ['code' => 'TOO_MANY_REQUESTS', 'message' => $e->getMessage()],
+            ], 429);
+        }
 
         return response()->json([
             'success' => true,

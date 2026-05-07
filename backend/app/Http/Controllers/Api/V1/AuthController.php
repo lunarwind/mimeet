@@ -8,6 +8,7 @@ use App\Mail\ResetPasswordMail;
 use App\Models\User;
 use App\Services\SmsService;
 use App\Services\UserActivityLogService;
+use App\Support\Mask;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -156,7 +157,7 @@ class AuthController extends Controller
                     'membership_level' => $user->membership_level,
                     'email_verified' => (bool) $user->email_verified,
                     'phone_verified' => (bool) $user->phone_verified,
-                    'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
+                    'phone' => $user->phone ? Mask::phone($user->phone) : null,
                 ],
                 'token' => $token,
             ],
@@ -246,7 +247,7 @@ class AuthController extends Controller
                     'membership_level' => $user->membership_level,
                     'email_verified' => (bool) $user->email_verified,
                     'phone_verified' => (bool) $user->phone_verified,
-                    'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
+                    'phone' => $user->phone ? Mask::phone($user->phone) : null,
                 ],
                 'token' => $token,
             ],
@@ -316,7 +317,7 @@ class AuthController extends Controller
                 'email_verified' => (bool) $user->email_verified,
                 'phone_verified' => (bool) $user->phone_verified,
                 'credit_card_verified_at' => $user->credit_card_verified_at?->toISOString(),
-                'phone' => $user->phone ? $this->maskPhone($user->phone) : null,
+                'phone' => $user->phone ? Mask::phone($user->phone) : null,
                 // F40
                 'points_balance' => (int) ($user->points_balance ?? 0),
                 'stealth_until' => $user->stealth_until?->toISOString(),
@@ -519,26 +520,6 @@ class AuthController extends Controller
     private function toE164(string $phone): string
     {
         return User::normalizePhone($phone) ?? $phone;
-    }
-
-    /**
-     * Mask E.164 phone for API responses: +886912345678 → 09xx-xxx-678
-     */
-    private function maskPhone(string $phone): string
-    {
-        // Convert E.164 back to local format
-        if (str_starts_with($phone, '+886')) {
-            $local = '0' . substr($phone, 4); // +886912345678 → 0912345678
-        } else {
-            $local = $phone;
-        }
-
-        if (strlen($local) === 10) {
-            return substr($local, 0, 2) . 'xx-xxx-' . substr($local, -3);
-        }
-
-        // Fallback: mask middle
-        return substr($local, 0, 3) . '****' . substr($local, -3);
     }
 
     public function forgotPassword(Request $request): JsonResponse

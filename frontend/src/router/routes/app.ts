@@ -95,7 +95,10 @@ export const appRoutes: RouteRecordRaw[] = [
         path: 'settings/verify',
         name: 'settings-verify',
         component: () => import('@/views/app/settings/VerifyView.vue'),
-        meta: { requiresAuth: true, minLevel: 1 },
+        // SECURITY: Lv0 access is permitted for SMS recovery path only.
+        // Do NOT raise this back to minLevel: 1 without removing the
+        // skipSmsVerification redirect target in RegisterView.vue.
+        meta: { requiresAuth: true, minLevel: 0 },
       },
       {
         path: 'settings/change-password',

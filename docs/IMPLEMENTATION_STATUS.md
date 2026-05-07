@@ -99,7 +99,7 @@
 | ID | 功能 | 後端 | 前端 | 狀態 | 說明 |
 |----|------|------|------|------|------|
 | F43 | 一般用戶檢舉 | ✅ ReportService (雙方扣分) | ✅ ReportsView.vue | ✅ | 圖片上傳 + 案號 |
-| F45 | 系統問題回報 | ✅ ReportController (type 區分) | ✅ ReportsView.vue + ReportsHistoryView | ✅ | 歷史紀錄 + 管理員回覆 |
+| F45 | 系統問題回報 | ✅ ReportController (type 區分;2026-05-07 PR-1 補上 `system_issue` validation 與 `[META]` prefix metadata) | ✅ ReportsView.vue + ReportsHistoryView + VerifyView 問題回報 modal (PR-1) | ✅ | 歷史紀錄 + 管理員回覆;PR-1 加 SMS 驗證 ticket 子流程,24h cache rate limit |
 
 ### 後台管理
 

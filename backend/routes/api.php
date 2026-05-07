@@ -210,8 +210,10 @@ Route::prefix('api/v1')->group(function () {
     });
 
     // ─── Reports (authenticated) ─────────────────────────────────────
+    // v3.6: POST /reports 加 throttle:reports 防短期 spam (5/h per user)；
+    //       ReportService 對 system_issue 另有 24h cache rate limit
     Route::prefix('reports')->middleware(['auth:sanctum', 'check.suspended'])->group(function () {
-        Route::post('/', [ReportController::class, 'store']);
+        Route::post('/', [ReportController::class, 'store'])->middleware('throttle:reports');
         Route::get('/', [ReportController::class, 'index']);
         Route::get('/history', [ReportController::class, 'history']);
         Route::delete('/{id}', [ReportController::class, 'destroy']);

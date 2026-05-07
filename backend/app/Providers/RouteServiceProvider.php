@@ -43,6 +43,12 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by($request->ip());
         });
 
+        // Reports: 5 req/h per user (route-level throttle 防短期 spam；
+        // service-level cache 對 system_issue 另有 24h 鎖)
+        RateLimiter::for('reports', function (Request $request) {
+            return Limit::perHour(5)->by($request->user()?->id ?: $request->ip());
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->group(base_path('routes/api.php'));

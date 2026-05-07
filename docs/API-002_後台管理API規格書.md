@@ -561,6 +561,51 @@ PATCH /api/v1/admin/members/{user_id}/actions
 
 ---
 
+### 4.3.5 刪除會員（super_admin only，立即且不可逆匿名化）
+
+```http
+DELETE /api/v1/admin/members/{id}
+Authorization: Bearer {admin_token}
+```
+
+**RBAC**：`members.delete`（僅 `super_admin`）
+
+**副作用（PR-1 2026-05-07 起）**：
+
+呼叫 `GdprService::anonymizeUser($user)`，**立即且不可逆**匿名化該帳號：
+
+1. `users.email` → `deleted_{id}@removed.mimeet`
+2. `users.phone` → `null`
+3. `users.phone_hash` → `null`（釋出 unique 索引讓對方可重新註冊）
+4. `users.nickname` → `已刪除用戶`
+5. `users.status` → `deleted`
+6. `users.deleted_at` → `now()`
+7. 撤銷該 user 所有 Sanctum personal_access_tokens
+8. 清空該 user 的 fcm_tokens
+9. 該 user 的照片移入 `storage/quarantine/{date}/`
+10. 寫入 `admin_operation_logs`：`action='delete_member'` / `resource_type='member'` / `request_summary` 含 `original_email_masked` / `original_phone_masked`
+
+實作上整個 handler 包在 `DB::transaction` 內 + `User::lockForUpdate()->find($id)` 防併發 admin 同時刪同一 user。
+
+**重要區分**：
+- 「**停權**」（`PATCH /admin/members/{id}/actions` action=`suspend`）= 禁登入但保留資料
+- 「**刪除**」（本 endpoint）= 匿名化釋出資料，可被重新註冊
+- 想「禁止此 email/手機重新註冊」需 PR-2 黑名單功能（待開發）
+
+**成功回應 (200)**：
+```json
+{ "success": true, "message": "會員已刪除" }
+```
+
+**錯誤**：
+- `404 會員不存在`
+- 不可逆，無回滾機制 — 後台 UI 須強制 admin 輸入 `DELETE` 確認
+
+**觀察 / 監控**：
+- 既有殭屍 user（v3.6 之前 soft-deleted 但未匿名化）由 artisan command `php artisan users:cleanup-zombies --apply --force` 一次性清理
+
+---
+
 ### 4.3.0 編輯會員個人資料（super_admin only）
 
 ```

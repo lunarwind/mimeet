@@ -412,6 +412,66 @@ else
 fi
 
 echo ""
+echo "-- PR-1 guards (14ai-14aj) --"
+
+# ============================================================
+# 14ai：強守護 deleteMember 必須走 anonymizeUser，不能裸 $user->delete()
+# ============================================================
+# 2026-05 PR-1：Admin delete 必須匿名化以釋出 email/phone unique 索引。
+# 用 awk 切方法區段，避免註解誤觸 + 防退化。
+
+DELETE_MEMBER_SLICE=$(awk '/public function deleteMember/{f=1} f && /^    (public|private|protected) function /&&!/deleteMember/{exit} f' backend/app/Http/Controllers/Api/V1/AdminController.php)
+
+# 14ai-1：deleteMember 區段必須含 anonymizeUser 呼叫
+if ! echo "$DELETE_MEMBER_SLICE" | grep -qE '\$.*->anonymizeUser\('; then
+  echo "  [FAIL] 14ai-1: deleteMember 必須呼叫 anonymizeUser（GDPR 匿名化路徑）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ai-1 deleteMember 呼叫 anonymizeUser"
+fi
+
+# 14ai-2：deleteMember 區段不能出現裸 $user->delete() / $user->forceDelete()
+if echo "$DELETE_MEMBER_SLICE" | grep -qE '\$user->(force)?[Dd]elete\(\)'; then
+  echo "  [FAIL] 14ai-2: deleteMember 不能裸調用 \$user->delete() / \$user->forceDelete()"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ai-2 deleteMember 無裸 delete()"
+fi
+
+# ============================================================
+# 14aj：ReportService system_issue 區段必須有 Cache rate limit 機制
+#       + sms_verification category 標記
+# ============================================================
+# 2026-05 PR-1：SMS 驗證問題回報沿用 system_issue type，須有 24h cache 防 spam
+# + metadata 中 category=sms_verification 供未來 admin filter 用。
+
+REPORT_SLICE=$(awk '/system_issue/,/^    [a-z]|^}/' backend/app/Services/ReportService.php)
+
+# 14aj-1：必須有 Cache 讀取（檢查 cooldown）
+if ! echo "$REPORT_SLICE" | grep -qE 'Cache::(has|get)\('; then
+  echo "  [FAIL] 14aj-1: ReportService 對 system_issue 區段必須有 Cache::has/get（rate limit 防護讀取）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14aj-1 system_issue 有 Cache::has/get"
+fi
+
+# 14aj-2：必須有 Cache 寫入（成功後標記 cooldown）
+if ! echo "$REPORT_SLICE" | grep -qE 'Cache::(put|add)\('; then
+  echo "  [FAIL] 14aj-2: ReportService 對 system_issue 區段必須有 Cache::put/add（成功後寫入 cooldown）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14aj-2 system_issue 有 Cache::put/add"
+fi
+
+# 14aj-3：必須有 sms_verification category 標記
+if ! echo "$REPORT_SLICE" | grep -qE 'sms_verification'; then
+  echo "  [FAIL] 14aj-3: ReportService 對 system_issue 區段必須含 sms_verification 字串（[META] category 標記）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14aj-3 system_issue 含 sms_verification 標記"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
