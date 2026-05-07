@@ -212,6 +212,33 @@ check() {
 - **狀態**：**待實作**。`IMPLEMENTATION_STATUS.md` 結構需先標準化才能機械比對。
 - **追蹤**：見 `docs/IMPLEMENTATION_STATUS.md` 的 follow-up 條目。
 
+### 1.16 14ak ~ 14an — PR-2 註冊禁止名單守護（2026-05-07 新增）
+
+#### 14ak — `AuthController::register` 必須查 blacklist
+
+- **語意**:`register` 方法區段內必須 reference `BlacklistService` / `blacklistService` / `RegistrationBlacklist`(三選一)。用 awk 切方法區段。
+- **依據**:PR-2(2026-05-07)。防退化:有人移除 blacklist gate,讓 banned email/mobile 可重新註冊。
+
+#### 14al — `AdminController::deleteMember` 必須處理 blacklist 參數
+
+- **語意**:`deleteMember` 方法區段內必須出現 `blacklist_email` 或 `blacklist_mobile` 字串。
+- **依據**:PR-2 修改 deleteMember 接受新 optional 欄位,本 guard 防止有人重寫該 method 時忘記處理 blacklist。
+
+#### 14am — `registration_blacklists` migration 必須含 is_active + active_value_hash + 不可有 SoftDeletes
+
+- **語意**:三段式守護:
+  1. 必須含 `is_active` 欄位
+  2. 必須含 `active_value_hash` 欄位(方案 C race protection 核心)
+  3. 不可有 `softDeletes()` 或 `deleted_at`
+- **依據**:D8 — 不用 SoftDeletes(避免重蹈 PR-1 user soft delete + unique 衝突)。`active_value_hash` 是方案 C 真正擋 race 的核心,改了它整套設計就垮。
+
+#### 14an — `LogAdminOperation` 必須支援 `skip_admin_log` + `AdminBlacklistController` 必須使用
+
+- **語意**:雙重守護:
+  1. `LogAdminOperation` middleware 必須含 `skip_admin_log` 字串(支援 controller 跳過 middleware)
+  2. `AdminBlacklistController` 必須含 `skip_admin_log` 字串(實際使用該機制)
+- **依據**:D14-a 決策。Blacklist write endpoints 跳過 middleware 自動 log,改自寫結構化 log;若任一端缺失,會出現「兩筆 log」或「沒有結構化 metadata」。
+
 ### 1.15 14ai ~ 14aj — PR-1 admin delete + SMS issue report 守護（2026-05-07 新增）
 
 #### 14ai — 強守護 deleteMember 必須走 anonymizeUser
@@ -272,6 +299,8 @@ check() {
 - **2026-05-04**：QR flow Step 5–6 expires_at mutator drift；本次擴大掃描發現 DeleteAccountController.php:41 同樣問題 → 觸發 14af + 同 commit 修復
 - **2026-05-04**：QR flow list endpoint transformer 漏映射 qrToken → 觸發 14ag
 - **2026-05-07**：PR-1 — Admin 刪會員 API 只 soft delete 導致 email/phone 永遠無法重新註冊;同時 SMS 驗證沒「逃生門」讓 SMS 故障時 user 卡死。修法:`AdminController::deleteMember` 改走 `GdprService::anonymizeUser` + `users:cleanup-zombies` artisan command + SMS verify 加「回報問題」入口（type=`system_issue` + `[META]` sub-category=`sms_verification`）+ `/app/settings/verify` minLevel 1→0 + BottomNav 對 Lv0 隱藏 → 觸發 14ai / 14aj
+- **2026-05-07**:PR-2 — Email/mobile 註冊禁止名單功能。新增 `registration_blacklists` 表(方案 C race protection 用 `active_value_hash` nullable+UNIQUE,允許多筆 inactive 一筆 active);Admin 刪除流程加 checkbox 整合;register flow 加 gate(error response byte-for-byte 對齊既有 unique error 防 enumeration);D14-a 採選項 2a — `LogAdminOperation` middleware 加 `skip_admin_log` 機制讓 controller 自寫結構化 log → 觸發 14ak / 14al / 14am / 14an
+- **2026-05-07 教訓:Mask::phone 規則描述 drift**:PR-1 ship 報告口語化把 `Mask::phone` 規則描述為「first-3 + middle-stars + last-3」(`091***678`),實際輸出是「first-2 + xx-xxx- + last-3」(`09xx-xxx-678`)。PR-2 prompt v3/v4 沿用兩版本,直到 v4.1 由 reviewer 實測 `php artisan tinker` 才校正。**規則**:函式描述必須附 input → output 對照表,至少 3 筆代表性 case,且註明用 `php artisan tinker` 實測。
 
 ---
 

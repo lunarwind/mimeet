@@ -24,6 +24,10 @@ class AdminPermissionsSeeder extends Seeder
             ['key' => 'broadcasts.manage', 'name' => '廣播訊息管理', 'module' => 'broadcasts'],
             ['key' => 'announcements.manage', 'name' => '系統公告管理', 'module' => 'announcements'],
             ['key' => 'logs.view', 'name' => '操作日誌查看', 'module' => 'logs'],
+            // PR-2: Registration Blacklists
+            ['key' => 'blacklist.view', 'name' => '查看註冊禁止名單', 'module' => 'blacklist'],
+            ['key' => 'blacklist.create', 'name' => '新增註冊禁止名單', 'module' => 'blacklist'],
+            ['key' => 'blacklist.deactivate', 'name' => '解除註冊禁止名單', 'module' => 'blacklist'],
         ];
 
         foreach ($permissions as $perm) {
@@ -44,10 +48,14 @@ class AdminPermissionsSeeder extends Seeder
                 'broadcasts.manage',
                 'announcements.manage',
                 'logs.view',
+                // PR-2
+                'blacklist.view', 'blacklist.create', 'blacklist.deactivate',
             ],
             'cs' => [
                 'members.view',
                 'reports.view', 'reports.process',
+                // PR-2: cs 只能 view,不能 create / deactivate
+                'blacklist.view',
             ],
         ];
 

@@ -16,6 +16,12 @@ class LogAdminOperation
     {
         $response = $next($request);
 
+        // PR-2 D14-a: 允許 controller 設 skip_admin_log attribute 跳過自動 log,
+        // 改由 controller 自己寫結構化 log(避免兩筆重複 log)。
+        if ($request->attributes->get('skip_admin_log') === true) {
+            return $response;
+        }
+
         // Only log mutating requests
         if (!in_array($request->method(), ['POST', 'PATCH', 'PUT', 'DELETE'])) {
             return $response;

@@ -990,10 +990,38 @@ And admin_operation_logs 記錄 gdpr_deletion
 - 經查核檢舉屬實且與誠信相關者，將檢舉之證據列出可供查核
 
 
-**黑名單功能**：
+**黑名單功能**(user 對 user 互動封鎖):
 - 封鎖特定用戶
 - 被封鎖用戶無法查看資料或發送訊息
 - 支援批量管理
+
+> ⚠️ **概念區分(PR-2 2026-05-07 釐清)**:此處的「黑名單」指**user 對 user 互動封鎖**(資料表 `user_blocks`),用於用戶之間的社交隔離。與**註冊禁止名單**(資料表 `registration_blacklists`,PR-2 新增)為不同概念 — 後者是 admin 端禁止特定 email/mobile 重新註冊,詳見 §4.4.10。
+
+#### 4.4.10 註冊禁止名單(Registration Blacklist,PR-2 新增)
+
+**功能描述**:Admin 可將特定 email / mobile 加入禁止名單,該 email/mobile 永久(或限時)無法用於新註冊。
+
+**核心場景**:
+1. Admin 刪除違規用戶時,可勾選「同時加入註冊禁止名單」一鍵完成
+2. Admin 接到客訴時,可預先封鎖某 email/mobile
+
+**與其他概念的區分**:
+| 概念 | 對象 | 後果 | 資料表 |
+|---|---|---|---|
+| 停權(suspend) | user 帳號 | 禁登入但保留資料 | `users.status='suspended'` |
+| 刪除(delete) | user 帳號 | 立即匿名化釋出識別資料(可重新註冊,除非加 blacklist) | `GdprService::anonymizeUser` |
+| 註冊禁止名單(本功能) | email/mobile 字串 | 該 email/mobile 無法新註冊 | `registration_blacklists` |
+| 互動封鎖(既有「黑名單」) | user 對 user | 雙方在站內互不可見 | `user_blocks` |
+
+**操作流程**:
+- Admin 後台「註冊禁止名單」頁面:列表 / 新增 / 解除
+- 註冊時 user 若命中禁止名單,error message 與既有 unique 衝突 byte-for-byte 一致(`此 Email 已被使用` / `此手機號碼已被使用`),防 enumeration
+
+**RBAC**:
+- super_admin / admin:可新增、解除、查看
+- cs:僅可查看(查證需求);無新增/解除權限
+
+**資料保留**:解除後條目保留(`is_active=false`),供稽核追溯;不可 hard delete。
 
 ---
 

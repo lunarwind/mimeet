@@ -472,6 +472,80 @@ else
 fi
 
 echo ""
+echo "-- PR-2 guards (14ak-14an) --"
+
+# ============================================================
+# 14ak：AuthController::register 必須查 blacklist
+# ============================================================
+# 防退化:有人移除 blacklist gate,讓 banned email/mobile 可重新註冊。
+# 用 awk 切方法區段。
+
+REGISTER_SLICE=$(awk '/public function register/{f=1} f && /^    (public|private|protected) function /&&!/register/{exit} f' \
+  backend/app/Http/Controllers/Api/V1/AuthController.php)
+
+if ! echo "$REGISTER_SLICE" | grep -qE 'BlacklistService|blacklistService|RegistrationBlacklist'; then
+  echo "  [FAIL] 14ak: AuthController::register 必須 reference BlacklistService/RegistrationBlacklist (防退化)"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ak register 含 blacklist 守護"
+fi
+
+# ============================================================
+# 14al：AdminController::deleteMember 必須處理 blacklist 參數
+# ============================================================
+
+DELETE_MEMBER_SLICE_AL=$(awk '/public function deleteMember/{f=1} f && /^    (public|private|protected) function /&&!/deleteMember/{exit} f' \
+  backend/app/Http/Controllers/Api/V1/AdminController.php)
+
+if ! echo "$DELETE_MEMBER_SLICE_AL" | grep -qE 'blacklist_email|blacklist_mobile'; then
+  echo "  [FAIL] 14al: deleteMember 必須處理 blacklist_email/blacklist_mobile 參數"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14al deleteMember 含 blacklist 處理"
+fi
+
+# ============================================================
+# 14am：registration_blacklists migration 必須含 is_active + active_value_hash
+#       且不可有 SoftDeletes
+# ============================================================
+# 防止有人改回 SoftDeletes,重蹈 PR-1 user soft delete + unique 衝突的覆轍。
+
+MIGRATION=$(ls backend/database/migrations/*create_registration_blacklists_table.php 2>/dev/null | head -1)
+if [ -z "$MIGRATION" ]; then
+  echo "  [FAIL] 14am: 找不到 registration_blacklists migration"
+  ERRORS=$((ERRORS + 1))
+elif ! grep -qE "is_active|->boolean\('is_active'" "$MIGRATION"; then
+  echo "  [FAIL] 14am: registration_blacklists migration 必須含 is_active 欄位 (D8:不可改 SoftDeletes)"
+  ERRORS=$((ERRORS + 1))
+elif ! grep -qE "active_value_hash" "$MIGRATION"; then
+  echo "  [FAIL] 14am: registration_blacklists migration 必須含 active_value_hash 欄位 (方案 C race protection)"
+  ERRORS=$((ERRORS + 1))
+elif grep -qE "softDeletes\(\)|deleted_at" "$MIGRATION"; then
+  echo "  [FAIL] 14am: registration_blacklists migration 不可有 softDeletes/deleted_at (D8)"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14am blacklist migration 用 is_active + active_value_hash"
+fi
+
+# ============================================================
+# 14an：LogAdminOperation 必須支援 skip_admin_log + AdminBlacklistController 必須使用
+# ============================================================
+
+if ! grep -qE "skip_admin_log" backend/app/Http/Middleware/LogAdminOperation.php 2>/dev/null; then
+  echo "  [FAIL] 14an-1: LogAdminOperation 必須支援 skip_admin_log attribute (D14-a)"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14an-1 LogAdminOperation 支援 skip_admin_log"
+fi
+
+if ! grep -qE "skip_admin_log" backend/app/Http/Controllers/Api/V1/AdminBlacklistController.php 2>/dev/null; then
+  echo "  [FAIL] 14an-2: AdminBlacklistController 必須使用 skip_admin_log + 手動 AdminOperationLog::create"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14an-2 AdminBlacklistController 使用 skip_admin_log"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

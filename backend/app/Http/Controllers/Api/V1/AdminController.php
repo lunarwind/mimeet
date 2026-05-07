@@ -10,6 +10,7 @@ use App\Models\Report;
 use App\Models\Subscription;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\BlacklistService;
 use App\Services\GdprService;
 use App\Services\UserActivityLogService;
 use App\Support\Mask;
@@ -22,6 +23,7 @@ class AdminController extends Controller
 {
     public function __construct(
         private readonly GdprService $gdprService,
+        private readonly BlacklistService $blacklistService,
     ) {}
 
     /**
@@ -584,14 +586,73 @@ class AdminController extends Controller
      */
     public function deleteMember(Request $request, int $id): JsonResponse
     {
-        return DB::transaction(function () use ($request, $id) {
+        // PR-2: 接受 optional blacklist 欄位(向後相容,缺欄位等同 false)
+        $request->validate([
+            'blacklist_email' => 'sometimes|boolean',
+            'blacklist_mobile' => 'sometimes|boolean',
+            'blacklist_reason' => 'sometimes|nullable|string|max:500',
+        ]);
+
+        // PR-2 D14:在 deleteMember 既有 log 流程內補欄位,不另開新 log call。
+        // skip middleware 自動 log 因為下方手動 create 已涵蓋(避免兩筆)。
+        $request->attributes->set('skip_admin_log', true);
+
+        $blacklistEmail = (bool) $request->input('blacklist_email', false);
+        $blacklistMobile = (bool) $request->input('blacklist_mobile', false);
+        $blacklistReason = $request->input('blacklist_reason');
+
+        return DB::transaction(function () use ($request, $id, $blacklistEmail, $blacklistMobile, $blacklistReason) {
             $user = User::lockForUpdate()->find($id);
             if (!$user) {
                 return response()->json(['success' => false, 'message' => '會員不存在'], 404);
             }
 
-            $originalEmailMasked = Mask::email($user->email);
-            $originalPhoneMasked = Mask::phone($user->phone);
+            // PR-1 v3.6:在 anonymize 前抓原值用於 audit log 與 PR-2 blacklist 寫入
+            $originalEmail = $user->email;
+            $originalPhone = $user->phone; // encrypted cast → plaintext
+            $originalEmailMasked = Mask::email($originalEmail);
+            $originalPhoneMasked = Mask::phone($originalPhone);
+
+            // PR-2:在 anonymize 之前寫 blacklist(原值還在)
+            $blacklistedEmail = false;
+            $blacklistedMobile = false;
+            if ($blacklistEmail && $originalEmail) {
+                try {
+                    $this->blacklistService->add([
+                        'type' => 'email',
+                        'value' => $originalEmail,
+                        'reason' => $blacklistReason,
+                        'source' => 'admin_delete',
+                        'source_user_id' => $user->id,
+                        'created_by' => $request->user()->id,
+                    ]);
+                    $blacklistedEmail = true;
+                } catch (\DomainException $e) {
+                    // ALREADY_BLACKLISTED 視為已達目的,不阻塞刪除
+                    if ($e->getMessage() !== 'ALREADY_BLACKLISTED') {
+                        throw $e;
+                    }
+                    $blacklistedEmail = true; // 已存在等同達成意圖
+                }
+            }
+            if ($blacklistMobile && $originalPhone) {
+                try {
+                    $this->blacklistService->add([
+                        'type' => 'mobile',
+                        'value' => $originalPhone,
+                        'reason' => $blacklistReason,
+                        'source' => 'admin_delete',
+                        'source_user_id' => $user->id,
+                        'created_by' => $request->user()->id,
+                    ]);
+                    $blacklistedMobile = true;
+                } catch (\DomainException $e) {
+                    if (!in_array($e->getMessage(), ['ALREADY_BLACKLISTED', 'INVALID_PHONE'], true)) {
+                        throw $e;
+                    }
+                    $blacklistedMobile = $e->getMessage() === 'ALREADY_BLACKLISTED';
+                }
+            }
 
             $this->gdprService->anonymizeUser($user);
 
@@ -607,6 +668,10 @@ class AdminController extends Controller
                     'original_email_masked' => $originalEmailMasked,
                     'original_phone_masked' => $originalPhoneMasked,
                     'anonymized' => true,
+                    // PR-2 新增
+                    'blacklisted_email' => $blacklistedEmail,
+                    'blacklisted_mobile' => $blacklistedMobile,
+                    'blacklist_reason' => $blacklistReason,
                 ],
                 'created_at' => now(),
             ]);

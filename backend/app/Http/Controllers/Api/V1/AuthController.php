@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\EmailVerificationMail;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use App\Services\BlacklistService;
 use App\Services\SmsService;
 use App\Services\UserActivityLogService;
 use App\Support\Mask;
@@ -21,6 +22,10 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly BlacklistService $blacklistService,
+    ) {}
+
     public function register(Request $request): JsonResponse
     {
         // ── 1. 解包前端送來的 { data: {...} } wrapper ─────────��────
@@ -59,6 +64,21 @@ class AuthController extends Controller
         $nickname = $input['nickname'];
         $phone    = $input['phone'] ?? null;
 
+        // PR-2: Email blacklist gate(放在 unique 檢查前)
+        // Error response 必須與既有 unique error byte-for-byte 一致以防 enumeration attack。
+        $emailHashLower = BlacklistService::computeEmailHash($email);
+        if ($this->blacklistService->isBlocked('email', $emailHashLower)) {
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '註冊失敗',
+                'errors'  => ['email' => ['此 Email 已被使用']],
+                'error'   => ['type' => 'validation_error', 'details' => [
+                    ['field' => 'email', 'message' => '此 Email 已被使用'],
+                ]],
+            ], 422);
+        }
+
         if (User::where('email', $email)->where('status', '!=', 'deleted')->exists()) {
             return response()->json([
                 'success' => false,
@@ -86,6 +106,20 @@ class AuthController extends Controller
         // PR-5: 用 phone_hash（SHA-256 of E.164）查重，
         // 不能用明文 phone（encrypted cast IV 隨機，SQL = 永遠 false → bug）。
         $phoneHash = User::computePhoneHash($phone);
+
+        // PR-2: Mobile blacklist gate(放在 unique 檢查前)
+        if ($phoneHash && $this->blacklistService->isBlocked('mobile', $phoneHash)) {
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '註冊失敗',
+                'errors'  => ['phone' => ['此手機號碼已被使用']],
+                'error'   => ['type' => 'validation_error', 'details' => [
+                    ['field' => 'phone', 'message' => '此手機號碼已被使用'],
+                ]],
+            ], 422);
+        }
+
         if ($phoneHash && User::where('phone_hash', $phoneHash)->whereNotNull('phone_hash')->where('status', '!=', 'deleted')->exists()) {
             return response()->json([
                 'success' => false,

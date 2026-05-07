@@ -566,9 +566,27 @@ PATCH /api/v1/admin/members/{user_id}/actions
 ```http
 DELETE /api/v1/admin/members/{id}
 Authorization: Bearer {admin_token}
+Content-Type: application/json
 ```
 
 **RBAC**：`members.delete`（僅 `super_admin`）
+
+**Request body（PR-2 2026-05-07 起新增 optional 欄位，向後相容）**：
+```json
+{
+  "blacklist_email": false,
+  "blacklist_mobile": false,
+  "blacklist_reason": null
+}
+```
+
+| 欄位 | 型別 | 必填 | 說明 |
+|---|---|---|---|
+| `blacklist_email` | boolean | 否(default false) | 同時將該 user 的 email 加入註冊禁止名單 |
+| `blacklist_mobile` | boolean | 否(default false) | 同時將該 user 的手機加入註冊禁止名單 |
+| `blacklist_reason` | string\|null | 否(max:500) | 加入禁止名單的原因 |
+
+不傳這些欄位 = default false(行為等同 PR-1)。
 
 **副作用（PR-1 2026-05-07 起）**：
 
@@ -884,6 +902,111 @@ PATCH /api/v1/admin/verifications/{verification_id}
   }
 }
 ```
+
+---
+
+## 4.8 註冊禁止名單(Registration Blacklists,PR-2 新增)
+
+> RBAC:`blacklist.view` / `blacklist.create` / `blacklist.deactivate`(super_admin / admin 全給;cs 只給 view)
+>
+> 列表 response 對齊 DEV-004 §6.1 通用模板:`{ data: [], meta: { page, per_page, total, last_page } }`
+
+### 4.8.1 取得列表
+
+```http
+GET /api/v1/admin/blacklists?type=email&status=active&q=spam&page=1&per_page=20
+Authorization: Bearer {admin_token}
+```
+
+**Query**:
+- `type`: `email | mobile`(optional)
+- `status`: `active | inactive | expired | all`(default `all`)
+- `source`: `manual | admin_delete`(optional)
+- `q`: 字串(value_masked 前綴搜尋)
+- `created_from` / `created_to`: ISO datetime
+- `page` / `per_page`(default 20, max 100)
+
+**Success 200**:
+```json
+{
+  "data": [
+    {
+      "id": 42,
+      "type": "email",
+      "value_masked": "s***m@a.com",
+      "reason": "詐騙集團",
+      "source": "manual",
+      "source_user_id": null,
+      "is_active": true,
+      "status": "active",
+      "expires_at": null,
+      "created_at": "2026-05-07T10:00:00Z",
+      "created_by": 1,
+      "created_by_name": "Chuck",
+      "deactivated_at": null,
+      "deactivated_by": null,
+      "deactivated_by_name": null,
+      "deactivation_reason": null
+    }
+  ],
+  "meta": { "page": 1, "per_page": 20, "total": 156, "last_page": 8 }
+}
+```
+
+### 4.8.2 取得詳情
+
+```http
+GET /api/v1/admin/blacklists/{id}
+```
+
+回傳含 `source_user`(若 `source='admin_delete'` 且 `source_user_id` 存在)。
+
+### 4.8.3 新增
+
+```http
+POST /api/v1/admin/blacklists
+```
+
+**Body**:
+```json
+{
+  "type": "email",
+  "value": "spam@example.com",
+  "reason": "詐騙嫌疑",
+  "expires_at": null
+}
+```
+
+| 欄位 | 型別 | 必填 | 說明 |
+|---|---|---|---|
+| `type` | enum | ✅ | `email` 或 `mobile` |
+| `value` | string | ✅ | raw value(後端做 normalize + hash);max 255 |
+| `reason` | string\|null | 否 | max 500 |
+| `expires_at` | datetime\|null | 否 | ISO8601,必須 after now;null = 永久 |
+
+**Success 201**:回單筆 schema(同 4.8.1 element)。
+
+**Errors**:
+- `409 ALREADY_BLACKLISTED`:該 value 已在 active blacklist
+- `422`:type 錯/value 太長/reason 太長/expires_at 非未來/手機格式無效
+- `403`:權限不足(無 `blacklist.create`)
+
+### 4.8.4 解除
+
+```http
+PATCH /api/v1/admin/blacklists/{id}/deactivate
+```
+
+**Body**:`{ "reason": "誤判,user 已聯絡客服澄清" }`(required, max 500)
+
+**Success 200**:回更新後單筆。
+
+**Errors**:
+- `409 ALREADY_DEACTIVATED`:已是 inactive
+- `404 NOT_FOUND`
+- `403`:權限不足(無 `blacklist.deactivate`)
+
+> ❌ **不提供** `DELETE /admin/blacklists/{id}`(hard delete) — 全部用 deactivate 保留審計線索。
 
 ---
 

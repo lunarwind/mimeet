@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message, Modal, Form, Alert } from 'antd'
+import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message, Modal, Form, Alert, Checkbox, Divider } from 'antd'
 import { SearchOutlined, ReloadOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import { DATING_BUDGET_LABELS, STYLE_LABELS } from '../../constants/labelMaps'
@@ -18,6 +18,7 @@ interface Member {
   credit_score: number
   status: string
   email_verified: boolean
+  phone_verified: boolean
   created_at: string
   avatar_url?: string | null
 }
@@ -66,15 +67,23 @@ export default function MembersPage() {
     setTimeout(fetchMembers, 0)
   }
 
-  // PR-1 (v3.6): 受控 Modal + DELETE 輸入
+  // PR-1 (v3.6): 受控 Modal + DELETE 輸入;PR-2 擴充 blacklist checkbox
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null)
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
   const [deleting, setDeleting] = useState(false)
+  // PR-2 state
+  const [banEmail, setBanEmail] = useState(false)
+  const [banMobile, setBanMobile] = useState(false)
+  const [banReason, setBanReason] = useState('')
 
   function openDeleteModal(record: Member) {
     setDeleteTarget(record)
     setDeleteConfirmInput('')
+    // PR-2:預設不勾,避免誤觸
+    setBanEmail(false)
+    setBanMobile(false)
+    setBanReason('')
     setDeleteModalOpen(true)
   }
 
@@ -82,7 +91,14 @@ export default function MembersPage() {
     if (!deleteTarget || deleteConfirmInput !== 'DELETE') return
     setDeleting(true)
     try {
-      await apiClient.delete(`/admin/members/${deleteTarget.id}`)
+      // PR-2: axios delete with body — 必須用 config.data 簽章,不是 delete(url, body)
+      await apiClient.delete(`/admin/members/${deleteTarget.id}`, {
+        data: {
+          blacklist_email: banEmail,
+          blacklist_mobile: banMobile,
+          blacklist_reason: (banEmail || banMobile) ? (banReason || null) : null,
+        },
+      })
       message.success('會員已刪除')
       setDeleteModalOpen(false)
       fetchMembers()
@@ -280,7 +296,7 @@ export default function MembersPage() {
         />
         <p style={{ marginTop: 16, fontSize: 13, color: '#475569' }}>
           ❗ 若您只是想「禁止此帳號登入但保留識別資料」,請改用「停權」功能。<br />
-          ❗ 若您想「禁止此 email/手機重新註冊」,請使用即將推出的「黑名單」功能(PR-2)。
+          ❗ 若您想「禁止此 email/手機重新註冊」,可勾選下方選項加入註冊禁止名單。
         </p>
         <p style={{ marginTop: 16, marginBottom: 8, fontSize: 12, color: '#64748B' }}>
           目標會員:{deleteTarget?.nickname ?? deleteTarget?.email}
@@ -291,6 +307,31 @@ export default function MembersPage() {
           placeholder="輸入 DELETE 以確認"
           autoFocus
         />
+
+        {/* PR-2: 同時加入註冊禁止名單(選填) */}
+        <Divider style={{ margin: '20px 0 12px' }}>同時加入註冊禁止名單(選填)</Divider>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Checkbox checked={banEmail} onChange={(e) => setBanEmail(e.target.checked)}>
+            將此 email 加入註冊禁止名單(防止重新註冊)
+          </Checkbox>
+          <Checkbox
+            checked={banMobile}
+            onChange={(e) => setBanMobile(e.target.checked)}
+            disabled={!deleteTarget?.phone_verified}
+          >
+            將此手機號碼加入註冊禁止名單{!deleteTarget?.phone_verified && '(未驗證手機)'}
+          </Checkbox>
+          {(banEmail || banMobile) && (
+            <Input.TextArea
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              placeholder="禁止原因(選填,但建議填寫供日後追溯)"
+              maxLength={500}
+              rows={3}
+              showCount
+            />
+          )}
+        </Space>
       </Modal>
     </div>
   )
