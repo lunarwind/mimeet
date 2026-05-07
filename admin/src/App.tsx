@@ -5,6 +5,7 @@ import LoginPage from './pages/auth/LoginPage'
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'))
 import MembersPage from './pages/members/MembersPage'
 import MemberDetailPage from './pages/members/MemberDetailPage'
+import BlacklistsPage from './pages/blacklists/BlacklistsPage'
 import TicketsPage from './pages/tickets/TicketsPage'
 import PaymentsPage from './pages/payments/PaymentsPage'
 import SystemSettingsPage from './pages/settings/SystemSettingsPage'
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="dashboard" element={<Suspense fallback={<div>Loading...</div>}><DashboardPage /></Suspense>} />
         <Route path="members" element={<MembersPage />} />
         <Route path="members/:id" element={<MemberDetailPage />} />
+        <Route path="blacklists" element={<BlacklistsPage />} />
         <Route path="tickets" element={<TicketsPage />} />
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="settings/system" element={<SystemSettingsPage />} />

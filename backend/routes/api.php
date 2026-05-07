@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\DateController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\AdminController;
+use App\Http\Controllers\Api\V1\AdminBlacklistController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\PointController;
@@ -289,6 +290,13 @@ Route::prefix('api/v1')->group(function () {
             Route::patch('/members/{id}/permissions', [AdminController::class, 'updatePermissions'])->middleware('admin.permission:members.edit');
             Route::patch('/members/{id}/profile', [AdminController::class, 'updateProfile'])->middleware('admin.permission:members.edit');
             Route::delete('/members/{id}', [AdminController::class, 'deleteMember'])->middleware('admin.permission:members.delete');
+
+            // PR-2: Registration Blacklists（註冊禁止名單）
+            Route::get('/blacklists', [AdminBlacklistController::class, 'index'])->middleware('admin.permission:blacklist.view');
+            Route::get('/blacklists/{id}', [AdminBlacklistController::class, 'show'])->middleware('admin.permission:blacklist.view');
+            Route::post('/blacklists', [AdminBlacklistController::class, 'store'])->middleware('admin.permission:blacklist.create');
+            Route::patch('/blacklists/{id}/deactivate', [AdminBlacklistController::class, 'deactivate'])->middleware('admin.permission:blacklist.deactivate');
+
             Route::post('/members/{id}/change-password', [AdminController::class, 'changeMemberPassword'])->middleware('admin.permission:members.edit');
             Route::post('/members/{id}/verify-email', [AdminController::class, 'forceVerifyEmail'])->middleware('admin.permission:members.edit');
             Route::get('/tickets', [AdminController::class, 'tickets'])->middleware('admin.permission:reports.view');

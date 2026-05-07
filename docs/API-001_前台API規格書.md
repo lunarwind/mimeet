@@ -152,6 +152,8 @@ POST /api/v1/auth/register
 Content-Type: application/json
 ```
 
+> **PR-2(2026-05-07):** 註冊時會檢查 email/mobile unique 與其他註冊規則。若不通過,422 error 對應 `errors.email = "此 Email 已被使用"` 或 `errors.phone = "此手機號碼已被使用"`(對所有不通過情境一字不差,防 enumeration attack)。
+
 **請求參數：**
 ```json
 {
@@ -209,7 +211,7 @@ Content-Type: application/json
     "details": [
       {
         "field": "email",
-        "message": "該Email已被註冊",
+        "message": "此 Email 已被使用",
         "code": "email_already_exists"
       }
     ]

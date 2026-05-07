@@ -18,6 +18,7 @@ import {
   LinkOutlined,
   SoundOutlined,
   GiftOutlined,
+  StopOutlined,
 } from '@ant-design/icons'
 import { useAuthStore } from '../stores/authStore'
 import MiMeetLogo from '../components/MiMeetLogo'
@@ -37,6 +38,7 @@ interface MenuItem {
 const MENU_ITEMS: MenuItem[] = [
   { key: 'dashboard', icon: <DashboardOutlined />, label: '儀表板', path: '/dashboard', roles: ['super_admin', 'admin', 'cs'] },
   { key: 'members', icon: <TeamOutlined />, label: '會員管理', path: '/members', roles: ['super_admin', 'admin'] },
+  { key: 'blacklists', icon: <StopOutlined />, label: '註冊禁止名單', path: '/blacklists', roles: ['super_admin', 'admin', 'cs'] },
   { key: 'chat-logs', icon: <MessageOutlined />, label: '聊天記錄', path: '/chat-logs', roles: ['super_admin', 'admin'] },
   { key: 'tickets', icon: <FileTextOutlined />, label: 'Ticket 回報', path: '/tickets', roles: ['super_admin', 'admin', 'cs'] },
   { key: 'payments', icon: <DollarOutlined />, label: '支付記錄', path: '/payments', roles: ['super_admin', 'admin'] },

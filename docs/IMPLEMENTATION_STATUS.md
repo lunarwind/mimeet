@@ -100,6 +100,7 @@
 |----|------|------|------|------|------|
 | F43 | 一般用戶檢舉 | ✅ ReportService (雙方扣分) | ✅ ReportsView.vue | ✅ | 圖片上傳 + 案號 |
 | F45 | 系統問題回報 | ✅ ReportController (type 區分;2026-05-07 PR-1 補上 `system_issue` validation 與 `[META]` prefix metadata) | ✅ ReportsView.vue + ReportsHistoryView + VerifyView 問題回報 modal (PR-1) | ✅ | 歷史紀錄 + 管理員回覆;PR-1 加 SMS 驗證 ticket 子流程,24h cache rate limit |
+| F-blacklist | 註冊禁止名單(PR-2 2026-05-07) | ✅ AdminBlacklistController + BlacklistService + RegistrationBlacklist model + register gate + admin delete checkbox 整合 | ✅ admin BlacklistsPage + Form/Deactivate Modals + MembersPage 刪除 dialog 擴充 | ✅ | 方案 C race protection (active_value_hash UNIQUE);RBAC blacklist.view/create/deactivate;14ak~14an guards |
 
 ### 後台管理
 
