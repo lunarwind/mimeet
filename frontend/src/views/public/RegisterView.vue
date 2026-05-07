@@ -274,6 +274,9 @@ async function verifySms() {
   smsError.value = ''
   try {
     await verifyPhoneCode({ phone: step2.phone, code })
+    // PR-1: SMS verify 後刷新 auth store（後端只回 phone_verified+membership_level，
+    // 沒回完整 user object，必須走 /auth/me refetch 才能 reactive 更新 UI）
+    await authStore.refreshUser()
     // 驗證成功 → 清 timer 後再 navigate，避免 unmount 後 timer 繼續 fire
     if (smsTimer) { clearInterval(smsTimer); smsTimer = null }
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
@@ -297,7 +300,9 @@ function skipSmsVerification() {
   // 清 timer（onBeforeUnmount 也會清，這裡是雙保險）
   if (smsTimer) { clearInterval(smsTimer); smsTimer = null }
   if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
-  router.push('/app/explore')
+  // PR-1: 跳到 /app/settings/verify（minLevel:0），讓 user 補驗證或回報問題。
+  // 不能跳 /app/explore（minLevel:1）— Lv0 user 會被 guard 重導到 /app/shop（也 minLevel:1），看似卡死。
+  router.push('/app/settings/verify')
 }
 
 function goLogin() { router.push('/login') }

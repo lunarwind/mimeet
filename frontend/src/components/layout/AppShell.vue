@@ -13,11 +13,17 @@ import { useRoute } from 'vue-router'
 import BottomNav from './BottomNav.vue'
 import AnnouncementBanner from '@/components/common/AnnouncementBanner.vue'
 import UnverifiedPhoneBanner from '@/components/UnverifiedPhoneBanner.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
 
-// Hide BottomNav on full-screen pages (chat conversation, QR scan)
-const showNav = computed(() => route.name !== 'qr-scan')
+// Hide BottomNav on:
+//   - Full-screen pages (chat conversation, QR scan)
+//   - Lv0 users (PR-1 D10): tabs would all be guard-blocked → looks "stuck"
+const showNav = computed(() =>
+  route.name !== 'qr-scan' && (authStore.user?.membership_level ?? 0) >= 1
+)
 </script>
 
 <style scoped>

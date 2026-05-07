@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message, Modal, Form } from 'antd'
+import { Table, Input, Select, Button, Tag, Badge, Space, Typography, Avatar, Popconfirm, message, Modal, Form, Alert } from 'antd'
 import { SearchOutlined, ReloadOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons'
 import { getCreditLevel, CreditLevelLabel, CreditLevelColor, CreditLevelBg } from '../../types/admin'
 import { DATING_BUDGET_LABELS, STYLE_LABELS } from '../../constants/labelMaps'
@@ -66,14 +66,31 @@ export default function MembersPage() {
     setTimeout(fetchMembers, 0)
   }
 
-  async function handleDeleteMember(id: number) {
+  // PR-1 (v3.6): 受控 Modal + DELETE 輸入
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Member | null>(null)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  function openDeleteModal(record: Member) {
+    setDeleteTarget(record)
+    setDeleteConfirmInput('')
+    setDeleteModalOpen(true)
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget || deleteConfirmInput !== 'DELETE') return
+    setDeleting(true)
     try {
-      await apiClient.delete(`/admin/members/${id}`)
+      await apiClient.delete(`/admin/members/${deleteTarget.id}`)
       message.success('會員已刪除')
+      setDeleteModalOpen(false)
       fetchMembers()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       message.error(msg || '刪除失敗')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -164,9 +181,7 @@ export default function MembersPage() {
               <Button size="small" style={{ borderColor: '#F59E0B', color: '#F59E0B' }}>驗證Email</Button>
             </Popconfirm>
           )}
-          <Popconfirm title="確定刪除此會員？" description={`${record.nickname ?? record.email}`} onConfirm={() => handleDeleteMember(record.id)} okText="刪除" okButtonProps={{ danger: true }} cancelText="取消">
-            <Button danger size="small" icon={<DeleteOutlined />}>刪除</Button>
-          </Popconfirm>
+          <Button danger size="small" icon={<DeleteOutlined />} onClick={() => openDeleteModal(record)}>刪除</Button>
         </Space>
       ),
     },
@@ -237,6 +252,45 @@ export default function MembersPage() {
             <Input.Password placeholder="再次輸入新密碼" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* PR-1 (v3.6) 刪除確認 — 受控 Modal + DELETE 輸入 */}
+      <Modal
+        title="⚠️ 確定要刪除此會員嗎？"
+        open={deleteModalOpen}
+        onOk={handleConfirmDelete}
+        onCancel={() => setDeleteModalOpen(false)}
+        okText="刪除"
+        cancelText="取消"
+        confirmLoading={deleting}
+        okButtonProps={{ disabled: deleteConfirmInput !== 'DELETE', danger: true }}
+        destroyOnClose
+      >
+        <Alert
+          type="warning"
+          showIcon
+          message={
+            <span>
+              此操作會「立即且不可逆」匿名化該帳號:<br />
+              ・Email、手機號碼將被清空<br />
+              ・該 email/手機可被任何人重新註冊<br />
+              ・配對紀錄、訊息歷史、付款紀錄將保留供稽核
+            </span>
+          }
+        />
+        <p style={{ marginTop: 16, fontSize: 13, color: '#475569' }}>
+          ❗ 若您只是想「禁止此帳號登入但保留識別資料」,請改用「停權」功能。<br />
+          ❗ 若您想「禁止此 email/手機重新註冊」,請使用即將推出的「黑名單」功能(PR-2)。
+        </p>
+        <p style={{ marginTop: 16, marginBottom: 8, fontSize: 12, color: '#64748B' }}>
+          目標會員:{deleteTarget?.nickname ?? deleteTarget?.email}
+        </p>
+        <Input
+          value={deleteConfirmInput}
+          onChange={(e) => setDeleteConfirmInput(e.target.value)}
+          placeholder="輸入 DELETE 以確認"
+          autoFocus
+        />
       </Modal>
     </div>
   )

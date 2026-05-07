@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getMe } from '@/api/auth'
+import client from '@/api/client'
 
 export interface AuthUser {
   id: number
@@ -78,6 +79,22 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.removeItem('auth_token')
   }
 
+  // PR-1 (v3.6): 強制刷新 user，繞過 initialized idempotent guard。
+  // 用於 SMS 驗證成功後等需要立即 reactive 更新 user state 的場景。
+  // 明禁：不要寫 initialized.value = false; await initialize() —
+  // 那會混淆 first-load 與 refresh 兩個語意。
+  async function refreshUser() {
+    if (!token.value) return null
+    try {
+      const res = await client.get('/auth/me')
+      const u = res.data?.data?.user ?? res.data?.user
+      if (u) user.value = u
+      return user.value
+    } catch {
+      return null
+    }
+  }
+
   return {
     token,
     user,
@@ -88,6 +105,7 @@ export const useAuthStore = defineStore('auth', () => {
     setToken,
     setUser,
     initialize,
+    refreshUser,
     logout,
   }
 })

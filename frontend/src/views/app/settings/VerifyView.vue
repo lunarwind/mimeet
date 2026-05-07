@@ -63,7 +63,7 @@ async function verifySmsCode() {
   smsError.value = null
   try {
     await verifyPhoneCode({ phone: phone.value, code: smsCode.value })
-    await authStore.initialize()
+    await authStore.refreshUser()
     currentStep.value = 'overview'
   } catch {
     smsError.value = '驗證碼錯誤或已過期'
@@ -213,6 +213,72 @@ function goBack() {
 onBeforeUnmount(() => {
   if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = undefined }
 })
+
+// ── PR-1 (v3.6) 問題回報 modal ──────────────────────────────
+const reportModalOpen = ref(false)
+const reportDescription = ref('')
+const reportSubmitting = ref(false)
+const reportError = ref<string | null>(null)
+const reportSuccessMsg = ref<string | null>(null)
+const reportSentThisSession = ref(false)
+const reportPhoneMasked = computed(() => {
+  const p = phone.value
+  if (!p) return ''
+  if (p.length === 10) return p.slice(0, 2) + 'xx-xxx-' + p.slice(-3)
+  return p
+})
+
+function openReportModal() {
+  if (reportSentThisSession.value) return
+  reportDescription.value = ''
+  reportError.value = null
+  reportModalOpen.value = true
+}
+
+function closeReportModal() {
+  reportModalOpen.value = false
+}
+
+async function submitReport() {
+  const desc = reportDescription.value.trim()
+  if (desc.length < 10) {
+    reportError.value = '問題描述至少需 10 字'
+    return
+  }
+  if (desc.length > 1000) {
+    reportError.value = '問題描述不可超過 1000 字'
+    return
+  }
+  reportSubmitting.value = true
+  reportError.value = null
+  try {
+    const res = await client.post('/reports', { type: 'system_issue', description: desc })
+    const ticket = res.data?.data?.report
+    const ticketId = ticket?.uuid ?? ticket?.id ?? ''
+    reportSuccessMsg.value = `已收到您的回報（票號 #${ticketId}），客服將儘快處理。期間您可以繼續嘗試或登出。`
+    reportSentThisSession.value = true
+    reportModalOpen.value = false
+    setTimeout(() => { reportSuccessMsg.value = null }, 8000)
+  } catch (err: unknown) {
+    const e = err as { response?: { status?: number; data?: { error?: { message?: string }; message?: string } } }
+    if (e?.response?.status === 422) {
+      reportError.value = e?.response?.data?.error?.message ?? e?.response?.data?.message ?? '描述格式不正確'
+    } else if (e?.response?.status === 429) {
+      reportError.value = e?.response?.data?.error?.message ?? '您 24 小時內已回報過，若仍有問題請聯繫客服'
+    } else {
+      reportError.value = '送出失敗，請稍後再試'
+    }
+  } finally {
+    reportSubmitting.value = false
+  }
+}
+
+// 登出（BottomNav 對 Lv0 隱藏，此頁需要明確登出入口避免 user 被困）
+async function handleLogout() {
+  try { await client.post('/auth/logout') } catch { /* ignore */ }
+  authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -231,6 +297,10 @@ onBeforeUnmount(() => {
     <!-- Overview -->
     <div v-if="currentStep === 'overview'" class="verify-content">
       <p class="verify-desc">完成驗證以解鎖更多功能並提升誠信分數</p>
+      <!-- 回報成功 inline message (8s 自動消失) -->
+      <div v-if="reportSuccessMsg" class="verify-inline-success">
+        ✓ {{ reportSuccessMsg }}
+      </div>
 
       <!-- 手機驗證 -->
       <div class="verify-card" :class="{ 'verify-card--done': phoneVerified }">
@@ -351,6 +421,66 @@ onBeforeUnmount(() => {
         >
           {{ smsCooldown > 0 ? `${smsCooldown} 秒後可重新發送` : '重新發送驗證碼' }}
         </button>
+
+        <!-- PR-1 (v3.6) 問題回報入口 + 登出 -->
+        <div class="verify-fallback-links">
+          <p class="verify-fallback-hint">
+            收不到驗證碼？或系統有問題嗎？
+            <button
+              class="verify-link"
+              :disabled="reportSentThisSession"
+              @click="openReportModal"
+            >
+              {{ reportSentThisSession ? '已回報' : '回報問題' }}
+            </button>
+          </p>
+          <button class="verify-link verify-link--muted" @click="handleLogout">稍後再試，先登出</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PR-1 (v3.6) 問題回報 Modal -->
+    <div v-if="reportModalOpen" class="report-modal-overlay" @click.self="closeReportModal">
+      <div class="report-modal">
+        <h3 class="report-modal__title">回報驗證問題</h3>
+        <p class="report-modal__hint">ⓘ 我們將協助您處理 SMS 驗證問題</p>
+
+        <div class="report-modal__field">
+          <label class="report-modal__label">手機號碼</label>
+          <div class="report-modal__readonly">{{ reportPhoneMasked || '(未提供)' }}</div>
+        </div>
+
+        <div class="report-modal__field">
+          <label class="report-modal__label">問題描述（10-1000 字）</label>
+          <textarea
+            v-model="reportDescription"
+            class="report-modal__textarea"
+            rows="5"
+            maxlength="1000"
+            placeholder="請描述您遇到的狀況，例如「等了 10 分鐘還沒收到驗證碼」「驗證碼一直顯示錯誤」等"
+            :disabled="reportSubmitting"
+          />
+          <div class="report-modal__char-count">{{ reportDescription.length }}/1000</div>
+        </div>
+
+        <p v-if="reportError" class="report-modal__error">{{ reportError }}</p>
+
+        <div class="report-modal__actions">
+          <button
+            class="report-modal__btn report-modal__btn--cancel"
+            :disabled="reportSubmitting"
+            @click="closeReportModal"
+          >
+            取消
+          </button>
+          <button
+            class="report-modal__btn report-modal__btn--submit"
+            :disabled="reportSubmitting || reportDescription.trim().length < 10"
+            @click="submitReport"
+          >
+            {{ reportSubmitting ? '送出中…' : '送出' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -834,6 +964,178 @@ onBeforeUnmount(() => {
 .verify-card__tag {
   flex-shrink: 0;
   border-radius: 6px;
+}
+
+/* ── PR-1 (v3.6) 問題回報入口 + 登出 ─────────────────────── */
+.verify-fallback-links {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 0.5px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.verify-fallback-hint {
+  font-size: 12px;
+  color: #64748B;
+  margin: 0;
+  text-align: center;
+}
+
+.verify-link {
+  background: none;
+  border: none;
+  color: #F0294E;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px;
+}
+
+.verify-link:disabled {
+  color: #94A3B8;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.verify-link--muted {
+  color: #64748B;
+  font-weight: 500;
+}
+
+.verify-inline-success {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 10px;
+  color: #166534;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── PR-1 (v3.6) 回報 Modal ───────────────────────────── */
+.report-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.report-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 20px;
+}
+
+.report-modal__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 8px;
+}
+
+.report-modal__hint {
+  font-size: 12px;
+  color: #64748B;
+  background: #F1F5F9;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 16px;
+}
+
+.report-modal__field {
+  margin-bottom: 14px;
+}
+
+.report-modal__label {
+  display: block;
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.report-modal__readonly {
+  height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  background: #F1F5F9;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.report-modal__textarea {
+  width: 100%;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #0F172A;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.report-modal__textarea:focus {
+  border-color: #F0294E;
+  box-shadow: 0 0 0 3px rgba(240, 41, 78, 0.1);
+}
+
+.report-modal__char-count {
+  text-align: right;
+  font-size: 11px;
+  color: #94A3B8;
+  margin-top: 4px;
+}
+
+.report-modal__error {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #EF4444;
+}
+
+.report-modal__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.report-modal__btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-modal__btn--cancel {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.report-modal__btn--submit {
+  background: #F0294E;
+  color: #fff;
+}
+
+.report-modal__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Tablet/Desktop: center content ──────────────────────── */

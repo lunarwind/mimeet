@@ -366,7 +366,8 @@ Content-Type: application/json
 { "success": false, "error": { "code": "OTP_INVALID", "message": "驗證碼錯誤或已過期" } }
 ```
 
-> 成功後寫入 `users.phone_verified_at`，並記錄到 `user_activity_logs`（type: phone_change）。
+> 成功後寫入 `users.phone_verified = true`，並記錄到 `user_activity_logs`（type: phone_change）。
+> （勘誤：原版本誤寫為 `phone_verified_at` datetime 欄位；實際 schema 是 boolean `phone_verified`，2026-05-07 PR-1 修正。）
 
 #### 2.2.3 真人驗證（女性）
 
