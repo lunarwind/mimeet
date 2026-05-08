@@ -132,13 +132,32 @@ async function startAdvancedVerification() {
   creditCardResult.value = null
   creditCardError.value = null
   if (isFemale.value) {
+    // Re-check status to avoid stale UI from multi-tab / multi-device
+    try {
+      const status = await getVerificationStatus()
+      verificationStatus.value = status
+      if (status.status === 'pending_review') {
+        currentStep.value = 'advanced-pending'
+        return
+      }
+    } catch { /* fallback to request */ }
+
     currentStep.value = 'advanced-guide'
     try {
       const data = await requestVerificationCode()
       photoCode.value = data.random_code
       photoCodeExpiry.value = data.expires_at
-    } catch {
-      advancedError.value = '無法取得驗證碼'
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: { code?: string; message?: string } } } })?.response?.data?.error
+      if (msg?.code === 'VERIFICATION_PENDING_REVIEW') {
+        verificationStatus.value = {
+          status: 'pending_review',
+          submitted_at: new Date().toISOString(),
+        }
+        currentStep.value = 'advanced-pending'
+      } else {
+        advancedError.value = msg?.message ?? '無法取得驗證碼'
+      }
     }
   } else {
     currentStep.value = 'advanced-guide'
@@ -166,11 +185,24 @@ async function submitAdvancedPhoto() {
   advancedError.value = null
   try {
     await uploadVerificationPhoto(photoUrl.value, photoCode.value)
+    // Sync state so the overview button stays hidden after returning
+    verificationStatus.value = {
+      status: 'pending_review',
+      submitted_at: new Date().toISOString(),
+    }
+    verificationRejectReason.value = null
     currentStep.value = 'advanced-pending'
   } catch (err: unknown) {
     const msg = (err as { response?: { data?: { error?: { code?: string; message?: string } } } })?.response?.data?.error
     if (msg?.code === 'VERIFICATION_EXPIRED') {
       advancedError.value = '驗證碼已過期，請重新申請'
+    } else if (msg?.code === 'VERIFICATION_PENDING_REVIEW') {
+      // Already submitted in another tab/device — sync state and switch view
+      verificationStatus.value = {
+        status: 'pending_review',
+        submitted_at: new Date().toISOString(),
+      }
+      currentStep.value = 'advanced-pending'
     } else {
       advancedError.value = msg?.message ?? '提交失敗，請重試'
     }

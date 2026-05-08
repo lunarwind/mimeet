@@ -639,6 +639,59 @@ else
 fi
 
 echo ""
+echo "-- Verification photo pending_review lock (14as-14av) --"
+
+# ============================================================
+# 14as：VerificationPhotoController::request 必須含 pending_review guard + lockForUpdate
+# ============================================================
+# 防止 request() 退回到「只 expire pending_code 不擋 pending_review」的舊邏輯。
+
+VPHOTO_REQUEST_SLICE="awk '/public function request/ { flag=1 } flag && /^    public function / && !/public function request/ { exit } flag' backend/app/Http/Controllers/Api/V1/VerificationPhotoController.php"
+
+check \
+  "14as VerificationPhotoController::request 含 VERIFICATION_PENDING_REVIEW guard" \
+  "eval \"$VPHOTO_REQUEST_SLICE\" | grep -c 'VERIFICATION_PENDING_REVIEW' | tr -d ' '" \
+  "^[1-9]"
+
+check \
+  "14as-2 VerificationPhotoController::request 用 lockForUpdate 防競態" \
+  "eval \"$VPHOTO_REQUEST_SLICE\" | grep -c 'lockForUpdate' | tr -d ' '" \
+  "^[1-9]"
+
+# ============================================================
+# 14at：VerificationPhotoController::upload 必須含 pending_review guard
+# ============================================================
+VPHOTO_UPLOAD_SLICE="awk '/public function upload/ { flag=1 } flag && /^    public function / && !/public function upload/ { exit } flag' backend/app/Http/Controllers/Api/V1/VerificationPhotoController.php"
+
+check \
+  "14at VerificationPhotoController::upload 含 VERIFICATION_PENDING_REVIEW guard" \
+  "eval \"$VPHOTO_UPLOAD_SLICE\" | grep -c 'VERIFICATION_PENDING_REVIEW' | tr -d ' '" \
+  "^[1-9]"
+
+# ============================================================
+# 14au：Admin VerificationController::review 必須擋非 pending_review + lockForUpdate
+# ============================================================
+ADMIN_VERIFY_SLICE="awk '/public function review/ { flag=1 } flag && /^    public function / && !/public function review/ { exit } flag' backend/app/Http/Controllers/Api/V1/Admin/VerificationController.php"
+
+check \
+  "14au Admin\\VerificationController::review 擋非 pending_review 紀錄" \
+  "eval \"$ADMIN_VERIFY_SLICE\" | grep -c 'VERIFICATION_ALREADY_REVIEWED' | tr -d ' '" \
+  "^[1-9]"
+
+check \
+  "14au-2 Admin\\VerificationController::review 用 lockForUpdate 防並發 double-approve" \
+  "eval \"$ADMIN_VERIFY_SLICE\" | grep -c 'lockForUpdate' | tr -d ' '" \
+  "^[1-9]"
+
+# ============================================================
+# 14av：舊版 Admin/VerificationController.php 不應存在（dead code）
+# ============================================================
+check \
+  "14av 舊版 Admin/VerificationController.php 已刪除（不可復活）" \
+  "test -f backend/app/Http/Controllers/Admin/VerificationController.php && echo exists || echo gone" \
+  "^gone$"
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
