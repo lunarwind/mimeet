@@ -107,6 +107,14 @@ export const appRoutes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, minLevel: 1 },
       },
       {
+        path: 'settings/phone-change',
+        name: 'settings-phone-change',
+        component: () => import('@/views/app/settings/PhoneChangeView.vue'),
+        // PR-3: 限 phone_verified user 用,Lv0 走 /app/settings/verify。
+        // Component-level guard 內再驗 phone_verified=true && phone !== null。
+        meta: { requiresAuth: true, minLevel: 1 },
+      },
+      {
         path: 'settings/blocked',
         name: 'settings-blocked',
         component: () => import('@/views/app/settings/BlockedView.vue'),

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AdminBlacklistController;
+use App\Http\Controllers\Api\V1\PhoneChangeController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\PointController;
@@ -73,6 +74,13 @@ Route::prefix('api/v1')->group(function () {
     Route::prefix('auth')->middleware(['auth:sanctum', 'check.suspended', 'throttle:otp'])->group(function () {
         Route::post('/verify-phone/send', [AuthController::class, 'verifyPhoneSend']);
         Route::post('/verify-phone/confirm', [AuthController::class, 'verifyPhoneConfirm']);
+    });
+
+    // ─── PR-3: Phone change (3-step OTP, requires phone_verified=true) ─────
+    Route::prefix('auth/phone-change')->middleware(['auth:sanctum', 'check.suspended', 'throttle:phone-change'])->group(function () {
+        Route::post('/initiate', [PhoneChangeController::class, 'initiate']);
+        Route::post('/verify-old', [PhoneChangeController::class, 'verifyOld']);
+        Route::post('/verify-new', [PhoneChangeController::class, 'verifyNew']);
     });
 
     // ─── Media upload (authenticated, upload rate-limited) ──────────────
