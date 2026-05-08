@@ -212,6 +212,32 @@ check() {
 - **狀態**：**待實作**。`IMPLEMENTATION_STATUS.md` 結構需先標準化才能機械比對。
 - **追蹤**：見 `docs/IMPLEMENTATION_STATUS.md` 的 follow-up 條目。
 
+### 1.17 14ao ~ 14ar — PR-3 phone verification 強化守護(2026-05-08 新增)
+
+#### 14ao — `verifyPhoneSend` 不可從 request 接受 phone 參數
+
+- **語意**:`verifyPhoneSend` method 區段內**不得**出現 `$request->input('phone')` / `$request->get('phone')` / `$request->post('phone')` / `$request->phone` / 在 `validate(...)` 或 `Validator::make(...)` 中宣告 `'phone'` 規則。
+- **依據**:PR-3(2026-05-08)。修復「verify endpoint 接受任意 phone 參數」漏洞 — auth identity 必須固定使用 `auth user.phone`,不該由 client 控制要驗哪個號碼。
+
+#### 14ap — `verifyPhoneConfirm` 不可從 request 接受 phone 參數
+
+- **語意**:同上,`verifyPhoneConfirm` method 區段。
+- **依據**:同 14ao。
+
+#### 14aq — `verifyPhoneConfirm` 必須走 `PhoneService::setVerifiedPhone`
+
+- **語意**:method 區段內必須出現 `->setVerifiedPhone(`。
+- **依據**:確保所有 phone 寫入點集中在 PhoneService(unique + blacklist + race + atomic),不能 controller 散寫。
+
+#### 14ar — PhoneService 必須有 unique + blacklist + QueryException catch + throw PhoneConflictException
+
+- **語意**:四段式守護(用 PHONE_SVC_ERRORS counter 累計):
+  1. 含 `phone_hash` unique check
+  2. 含 `BlacklistService` 或 `isBlocked` 呼叫
+  3. 真正 `catch (QueryException)` 結構(用 POSIX class `[[:space:]]`,不只 import)
+  4. 真正 `throw new PhoneConflictException`(不只 import / docblock 提及)
+- **依據**:防退化。PR-3 v3 14ar 曾因 grep 命中 import 行而 always-OK,v8 R6/R7 修補為「真正使用」的檢測。
+
 ### 1.16 14ak ~ 14an — PR-2 註冊禁止名單守護（2026-05-07 新增）
 
 #### 14ak — `AuthController::register` 必須查 blacklist
@@ -300,6 +326,8 @@ check() {
 - **2026-05-04**：QR flow list endpoint transformer 漏映射 qrToken → 觸發 14ag
 - **2026-05-07**：PR-1 — Admin 刪會員 API 只 soft delete 導致 email/phone 永遠無法重新註冊;同時 SMS 驗證沒「逃生門」讓 SMS 故障時 user 卡死。修法:`AdminController::deleteMember` 改走 `GdprService::anonymizeUser` + `users:cleanup-zombies` artisan command + SMS verify 加「回報問題」入口（type=`system_issue` + `[META]` sub-category=`sms_verification`）+ `/app/settings/verify` minLevel 1→0 + BottomNav 對 Lv0 隱藏 → 觸發 14ai / 14aj
 - **2026-05-07**:PR-2 — Email/mobile 註冊禁止名單功能。新增 `registration_blacklists` 表(方案 C race protection 用 `active_value_hash` nullable+UNIQUE,允許多筆 inactive 一筆 active);Admin 刪除流程加 checkbox 整合;register flow 加 gate(error response byte-for-byte 對齊既有 unique error 防 enumeration);D14-a 採選項 2a — `LogAdminOperation` middleware 加 `skip_admin_log` 機制讓 controller 自寫結構化 log → 觸發 14ak / 14al / 14am / 14an
+- **2026-05-08**:PR-3 — `AuthController::verifyPhoneSend / verifyPhoneConfirm` 接受任意 `phone` 參數,與 `auth user` 完全脫鉤。攻擊者可發 OTP 到任意號碼(SMS bombing / 探測號碼存在性),且可在 SMS confirm 時把 `user.phone` 換成另一個號碼繞過 PR-2 mobile blacklist。修法:移除 phone 參數固定用 `auth user.phone` + 抽 `PhoneService` 集中 unique + blacklist + race + atomic + 新增 phone-change 3-step OTP 流程 → 觸發 14ao / 14ap / 14aq / 14ar。**教訓:身份驗證類 endpoint 不該接受 user 可控制的「驗哪個 ID」參數,必須固定用 auth user 的 ID**。
+
 - **2026-05-07 教訓:Mask::phone 規則描述 drift**:PR-1 ship 報告口語化把 `Mask::phone` 規則描述為「first-3 + middle-stars + last-3」(`091***678`),實際輸出是「first-2 + xx-xxx- + last-3」(`09xx-xxx-678`)。PR-2 prompt v3/v4 沿用兩版本,直到 v4.1 由 reviewer 實測 `php artisan tinker` 才校正。**規則**:函式描述必須附 input → output 對照表,至少 3 筆代表性 case,且註明用 `php artisan tinker` 實測。
 
 ---

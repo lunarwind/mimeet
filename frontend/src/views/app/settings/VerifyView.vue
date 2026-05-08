@@ -19,7 +19,7 @@ const currentStep = ref<Step>('overview')
 const isLoading = ref(false)
 
 // ── 手機驗證 ──────────────────────────────────────────────
-const phone = ref('')
+// PR-3:不再有 user-controllable phone state。用 authStore.user.phone(已 masked)。
 const smsCode = ref('')
 const smsSending = ref(false)
 const smsVerifying = ref(false)
@@ -32,7 +32,9 @@ const advancedVerified = computed(() =>
   (authStore.user?.membership_level ?? 0) >= 2 || !!authStore.user?.credit_card_verified_at
 )
 
-const phoneValid = computed(() => /^09\d{8}$/.test(phone.value))
+// PR-3:authStore.user.phone 已是 backend masked 字串(不要再 mask 一次)。
+// 用於 UI 顯示與 send 按鈕 readiness 判斷。
+const userPhoneMasked = computed(() => authStore.user?.phone ?? '')
 
 function startSmsCooldown() {
   smsCooldown.value = 60
@@ -43,11 +45,12 @@ function startSmsCooldown() {
 }
 
 async function sendSmsCode() {
-  if (!phoneValid.value || smsSending.value || smsCooldown.value > 0) return
+  if (!userPhoneMasked.value || smsSending.value || smsCooldown.value > 0) return
   smsSending.value = true
   smsError.value = null
   try {
-    await sendPhoneCode({ phone: phone.value })
+    // PR-3:不傳 phone,後端固定用 auth user.phone
+    await sendPhoneCode({})
     startSmsCooldown()
     currentStep.value = 'sms-verify'
   } catch {
@@ -62,7 +65,8 @@ async function verifySmsCode() {
   smsVerifying.value = true
   smsError.value = null
   try {
-    await verifyPhoneCode({ phone: phone.value, code: smsCode.value })
+    // PR-3:不傳 phone
+    await verifyPhoneCode({ code: smsCode.value })
     await authStore.refreshUser()
     currentStep.value = 'overview'
   } catch {
@@ -221,12 +225,8 @@ const reportSubmitting = ref(false)
 const reportError = ref<string | null>(null)
 const reportSuccessMsg = ref<string | null>(null)
 const reportSentThisSession = ref(false)
-const reportPhoneMasked = computed(() => {
-  const p = phone.value
-  if (!p) return ''
-  if (p.length === 10) return p.slice(0, 2) + 'xx-xxx-' + p.slice(-3)
-  return p
-})
+// PR-3: 直接讀 authStore.user.phone(已 backend masked),不再前端 mask
+const reportPhoneMasked = computed(() => authStore.user?.phone ?? '')
 
 function openReportModal() {
   if (reportSentThisSession.value) return
@@ -364,28 +364,26 @@ async function handleLogout() {
       </div>
     </div>
 
-    <!-- SMS Send -->
+    <!-- SMS Send (PR-3: 顯示帳號既有手機號,user 不能改) -->
     <div v-else-if="currentStep === 'sms-send'" class="verify-content">
       <div class="verify-step">
-        <h2 class="verify-step__title">輸入手機號碼</h2>
-        <p class="verify-step__desc">我們將發送驗證碼至您的手機</p>
+        <h2 class="verify-step__title">確認手機號碼</h2>
+        <p class="verify-step__desc">我們將發送驗證碼至您帳號上的手機</p>
         <div class="verify-input-wrap">
-          <input
-            v-model="phone"
-            type="tel"
-            class="verify-input"
-            placeholder="09xxxxxxxx"
-            maxlength="10"
-            autocomplete="tel"
-          />
+          <div class="verify-readonly-phone">{{ userPhoneMasked || '(未設定)' }}</div>
         </div>
+        <p v-if="phoneVerified && userPhoneMasked" class="verify-step__desc" style="font-size: 12px; margin-top: -8px;">
+          <button type="button" class="verify-link" @click="router.push('/app/settings/phone-change')">
+            不是這個號碼?變更手機
+          </button>
+        </p>
         <p v-if="smsError" class="verify-error">{{ smsError }}</p>
         <button
           class="verify-submit"
-          :disabled="!phoneValid || smsSending"
+          :disabled="!userPhoneMasked || smsSending || smsCooldown > 0"
           @click="sendSmsCode"
         >
-          {{ smsSending ? '發送中…' : '發送驗證碼' }}
+          {{ smsSending ? '發送中…' : (smsCooldown > 0 ? `${smsCooldown} 秒後可重發` : '發送驗證碼') }}
         </button>
       </div>
     </div>
@@ -394,7 +392,7 @@ async function handleLogout() {
     <div v-else-if="currentStep === 'sms-verify'" class="verify-content">
       <div class="verify-step">
         <h2 class="verify-step__title">輸入驗證碼</h2>
-        <p class="verify-step__desc">驗證碼已發送至 {{ phone }}</p>
+        <p class="verify-step__desc">驗證碼已發送至 {{ userPhoneMasked }}</p>
         <div class="verify-input-wrap">
           <input
             v-model="smsCode"
@@ -781,6 +779,22 @@ async function handleLogout() {
   font-size: 24px;
   font-weight: 700;
   letter-spacing: 8px;
+}
+
+/* PR-3: 顯示帳號既有手機(readonly) */
+.verify-readonly-phone {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: #F1F5F9;
+  border: 1.5px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0F172A;
+  letter-spacing: 1px;
 }
 
 .verify-error {

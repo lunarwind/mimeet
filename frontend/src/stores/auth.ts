@@ -14,6 +14,7 @@ export interface AuthUser {
   membership_level: number
   email_verified: boolean
   phone_verified: boolean
+  phone?: string | null  // PR-3: masked phone from backend, not raw E.164. 前端不要再 mask 一次
   credit_card_verified_at?: string | null  // 男性信用卡驗證
   // F40
   points_balance?: number

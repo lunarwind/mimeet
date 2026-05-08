@@ -49,6 +49,15 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perHour(5)->by($request->user()?->id ?: $request->ip());
         });
 
+        // PR-3: phone-change 5/min/user (fallback IP) — endpoint 必有 auth user
+        RateLimiter::for('phone-change', function (Request $request) {
+            return Limit::perMinute(5)->by(
+                $request->user()?->id
+                    ? 'user:' . $request->user()->id
+                    : 'ip:' . $request->ip()
+            );
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->group(base_path('routes/api.php'));

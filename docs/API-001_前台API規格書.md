@@ -313,6 +313,8 @@ Content-Type: application/json
 
 > **設計決定（v1.1）：** 拆為兩個 RESTful 端點，取代原本單一端點 + `action` 設計。
 
+> **PR-3(2026-05-08)更新**:`/auth/verify-phone/send` 與 `/auth/verify-phone/confirm` 已移除 request body 中的 `phone` 參數,固定使用 `auth user.phone`(漏洞修復)。前端不再傳 phone。詳見 §4 phone 變更流程。
+
 ##### 2.2.2.1 發送手機驗證碼
 ```http
 POST /api/v1/auth/verify-phone/send

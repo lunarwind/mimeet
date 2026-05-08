@@ -546,6 +546,99 @@ else
 fi
 
 echo ""
+echo "-- PR-3 guards (14ao-14ar) --"
+
+AUTH_CONTROLLER=backend/app/Http/Controllers/Api/V1/AuthController.php
+flatten() { printf '%s\n' "$1" | tr '\n' ' '; }
+
+# 14ao: verifyPhoneSend 不可從 request 接 phone 參數
+SLICE_AO=$(awk '/public function verifyPhoneSend/{f=1} f && /^    (public|private|protected) function /&&!/verifyPhoneSend/{exit} f' "$AUTH_CONTROLLER")
+SLICE_AO_FLAT=$(flatten "$SLICE_AO")
+AO_FAIL=0
+if echo "$SLICE_AO" | grep -qE "\\\$request->(input|get|post)\\(['\"]phone['\"]\\)"; then
+  AO_FAIL=1
+fi
+if echo "$SLICE_AO" | grep -qE "\\\$request->phone\\b"; then
+  AO_FAIL=1
+fi
+if echo "$SLICE_AO_FLAT" | grep -qE "\\\$request->validate\\([^;]*['\"]phone['\"][[:space:]]*=>"; then
+  AO_FAIL=1
+fi
+if echo "$SLICE_AO_FLAT" | grep -qE "Validator::make\\(\\\$request->all\\(\\)[^;]*['\"]phone['\"][[:space:]]*=>"; then
+  AO_FAIL=1
+fi
+if [ $AO_FAIL -eq 1 ]; then
+  echo "  [FAIL] 14ao: verifyPhoneSend 不可從 request 接受 phone 參數(必須用 auth user 的 phone)"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ao verifyPhoneSend 不接 phone 參數"
+fi
+
+# 14ap: verifyPhoneConfirm 不可從 request 接 phone 參數
+SLICE_AP=$(awk '/public function verifyPhoneConfirm/{f=1} f && /^    (public|private|protected) function /&&!/verifyPhoneConfirm/{exit} f' "$AUTH_CONTROLLER")
+SLICE_AP_FLAT=$(flatten "$SLICE_AP")
+AP_FAIL=0
+if echo "$SLICE_AP" | grep -qE "\\\$request->(input|get|post)\\(['\"]phone['\"]\\)"; then
+  AP_FAIL=1
+fi
+if echo "$SLICE_AP" | grep -qE "\\\$request->phone\\b"; then
+  AP_FAIL=1
+fi
+if echo "$SLICE_AP_FLAT" | grep -qE "\\\$request->validate\\([^;]*['\"]phone['\"][[:space:]]*=>"; then
+  AP_FAIL=1
+fi
+if echo "$SLICE_AP_FLAT" | grep -qE "Validator::make\\(\\\$request->all\\(\\)[^;]*['\"]phone['\"][[:space:]]*=>"; then
+  AP_FAIL=1
+fi
+if [ $AP_FAIL -eq 1 ]; then
+  echo "  [FAIL] 14ap: verifyPhoneConfirm 不可從 request 接受 phone 參數"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ap verifyPhoneConfirm 不接 phone 參數"
+fi
+
+# 14aq: verifyPhoneConfirm 必須呼叫 ->setVerifiedPhone(
+if ! echo "$SLICE_AP" | grep -qE -- "->setVerifiedPhone\\("; then
+  echo "  [FAIL] 14aq: verifyPhoneConfirm 必須透過 PhoneService::setVerifiedPhone 寫入"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14aq verifyPhoneConfirm 走 PhoneService"
+fi
+
+# 14ar: PhoneService 必須做 unique + blacklist + race handling + throws PhoneConflictException
+PHONE_SVC=backend/app/Services/PhoneService.php
+PHONE_SVC_ERRORS=0
+if [ ! -f "$PHONE_SVC" ]; then
+  echo "  [FAIL] 14ar: PhoneService.php 不存在"
+  ERRORS=$((ERRORS + 1))
+else
+  if ! grep -qE "phone_hash" "$PHONE_SVC"; then
+    echo "  [FAIL] 14ar-1: PhoneService 必須做 phone_hash unique check"
+    PHONE_SVC_ERRORS=$((PHONE_SVC_ERRORS + 1))
+  fi
+  if ! grep -qE "isBlocked|BlacklistService" "$PHONE_SVC"; then
+    echo "  [FAIL] 14ar-2: PhoneService 必須做 mobile blacklist check"
+    PHONE_SVC_ERRORS=$((PHONE_SVC_ERRORS + 1))
+  fi
+  # v8 R6:用 POSIX class [[:space:]] 取代 \s
+  if ! grep -qE 'catch[[:space:]]*\([[:space:]]*QueryException' "$PHONE_SVC"; then
+    echo "  [FAIL] 14ar-3: PhoneService 必須 catch QueryException(不只 import)"
+    PHONE_SVC_ERRORS=$((PHONE_SVC_ERRORS + 1))
+  fi
+  # v8 R7:必須 throw new PhoneConflictException,不只 import / docblock 提及
+  if ! grep -qE 'throw[[:space:]]+new[[:space:]]+PhoneConflictException' "$PHONE_SVC"; then
+    echo "  [FAIL] 14ar-4: PhoneService 必須 throw new PhoneConflictException"
+    PHONE_SVC_ERRORS=$((PHONE_SVC_ERRORS + 1))
+  fi
+
+  if [ "$PHONE_SVC_ERRORS" -gt 0 ]; then
+    ERRORS=$((ERRORS + PHONE_SVC_ERRORS))
+  else
+    echo "  [OK] 14ar PhoneService 含 unique + blacklist + race handling + friendly exception"
+  fi
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

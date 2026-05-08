@@ -24,6 +24,7 @@ export interface LoginResponse {
       membership_level: number
       email_verified: boolean
       phone_verified: boolean
+      phone?: string | null  // PR-3: masked phone from backend, not raw E.164
     }
     token: string
   }
@@ -79,21 +80,41 @@ export function resendVerification(email: string) {
   return client.post('/auth/resend-verification', { email })
 }
 
-export interface SendPhoneCodePayload {
-  phone: string
-}
-
+// PR-3: phone 不再由 client 控制(漏洞修復)。固定使用 auth user.phone。
+export type SendPhoneCodePayload = Record<string, never>
 export interface VerifyPhoneCodePayload {
-  phone: string
   code: string
 }
 
-export function sendPhoneCode(payload: SendPhoneCodePayload) {
+export function sendPhoneCode(payload: SendPhoneCodePayload = {}) {
   return client.post('/auth/verify-phone/send', payload).then(r => r.data)
 }
 
 export function verifyPhoneCode(payload: VerifyPhoneCodePayload) {
   return client.post('/auth/verify-phone/confirm', payload).then(r => r.data)
+}
+
+// PR-3: 換號流程
+export interface InitiatePhoneChangePayload {
+  new_phone: string
+}
+export interface VerifyOldPhonePayload {
+  old_otp: string
+}
+export interface VerifyNewPhonePayload {
+  new_otp: string
+}
+
+export function initiatePhoneChange(payload: InitiatePhoneChangePayload) {
+  return client.post('/auth/phone-change/initiate', payload).then(r => r.data)
+}
+
+export function verifyOldPhone(payload: VerifyOldPhonePayload) {
+  return client.post('/auth/phone-change/verify-old', payload).then(r => r.data)
+}
+
+export function verifyNewPhone(payload: VerifyNewPhonePayload) {
+  return client.post('/auth/phone-change/verify-new', payload).then(r => r.data)
 }
 
 export interface ChangePasswordPayload {

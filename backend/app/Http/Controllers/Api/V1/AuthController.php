@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Mail\EmailVerificationMail;
 use App\Mail\ResetPasswordMail;
+use App\Exceptions\PhoneConflictException;
 use App\Models\User;
 use App\Services\BlacklistService;
+use App\Services\PhoneService;
 use App\Services\SmsService;
 use App\Services\UserActivityLogService;
 use App\Support\Mask;
@@ -24,6 +26,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly BlacklistService $blacklistService,
+        private readonly PhoneService $phoneService,
     ) {}
 
     public function register(Request $request): JsonResponse
@@ -40,6 +43,10 @@ class AuthController extends Controller
             'gender'           => ['required', 'in:male,female'],
             'birth_date'       => ['required', 'date', 'before:-18 years'],
             'phone'            => ['nullable', 'string', 'regex:/^09\d{8}$/'],
+            // ⚠️ 設計上 phone 必填,前端 RegisterView 強制要求。
+            //    nullable 是給 SMS 服務臨時故障時的降級 escape valve(user 仍能完成註冊,
+            //    後續再透過 verify 流程或客服補設)。
+            //    勿以為 phone 是真正的 optional 欄位 — 整個 product 假設 user 終究會綁手機。
             'terms_accepted'   => ['required', 'accepted'],
             'privacy_accepted' => ['required', 'accepted'],
             'anti_fraud_read'  => ['required', 'accepted'],
@@ -437,10 +444,24 @@ class AuthController extends Controller
 
     public function verifyPhoneSend(Request $request): JsonResponse
     {
-        $request->validate(['phone' => ['required', 'string', 'regex:/^09\d{8}$/']]);
+        // PR-3:固定用 auth user 的 phone,不再接 request phone 參數
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'UNAUTHENTICATED', 'message' => '請先登入'],
+            ], 401);
+        }
 
-        $phone = $request->input('phone');
-        $e164 = $this->toE164($phone);
+        if (empty($user->phone)) {
+            // 極罕見,僅 system account 等 by-design 不該走 verify 路徑的 user 才會撞到
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'PHONE_NOT_SET', 'message' => '請聯繫客服補設手機號碼'],
+            ], 422);
+        }
+
+        $e164 = $this->toE164($user->phone);
 
         // Cooldown: 1 send per 60 seconds (keyed by phone)
         $cooldownKey = "otp:cooldown:{$e164}";
@@ -463,8 +484,8 @@ class AuthController extends Controller
         app(SmsService::class)->sendOtp($e164, $code);
 
         Log::info('[PhoneVerify] OTP sent', [
-            'user_id' => auth()->guard('sanctum')->user()?->id,
-            'phone' => substr($phone, 0, 4) . '****',
+            'user_id' => $user->id,
+            'phone' => substr((string) $user->phone, 0, 4) . '****',
         ]);
 
         return response()->json([
@@ -475,12 +496,28 @@ class AuthController extends Controller
 
     public function verifyPhoneConfirm(Request $request): JsonResponse
     {
+        // PR-3:固定用 auth user 的 phone,不再接 request phone 參數
         $request->validate([
-            'phone' => ['required', 'string', 'regex:/^09\d{8}$/'],
             'code' => 'required|string|size:6',
         ]);
 
-        $e164 = $this->toE164($request->input('phone'));
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'code'    => 'UNAUTHENTICATED',
+                'message' => '請先登入再進行手機驗證。',
+            ], 401);
+        }
+
+        if (empty($user->phone)) {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'PHONE_NOT_SET', 'message' => '請聯繫客服補設手機號碼'],
+            ], 422);
+        }
+
+        $e164 = $this->toE164($user->phone);
         $inputCode = $request->input('code');
 
         $otpKey = "otp:phone:{$e164}";
@@ -512,27 +549,40 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Success — route now requires auth:sanctum, so user is always the token holder
-        $user = $request->user();
-        if (!$user) {
+        // PR-3:透過 PhoneService 寫入(unique + blacklist + race + atomic)
+        try {
+            $result = $this->phoneService->setVerifiedPhone(
+                $user,
+                $user->phone,
+                'verify',
+                $request,
+            );
+        } catch (PhoneConflictException $e) {
+            // 對齊既有 register unique error response shape(防 enumeration)
             return response()->json([
                 'success' => false,
-                'code'    => 'UNAUTHENTICATED',
-                'message' => '請先登入再進行手機驗證。',
-            ], 401);
+                'code'    => 400,
+                'message' => '驗證失敗',
+                'errors'  => ['phone' => [$e->getMessage()]],
+                'error'   => ['type' => 'validation_error', 'details' => [
+                    ['field' => 'phone', 'message' => $e->getMessage()],
+                ]],
+            ], 422);
         }
 
-        $user->phone = $e164;
-        $user->phone_verified = true;
-        if ($user->membership_level < 1) {
-            $user->membership_level = 1;
+        // PR-3 v3 O3:用 PhoneService 回傳的 result 判斷信用分
+        if ($result->verifiedChanged) {
+            \App\Services\CreditScoreService::adjust(
+                $user,
+                \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5),
+                'phone_verify',
+                '手機驗證完成',
+            );
         }
-        if (!$user->save()) {
-            Log::error('[PhoneVerify] Failed to save user', ['user_id' => $user->id]);
-        }
-        UserActivityLogService::logPhoneChange($user->id, $request);
-        if ($user->wasChanged('phone_verified')) {
-            \App\Services\CreditScoreService::adjust($user, \App\Services\CreditScoreService::getConfig('credit_add_phone_verify', 5), 'phone_verify', '手機驗證完成');
+
+        // PR-3 v3 O2:條件化 activity log,no-op verify 不寫雜訊
+        if ($result->changed || $result->verifiedChanged) {
+            UserActivityLogService::logPhoneChange($user->id, $request);
         }
 
         Cache::forget($otpKey);
