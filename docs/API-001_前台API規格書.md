@@ -4292,7 +4292,26 @@ Authorization: Bearer {access_token}
 }
 ```
 
-> 每次呼叫重新生成 6 位英數隨機碼，10 分鐘有效。舊的 pending_code 自動過期。
+**錯誤回應 422 — 已有 pending_review 紀錄(2026-05-09 PR-Verify-Lock)：**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VERIFICATION_PENDING_REVIEW",
+    "message": "照片認證審核中，請等待管理員審核；若未通過，才能重新申請。"
+  }
+}
+```
+
+> 若使用者目前有 `pending_review` 紀錄,本端點直接回 `VERIFICATION_PENDING_REVIEW` (422),**不重新生成 random_code**。
+> 其他情況下重新生成 6 位英數隨機碼,10 分鐘有效,舊的 `pending_code` 自動標記為 `expired`。
+> 整段邏輯包在 `DB::transaction + lockForUpdate` 內,序列化並發呼叫。
+
+| 錯誤碼 | HTTP | 觸發條件 |
+|---|---|---|
+| `NOT_ELIGIBLE` | 422 | 非 `gender=female` |
+| `ALREADY_VERIFIED` | 422 | `membership_level >= 1.5` |
+| `VERIFICATION_PENDING_REVIEW` | 422 | 已有未審核的紀錄,鎖定狀態 |
 
 ---
 
@@ -4321,6 +4340,25 @@ Content-Type: application/json
 }
 ```
 
+**錯誤回應 422 — 已有 pending_review 紀錄(2026-05-09 PR-Verify-Lock)：**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VERIFICATION_PENDING_REVIEW",
+    "message": "照片認證審核中，請等待管理員審核；若未通過，才能重新申請。"
+  }
+}
+```
+
+| 錯誤碼 | HTTP | 觸發條件 |
+|---|---|---|
+| `VERIFICATION_PENDING_REVIEW` | 422 | 已有未審核的紀錄(即使本次帶了正確 random_code 也擋下) |
+| `VERIFICATION_NOT_FOUND` | 422 | random_code 不對應任何 pending_code 紀錄 |
+| `VERIFICATION_EXPIRED` | 422 | random_code 已過期 |
+
+整段邏輯包在 `DB::transaction + lockForUpdate` 內,序列化並發呼叫。
+
 ---
 
 ### 16.5 查詢驗證狀態
@@ -4329,6 +4367,13 @@ Content-Type: application/json
 GET /api/v1/me/verification-photo/status
 Authorization: Bearer {access_token}
 ```
+
+**狀態優先序(2026-05-09 PR-Verify-Lock 補充)：**
+1. 若使用者有 `pending_review` 紀錄,**優先**回該筆(防止既有髒資料中 pending_code 較新但實際已 pending_review 的場景誤導前端)
+2. 否則回最新一筆紀錄
+3. 都沒有則回 `{ status: 'none' }`
+
+> `pending_review` 為**鎖定狀態**:使用者不可再呼叫 `/me/verification-photo/request` 或 `/me/verification-photo/upload`,直到管理員審核完畢(approved 或 rejected)。
 
 **成功回應 200：**
 ```json

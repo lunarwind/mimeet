@@ -845,12 +845,7 @@ GET /api/v1/admin/verifications/pending
 ```
 
 > 所需權限：`members.edit`
-
-**Query 參數：**
-
-| 參數 | 類型 | 說明 |
-|------|------|------|
-| `type` | string | `photo`（女性）/ `credit_card`（男性，通常自動）|
+> 對齊 `user_verifications` migration 真實欄位(2026-05-09 PR-Verify-Lock 對齊)。
 
 **成功回應 200：**
 ```json
@@ -860,15 +855,18 @@ GET /api/v1/admin/verifications/pending
     {
       "id": 301,
       "user_id": 1001,
-      "user_nickname": "甜心寶貝",
-      "user_age": 23,
-      "type": "photo",
-      "verification_photo_url": "https://cdn.mimeet.tw/verifications/...",
-      "random_code": "739284",
-      "submitted_at": "2025-01-15T09:00:00Z",
-      "expires_at": "2025-01-15T09:10:00Z"
+      "random_code": "AB1C2D",
+      "photo_url": "https://cdn.mimeet.tw/storage/photos/1001/xxx.jpg",
+      "status": "pending_review",
+      "expires_at": "2026-01-15T09:10:00Z",
+      "reviewed_by": null,
+      "reviewed_at": null,
+      "reject_reason": null,
+      "created_at": "2026-01-15T09:00:00Z",
+      "user": { "id": 1001, "nickname": "甜心寶貝", "gender": "female", "avatar_url": "...", "membership_level": 1.0, "credit_score": 60 }
     }
-  ]
+  ],
+  "meta": { "page": 1, "per_page": 20, "total": 1, "last_page": 1 }
 }
 ```
 
@@ -891,17 +889,32 @@ PATCH /api/v1/admin/verifications/{verification_id}
 | `approved` | 通過審核，用戶進階驗證完成，發送通知 |
 | `rejected` | 未通過，需提供 `reject_reason`，用戶收到通知可重試 |
 
-**成功回應 200：**
+**狀態守衛(2026-05-09 PR-Verify-Lock 新增)：**
+- 僅當紀錄 `status === 'pending_review'` 時可審核;其他狀態回 `VERIFICATION_ALREADY_REVIEWED` (422)
+- 審核流程使用 `DB::transaction + lockForUpdate` 序列化並發 admin 操作,避免重複加分
+
+**成功回應 200(top-level message,**非** `data.message`)：**
 ```json
 {
   "success": true,
-  "data": {
-    "message": "驗證已通過",
-    "user_id": 1001,
-    "credit_score_added": 15
-  }
+  "message": "驗證已核准，用戶已升級至 Lv1.5"
 }
 ```
+
+或拒絕時:
+
+```json
+{
+  "success": true,
+  "message": "驗證已拒絕"
+}
+```
+
+**錯誤碼：**
+
+| 錯誤碼 | HTTP | 觸發條件 |
+|---|---|---|
+| `VERIFICATION_ALREADY_REVIEWED` | 422 | 紀錄 status 已是 approved/rejected/expired/pending_code,不可再審核 |
 
 ---
 
@@ -2139,7 +2152,7 @@ PATCH /api/v1/admin/settings/permission-matrix
 
 ### 10.B 女性驗證審核 API（Sprint 11 新增）
 
-> 所需權限：`members.edit`
+> 規格主檔以 §4.7 為準。本段保留作為 §10 章節的索引,詳細欄位、錯誤碼、狀態守衛、回應格式請參考 §4.7。
 
 #### 取得待審核驗證列表
 
@@ -2147,33 +2160,7 @@ PATCH /api/v1/admin/settings/permission-matrix
 GET /api/v1/admin/verifications/pending
 ```
 
-**Query 參數：**
-
-| 參數 | 類型 | 說明 |
-|------|------|------|
-| `page` | int | 頁碼 |
-
-**成功回應 200：**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 301,
-      "user_id": 1001,
-      "user_nickname": "甜心寶貝",
-      "user_age": 23,
-      "type": "photo",
-      "verification_photo_url": "https://cdn.mimeet.tw/verifications/...",
-      "random_code": "739284",
-      "submitted_at": "2026-04-09T09:00:00Z"
-    }
-  ],
-  "meta": { "page": 1, "per_page": 20, "total": 4, "last_page": 1 }
-}
-```
-
----
+詳細欄位 / response shape 見 §4.7。
 
 #### 審核驗證申請
 
@@ -2181,31 +2168,19 @@ GET /api/v1/admin/verifications/pending
 PATCH /api/v1/admin/verifications/{id}
 ```
 
-**請求參數：**
-```json
-{
-  "result": "approved",
-  "reject_reason": null
-}
-```
+**狀態守衛(2026-05-09 PR-Verify-Lock):**
+- 僅當紀錄 `status === 'pending_review'` 時可審核;其他狀態回 `VERIFICATION_ALREADY_REVIEWED` (422)
+- 審核流程使用 `DB::transaction + lockForUpdate` 序列化並發 admin 操作
 
-| `result` 值 | 說明 |
-|------------|------|
-| `approved` | 通過：`membership_level` 升至 1.5、`credit_score` +15，發送通知 |
-| `rejected` | 駁回：狀態改為 rejected，儲存 `reject_reason`，用戶收到通知可重試 |
-
-**成功回應 200：**
+**成功回應 200(top-level message,**非** `data.message`):**
 ```json
 {
   "success": true,
-  "data": {
-    "message": "驗證已通過",
-    "user_id": 1001,
-    "new_membership_level": 1.5,
-    "credit_score_added": 15
-  }
+  "message": "驗證已核准，用戶已升級至 Lv1.5"
 }
 ```
+
+詳細請求/錯誤碼見 §4.7。
 
 ---
 
