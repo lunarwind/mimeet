@@ -198,7 +198,7 @@ class AuthController extends Controller
                     'membership_level' => $user->membership_level,
                     'email_verified' => (bool) $user->email_verified,
                     'phone_verified' => (bool) $user->phone_verified,
-                    'phone' => $user->phone ? Mask::phone($user->phone) : null,
+                    'phone' => $user->phone,
                 ],
                 'token' => $token,
             ],
@@ -288,7 +288,7 @@ class AuthController extends Controller
                     'membership_level' => $user->membership_level,
                     'email_verified' => (bool) $user->email_verified,
                     'phone_verified' => (bool) $user->phone_verified,
-                    'phone' => $user->phone ? Mask::phone($user->phone) : null,
+                    'phone' => $user->phone,
                 ],
                 'token' => $token,
             ],
@@ -358,7 +358,7 @@ class AuthController extends Controller
                 'email_verified' => (bool) $user->email_verified,
                 'phone_verified' => (bool) $user->phone_verified,
                 'credit_card_verified_at' => $user->credit_card_verified_at?->toISOString(),
-                'phone' => $user->phone ? Mask::phone($user->phone) : null,
+                'phone' => $user->phone,
                 // F40
                 'points_balance' => (int) ($user->points_balance ?? 0),
                 'stealth_until' => $user->stealth_until?->toISOString(),
@@ -485,7 +485,7 @@ class AuthController extends Controller
 
         Log::info('[PhoneVerify] OTP sent', [
             'user_id' => $user->id,
-            'phone' => substr((string) $user->phone, 0, 4) . '****',
+            'phone' => Mask::phone((string) $user->phone),
         ]);
 
         return response()->json([

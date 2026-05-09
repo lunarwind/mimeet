@@ -7,7 +7,6 @@ import {
   verifyOldPhone,
   verifyNewPhone,
 } from '@/api/auth'
-import { maskPhone } from '@/utils/mask'
 
 type Step = 'input_new' | 'old_otp' | 'new_otp' | 'completed'
 
@@ -18,7 +17,7 @@ const currentStep = ref<Step>('input_new')
 const newPhone = ref('')
 const oldOtp = ref('')
 const newOtp = ref('')
-const newPhoneMaskedFromBackend = ref('')
+const newPhoneFromBackend = ref('')
 
 const submitting = ref(false)
 const errorMsg = ref<string | null>(null)
@@ -27,7 +26,6 @@ const cooldownNew = ref(0)
 let cooldownOldTimer: ReturnType<typeof setInterval> | undefined
 let cooldownNewTimer: ReturnType<typeof setInterval> | undefined
 
-const userPhoneMasked = computed(() => authStore.user?.phone ?? '')
 const newPhoneValid = computed(() => /^09\d{8}$/.test(newPhone.value))
 
 // PR-3 component-level guard:未驗證 user 不能進此頁
@@ -81,7 +79,7 @@ async function submitInitiate() {
   errorMsg.value = null
   try {
     const res = await initiatePhoneChange({ new_phone: newPhone.value })
-    newPhoneMaskedFromBackend.value = res?.data?.new_phone_masked ?? maskPhone(newPhone.value)
+    newPhoneFromBackend.value = res?.data?.new_phone ?? newPhone.value
     startCooldownOld()
     currentStep.value = 'old_otp'
   } catch (err) {
@@ -149,7 +147,7 @@ function goBack() {
       <div v-if="currentStep === 'input_new'" class="step-card">
         <h2 class="step-title">輸入新手機號碼</h2>
         <p class="step-desc">
-          目前手機:<strong>{{ userPhoneMasked }}</strong>
+          目前手機:<strong>{{ authStore.user?.phone }}</strong>
         </p>
         <div class="field-group">
           <label class="field-label">新手機號碼</label>
@@ -171,7 +169,7 @@ function goBack() {
           {{ submitting ? '處理中…' : '繼續(發送驗證碼到舊號)' }}
         </button>
         <p class="hint">
-          下一步會發驗證碼到您目前的手機 {{ userPhoneMasked }},確認您本人後再驗證新號。
+          下一步會發驗證碼到您目前的手機 {{ authStore.user?.phone }},確認您本人後再驗證新號。
         </p>
       </div>
 
@@ -179,7 +177,7 @@ function goBack() {
       <div v-else-if="currentStep === 'old_otp'" class="step-card">
         <h2 class="step-title">驗證目前手機</h2>
         <p class="step-desc">
-          驗證碼已發送至:<strong>{{ userPhoneMasked }}</strong>
+          驗證碼已發送至:<strong>{{ authStore.user?.phone }}</strong>
         </p>
         <div class="field-group">
           <input
@@ -214,7 +212,7 @@ function goBack() {
       <div v-else-if="currentStep === 'new_otp'" class="step-card">
         <h2 class="step-title">驗證新手機</h2>
         <p class="step-desc">
-          驗證碼已發送至:<strong>{{ newPhoneMaskedFromBackend }}</strong>
+          驗證碼已發送至:<strong>{{ newPhoneFromBackend }}</strong>
         </p>
         <div class="field-group">
           <input

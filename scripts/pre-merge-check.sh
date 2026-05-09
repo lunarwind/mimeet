@@ -692,6 +692,44 @@ check \
   "^gone$"
 
 echo ""
+echo "-- PR-4 guard (14aw) --"
+
+# 14aw: register / login / me / phone-change verify-new response 不可再含 Mask::phone for 'phone' field
+# (PR-4 反轉決策:user-self response 一律 raw)
+#
+# 註:awk slice regex `^    (public|private|protected) function` 假設 method visibility
+#    keyword 4-space 縮排(既有 PR-3 14ao-14ar 同假設,皆驗證 OK)。
+#
+# 註:14aw 範圍限定當前 4 個 user-self response endpoint。未來新增 user-self response
+#    endpoint 須**手動**對應加進此 guard。本 guard **不**通用化為「全 codebase 不可有
+#    Mask::phone」,避免誤觸發 audit log / blacklist 等合法 mask 場景。
+AUTH_CTL_AW=backend/app/Http/Controllers/Api/V1/AuthController.php
+PHONE_CHANGE_CTL_AW=backend/app/Http/Controllers/Api/V1/PhoneChangeController.php
+GUARD_14AW_FAIL=0
+
+# 找 register / login / me method 區段內是否含 'phone' => Mask::phone
+for METHOD in register login me; do
+  SLICE_AW=$(awk -v m="$METHOD" '$0 ~ "public function " m "\\(" {f=1} f && /^    (public|private|protected) function / && $0 !~ "function " m "\\(" {exit} f' "$AUTH_CTL_AW")
+  if echo "$SLICE_AW" | grep -qE "['\"]phone['\"][[:space:]]*=>[[:space:]]*Mask::phone"; then
+    echo "  [FAIL] 14aw: AuthController::$METHOD response 不可再含 Mask::phone(phone)(PR-4 反轉,user-self response 一律 raw)"
+    GUARD_14AW_FAIL=$((GUARD_14AW_FAIL + 1))
+  fi
+done
+
+# 找 PhoneChangeController verifyNew method 區段內是否含 'phone' => Mask::phone
+SLICE_AW_VN=$(awk '/public function verifyNew/{f=1} f && /^    (public|private|protected) function / && !/verifyNew/{exit} f' "$PHONE_CHANGE_CTL_AW")
+if echo "$SLICE_AW_VN" | grep -qE "['\"]phone['\"][[:space:]]*=>[[:space:]]*Mask::phone"; then
+  echo "  [FAIL] 14aw: PhoneChangeController::verifyNew response 不可再含 Mask::phone(phone)"
+  GUARD_14AW_FAIL=$((GUARD_14AW_FAIL + 1))
+fi
+
+if [ $GUARD_14AW_FAIL -eq 0 ]; then
+  echo "  [OK] 14aw user-self response 不再 mask phone"
+else
+  ERRORS=$((ERRORS + GUARD_14AW_FAIL))
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

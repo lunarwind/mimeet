@@ -257,13 +257,26 @@ Content-Type: application/json
       "membership_level": 2,
       "email_verified": true,
       "phone_verified": true,
-      "phone": "09xx-xxx-666"
+      "phone": "+886912345678"
     },
     "token": "eyJ0eXAiOiJKV1Qi..."
   }
 }
 ```
 
+> **Phone 欄位 mask 原則（PR-4 反轉決策,2026-05-08）：**
+>
+> | 場景 | 是否 mask |
+> |---|---|
+> | User 看自己（/auth/register, /auth/login, /auth/me, /auth/phone-change/* response）| ❌ 不 mask（raw E.164 或註冊時輸入的 raw 字串）|
+> | User 看別人 | （目前無此場景）|
+> | Admin 看 user（如未來實作 `/admin/members/{id}.phone`）| 看 RBAC 細節,原則上 mask |
+> | Audit log / blacklist `value_masked` / `phone_change_histories` | ✅ mask（GDPR）|
+> | Internal log（如 `[PhoneVerify] OTP sent`）| ✅ mask |
+>
+> 註:PR-1 (2026-05-06) 引入「user-self response 一律 mask」設計,PR-3 (2026-05-08) 沿用。
+> ship 後發現 UX 問題（user 看自己困惑、report ticket admin 無法 debug SMS）→ PR-4 反轉。
+>
 > 失敗時 `error.code` 可能為 `INVALID_CREDENTIALS`（401，密碼錯誤）/ `ACCOUNT_LOGIN_LOCKED`（429，5 次/email 或 20 次/IP 失敗鎖）。
 >
 > **停權帳號（D 方案，2026-05-02 起）：** 若帳號 `status` 為 `suspended` 或 `auto_suspended`，**login 仍回 200 + 發 token**（不再回 403）。回應 body 的 `data.user.status` 反映實際狀態，前端應據此導向 `/suspended`。後續 API 由 `check.suspended` middleware 攔阻並回 `403 ACCOUNT_SUSPENDED`，僅 `/auth/me`、`/auth/logout`、`/me/appeal`、`/me/appeal/current` 4 條 whitelist 路由停權者可用。詳見 docs/decisions/2026-05-01-check-suspended-decision.md。

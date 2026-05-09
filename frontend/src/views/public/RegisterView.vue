@@ -3,7 +3,6 @@ import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, verifyEmail, resendVerification, sendPhoneCode, verifyPhoneCode } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import { maskPhone } from '@/utils/mask'
 import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 import {
   validateEmail,
@@ -609,7 +608,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
         <div v-if="currentStep === 4" class="step-card step3-card">
           <div class="envelope-icon">📱</div>
           <h2 class="step-title">手機驗證</h2>
-          <p class="step-sub">驗證碼已發送至 {{ authStore.user?.phone ?? maskPhone(step2.phone) }}</p>
+          <p class="step-sub">驗證碼已發送至 {{ authStore.user?.phone ?? step2.phone }}</p>
 
           <div class="otp-row">
             <input
