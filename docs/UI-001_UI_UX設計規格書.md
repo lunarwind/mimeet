@@ -530,9 +530,9 @@ Padding：2px 10px
 **版面結構（手機）：**
 ```
 [狀態列]
-[Topbar] Logo（左）+ 登入/立即加入按鈕（右），滾動後加投影
-[Hero 區塊]
+[Hero 區塊]（無獨立 Topbar；品牌 MiMeet 內嵌於 Hero 上方）
   背景：白色 + 右下角/左上角 radial-gradient 粉紅暈染
+  品牌標誌：MiMeet（Noto Serif TC, 28px, #F0294E，主標題上方 16px）
   主標題：「找到專屬情人」（Noto Serif TC, 32-52px clamp，「情人」紅色強調）
   副標題：「誠信讓相遇便捷可靠」（16px, #6B7280）
   CTA 按鈕：「立即加入」（#F0294E 背景，白色文字）+ 「登入」（ghost）

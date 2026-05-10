@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const scrollY = ref(0)
 const heroVisible = ref(false)
 const featuresVisible = ref(false)
 
@@ -15,19 +14,10 @@ function goLogin() {
   router.push('/login')
 }
 
-function handleScroll() {
-  scrollY.value = window.scrollY
-}
-
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll, { passive: true })
   // 觸發進場動畫
   setTimeout(() => { heroVisible.value = true }, 100)
   setTimeout(() => { featuresVisible.value = true }, 400)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
 })
 
 const features = [
@@ -51,17 +41,6 @@ const features = [
 
 <template>
   <div class="landing-root">
-    <!-- ───────── Topbar ───────── -->
-    <header class="topbar" :class="{ scrolled: scrollY > 40 }">
-      <div class="topbar-inner">
-        <span class="brand-logo">MiMeet</span>
-        <div class="topbar-actions">
-          <button class="btn-ghost-sm" @click="goLogin">登入</button>
-          <button class="btn-primary-sm" @click="goRegister">立即加入</button>
-        </div>
-      </div>
-    </header>
-
     <!-- ───────── Hero Section ───────── -->
     <section class="hero-section">
       <div class="hero-bg-gradient" />
@@ -69,6 +48,7 @@ const features = [
 
       <div class="hero-content" :class="{ visible: heroVisible }">
         <div class="hero-text-block">
+          <div class="hero-brand">MiMeet</div>
           <h1 class="hero-title">找到專屬<em>情人</em></h1>
           <p class="hero-subtitle">
             誠信讓相遇便捷可靠
@@ -209,73 +189,6 @@ const features = [
   overflow-x: hidden;
 }
 
-/* ─── Topbar ─────────────────────────────────────────── */
-.topbar {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 100;
-  padding: 0 20px;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  transition: box-shadow 0.3s;
-}
-.topbar.scrolled {
-  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-}
-.topbar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.brand-logo {
-  font-family: 'Noto Serif TC', serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: -0.5px;
-}
-.topbar-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.btn-ghost-sm {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  padding: 7px 18px;
-  border-radius: 24px;
-  font-size: 14px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-}
-.btn-ghost-sm:hover {
-  background: var(--surface);
-  border-color: var(--text-secondary);
-}
-.btn-primary-sm {
-  background: var(--primary);
-  border: none;
-  color: #fff;
-  padding: 7px 18px;
-  border-radius: 24px;
-  font-size: 14px;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-.btn-primary-sm:hover {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
-}
-
 /* ─── Hero Section ─────────────────────────────────── */
 .hero-section {
   position: relative;
@@ -305,7 +218,7 @@ const features = [
   z-index: 2;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 100px 24px 60px;
+  padding: 48px 24px 60px;
   display: flex;
   align-items: center;
   gap: 60px;
@@ -323,6 +236,15 @@ const features = [
 .hero-text-block {
   flex: 1;
   max-width: 540px;
+}
+.hero-brand {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+  display: block;
 }
 .hero-title {
   font-family: 'Noto Serif TC', serif;
@@ -684,7 +606,7 @@ const features = [
 @media (max-width: 767px) {
   .hero-content {
     flex-direction: column;
-    padding: 90px 20px 48px;
+    padding: 32px 20px 48px;
     gap: 40px;
     text-align: center;
   }
@@ -709,7 +631,7 @@ const features = [
 @media (min-width: 768px) and (max-width: 1023px) {
   .hero-content {
     gap: 32px;
-    padding: 100px 32px 60px;
+    padding: 40px 32px 60px;
   }
   .phone-mockup {
     width: 190px;
