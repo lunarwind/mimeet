@@ -48,10 +48,10 @@ class UserController extends Controller
 
             // F27 新增的 9 個 profile 欄位 — 全部選填
             'style'             => ['sometimes', 'nullable', 'string', Rule::in($styleEnum)],
-            'dating_budget'     => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
+            'dating_budget'     => 'sometimes|nullable|string|in:single_under_8k,single_8k_12k,single_above_12k,long_under_40k,long_40k_60k,long_above_60k,undisclosed',
             'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
             'dating_type'       => 'sometimes|nullable|array',
-            'dating_type.*'     => 'string|in:dining,travel,companion,mentorship,undisclosed',
+            'dating_type.*'     => 'string|in:dining,companion,consultation,undisclosed',
             'relationship_goal' => 'sometimes|nullable|string|in:short_term,long_term,open,undisclosed',
             'smoking'           => 'sometimes|nullable|string|in:never,sometimes,often',
             'drinking'          => 'sometimes|nullable|string|in:never,social,often',

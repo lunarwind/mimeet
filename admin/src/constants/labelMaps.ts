@@ -33,10 +33,12 @@ export const STYLE_LABELS: Record<string, string> = {
 }
 
 export const DATING_BUDGET_LABELS: Record<string, string> = {
-  casual: '輕鬆小聚',
-  moderate: '質感約會',
-  generous: '高品質體驗',
-  luxury: '頂級享受',
+  single_under_8k: '單次 8K 以下（輕鬆聚會）',
+  single_8k_12k: '單次 8K～12K（精緻約會）',
+  single_above_12k: '單次 12K 以上（高端體驗）',
+  long_under_40k: '長期 月 40K 以下',
+  long_40k_60k: '長期 月 40K～60K',
+  long_above_60k: '長期 月 60K 以上',
   undisclosed: '不透露',
 }
 
@@ -48,9 +50,8 @@ export const DATING_FREQUENCY_LABELS: Record<string, string> = {
 
 export const DATING_TYPE_LABELS: Record<string, string> = {
   dining: '餐敘',
-  travel: '旅遊',
-  companion: '陪伴',
-  mentorship: '指導',
+  companion: '伴遊',
+  consultation: '諮商',
   undisclosed: '不透露',
 }
 

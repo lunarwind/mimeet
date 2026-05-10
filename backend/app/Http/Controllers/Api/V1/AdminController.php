@@ -112,7 +112,7 @@ class AdminController extends Controller
             'status' => 'sometimes|string|in:active,suspended,all',
             'search' => 'sometimes|string',
             // F27 精確篩選（後台管理用途，不走「OR NULL」寬鬆邏輯）
-            'dating_budget' => 'sometimes|string|in:casual,moderate,generous,luxury,undisclosed',
+            'dating_budget' => 'sometimes|string|in:single_under_8k,single_8k_12k,single_above_12k,long_under_40k,long_40k_60k,long_above_60k,undisclosed',
             'style' => 'sometimes|string|in:fresh,sweet,sexy,intellectual,sporty,elegant,korean,pure_student,petite_japanese,business_elite,british_gentleman,smart_casual,outdoor,boy_next_door,minimalist,japanese,warm_guy,preppy',
         ]);
 
@@ -758,10 +758,10 @@ class AdminController extends Controller
             'bio' => 'sometimes|nullable|string|max:500',
             // F27 profile fields
             'style'             => ['sometimes', 'nullable', 'string', Rule::in($styleEnum)],
-            'dating_budget'     => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
+            'dating_budget'     => 'sometimes|nullable|string|in:single_under_8k,single_8k_12k,single_above_12k,long_under_40k,long_40k_60k,long_above_60k,undisclosed',
             'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
             'dating_type'       => 'sometimes|nullable|array',
-            'dating_type.*'     => 'string|in:dining,travel,companion,mentorship,undisclosed',
+            'dating_type.*'     => 'string|in:dining,companion,consultation,undisclosed',
             'relationship_goal' => 'sometimes|nullable|string|in:short_term,long_term,open,undisclosed',
             'smoking'           => 'sometimes|nullable|string|in:never,sometimes,often',
             'drinking'          => 'sometimes|nullable|string|in:never,social,often',
