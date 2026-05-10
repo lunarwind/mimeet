@@ -17,3 +17,12 @@ vendor/
 **/storage/app/firebase-service-account.json
 **/*-service-account.json
 **/firebase-credentials.json
+
+.claude/
+
+Fonts/
+
+.idea/
+.vscode/settings.json
+*.swp
+.DS_Store

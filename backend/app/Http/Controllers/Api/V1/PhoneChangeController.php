@@ -127,7 +127,7 @@ class PhoneChangeController extends Controller
             'old_phone_hash' => $user->phone_hash,
             'new_phone_ciphertext' => Crypt::encryptString($newE164),
             'new_phone_hash' => $newHash,
-            'new_phone_masked' => Mask::phone($newE164),
+            'new_phone' => Mask::phone($newE164),
             'created_at' => now()->toISOString(),
         ];
         Cache::put($stateKey, $state, 600);
@@ -136,7 +136,7 @@ class PhoneChangeController extends Controller
             'success' => true,
             'data' => [
                 'step' => 'old_otp_sent',
-                'new_phone_masked' => $state['new_phone_masked'],
+                'new_phone' => $newE164,
                 'expires_in' => 600,
             ],
         ]);
@@ -218,7 +218,7 @@ class PhoneChangeController extends Controller
             'success' => true,
             'data' => [
                 'step' => 'old_verified_new_otp_sent',
-                'new_phone_masked' => $state['new_phone_masked'],
+                'new_phone' => $newE164,
                 'expires_in' => 300,
             ],
         ]);
@@ -289,7 +289,7 @@ class PhoneChangeController extends Controller
             'success' => true,
             'data' => [
                 'step' => 'completed',
-                'phone' => Mask::phone($newE164),
+                'phone' => $newE164,
             ],
         ]);
     }

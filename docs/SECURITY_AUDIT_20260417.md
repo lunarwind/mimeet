@@ -65,7 +65,7 @@
 | 500 錯誤不洩漏 stack trace | ✅ | APP_DEBUG=false 生效，回傳標準 validation error |
 | SQL injection 防護 | ✅ | 參數化查詢，未洩漏 SQL 錯誤 |
 | /auth/me 不含 password | ✅ | password/remember_token 不在回應中 |
-| phone 欄位已遮罩 | ✅ | 格式為 09xx-xxx-xxx（未綁定時為 null） |
+| phone 欄位遮罩策略 | ✅ | audit log / blacklist `value_masked` / `phone_change_histories` 場景遮罩；user-self response（register / login / me / phone-change）為 raw E.164（PR-4, 2026-05-08）|
 | Server header 洩漏版本 | ⚠️ | `nginx/1.24.0 (Ubuntu)` — 建議設 `server_tokens off` |
 
 ## 六、路由守衛

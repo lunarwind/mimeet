@@ -1,14 +1,15 @@
 /**
  * Mask phone number (Taiwan format).
- * 規則對齊 backend `\App\Support\Mask::phone()`，PR-1 v3.6 ship 過實測：
+ * 規則對齊 backend `\App\Support\Mask::phone()`：
  *   '0912345678'    → '09xx-xxx-678'
  *   '+886912345678' → '09xx-xxx-678'
  *   '0987654321'    → '09xx-xxx-321'
  *   '0223456789'    → '022****789' (length 6-9 fallback)
  *
- * ⚠️ 不要對 backend 已 masked 的字串呼叫此 function（會 double-mask）。
- *    backend 在 register/login/me response 的 phone 欄位已經 masked。
- *    本 helper 只用於前端 user 輸入的 raw phone 顯示用 mask。
+ * @deprecated PR-4 (2026-05-08) — 目前無 caller。
+ *   Backend response 對「user 看自己」endpoint 已改 raw（API-001 §Phone 欄位 mask 原則）；
+ *   「user 看別人」場景目前不存在。此 helper 保留以備未來需求。
+ *   若新增 caller，請同時 review backend response 是否該保持 raw。
  */
 export function maskPhone(phone?: string | null): string {
   if (!phone) return ''
@@ -26,6 +27,8 @@ export function maskPhone(phone?: string | null): string {
  * Mask email (PR-2 v4.2 對齊規則).
  *   'chuck@example.com' → 'c***k@example.com'
  *   'ab@example.com'    → '***@example.com' (local ≤ 2)
+ *
+ * @deprecated PR-4 (2026-05-08) — 同 maskPhone() 同邏輯,目前無 caller。
  */
 export function maskEmail(email?: string | null): string {
   if (!email || !email.includes('@')) return ''
