@@ -822,7 +822,7 @@ min_height / max_height:   身高範圍（cm）
 min_weight / max_weight:   體重範圍（kg）
 education:                 high_school|associate|bachelor|master|phd|other（精確）
 occupation:                職業（LIKE 模糊）
-style:                     fresh|sweet|sexy|intellectual|sporty
+style:                     business_elite|british_gentleman|smart_casual|outdoor|boy_next_door|minimalist|japanese|warm_guy|preppy|fresh|sweet|sexy|intellectual|sporty|elegant|korean|pure_student|petite_japanese
 dating_budget:             casual|moderate|generous|luxury|undisclosed
 dating_frequency:          occasional|weekly|flexible
 dating_type:               dining|travel|companion|mentorship|undisclosed（JSON_CONTAINS 單值）
@@ -834,6 +834,12 @@ availability:              weekday_day|weekday_night|weekend|flexible（JSON_CON
 min_credit / max_credit:   誠信分數範圍（相容舊稱 credit_score_min/max）
 last_online:               today|3days|7days（最後上線時間篩選；不傳預設顯示 30 天內有活動者）
 ```
+
+> **gender-strict 寫入規則**：用戶寫自己 `style`（PATCH /me）時，後端驗證必須匹配 `user.gender` 對應那組：
+> - 男性可用：business_elite / british_gentleman / smart_casual / outdoor / boy_next_door / minimalist / japanese / warm_guy / preppy
+> - 女性可用：fresh / sweet / sexy / intellectual / sporty / elegant / korean / pure_student / petite_japanese
+>
+> 搜尋／廣播 filter 不受此限，可填全 18 個值（filter 查的是別人）。
 
 **未填欄位的使用者不會被排除：** 每個進階篩選都用 `WHERE (column = val OR column IS NULL)` 形式，避免把剛註冊、尚未完整填寫 profile 的用戶排除在外。
 

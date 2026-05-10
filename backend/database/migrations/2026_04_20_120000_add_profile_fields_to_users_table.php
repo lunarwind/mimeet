@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // 外貌風格
             $table->string('style', 20)->nullable()->after('education')
-                ->comment('自我風格：fresh/sweet/sexy/intellectual/sporty');
+                ->comment('自我風格（gender-strict）：男 business_elite/british_gentleman/smart_casual/outdoor/boy_next_door/minimalist/japanese/warm_guy/preppy；女 fresh/sweet/sexy/intellectual/sporty/elegant/korean/pure_student/petite_japanese');
 
             // 約會偏好
             $table->string('dating_budget', 20)->nullable()->after('style')

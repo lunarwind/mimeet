@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -112,7 +113,7 @@ class AdminController extends Controller
             'search' => 'sometimes|string',
             // F27 精確篩選（後台管理用途，不走「OR NULL」寬鬆邏輯）
             'dating_budget' => 'sometimes|string|in:casual,moderate,generous,luxury,undisclosed',
-            'style' => 'sometimes|string|in:fresh,sweet,sexy,intellectual,sporty',
+            'style' => 'sometimes|string|in:fresh,sweet,sexy,intellectual,sporty,elegant,korean,pure_student,petite_japanese,business_elite,british_gentleman,smart_casual,outdoor,boy_next_door,minimalist,japanese,warm_guy,preppy',
         ]);
 
         $query = User::query();
@@ -736,6 +737,14 @@ class AdminController extends Controller
             ], 403);
         }
 
+        // 先 find user 再 validate,以便依「最終 gender」(本次 request 改 gender 或 user 既有 gender)
+        // 決定 style 可用的 enum 範圍。
+        $user = User::findOrFail($id);
+        $targetGender = $request->input('gender', $user->gender);
+        $styleEnum = $targetGender === 'male'
+            ? ['business_elite', 'british_gentleman', 'smart_casual', 'outdoor', 'boy_next_door', 'minimalist', 'japanese', 'warm_guy', 'preppy']
+            : ['fresh', 'sweet', 'sexy', 'intellectual', 'sporty', 'elegant', 'korean', 'pure_student', 'petite_japanese'];
+
         $request->validate([
             'nickname' => 'sometimes|string|min:2|max:20',
             'birth_date' => 'sometimes|date|before:-18 years',
@@ -748,7 +757,7 @@ class AdminController extends Controller
             'education' => 'sometimes|nullable|string|max:50',
             'bio' => 'sometimes|nullable|string|max:500',
             // F27 profile fields
-            'style'             => 'sometimes|nullable|string|in:fresh,sweet,sexy,intellectual,sporty',
+            'style'             => ['sometimes', 'nullable', 'string', Rule::in($styleEnum)],
             'dating_budget'     => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
             'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
             'dating_type'       => 'sometimes|nullable|array',
@@ -760,8 +769,6 @@ class AdminController extends Controller
             'availability'      => 'sometimes|nullable|array',
             'availability.*'    => 'string|in:weekday_day,weekday_night,weekend,flexible',
         ]);
-
-        $user = User::findOrFail($id);
 
         $allowedFields = [
             'nickname', 'birth_date', 'avatar_url', 'gender', 'height', 'weight',
