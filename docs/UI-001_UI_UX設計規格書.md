@@ -536,7 +536,7 @@ Padding：2px 10px
   主標題：「找到專屬情人」（Noto Serif TC, 32-52px clamp，「情人」紅色強調）
   副標題：「誠信讓相遇便捷可靠」（16px, #6B7280）
   CTA 按鈕：「立即加入」（#F0294E 背景，白色文字）+ 「登入」（ghost）
-  Hero 插圖：手機 Mockup + 浮動徽章動畫
+  Hero 插圖：手機 Mockup
 
 [三大特色卡片]
   ① QR碼約會驗證
