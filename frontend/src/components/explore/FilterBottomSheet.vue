@@ -2,6 +2,10 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import type { ExploreFilter } from '@/types/explore'
 import { getStyleOptionsByGender } from '@/constants/styleOptions'
+import {
+  DATING_BUDGET_GROUPS,
+  DATING_BUDGET_UNDISCLOSED,
+} from '@/constants/datingOptions'
 
 interface Props {
   currentFilters: ExploreFilter
@@ -370,10 +374,10 @@ function resetFilters() {
               <label class="filter-adv-label">約會預算</label>
               <select v-model="datingBudget" class="filter-adv-select">
                 <option value="">不限</option>
-                <option value="casual">輕鬆小聚</option>
-                <option value="moderate">質感約會</option>
-                <option value="generous">高品質體驗</option>
-                <option value="luxury">頂級享受</option>
+                <optgroup v-for="group in DATING_BUDGET_GROUPS" :key="group.label" :label="group.label">
+                  <option v-for="opt in group.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </optgroup>
+                <option :value="DATING_BUDGET_UNDISCLOSED.value">{{ DATING_BUDGET_UNDISCLOSED.label }}</option>
               </select>
             </div>
 
