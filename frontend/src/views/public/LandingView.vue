@@ -6,7 +6,6 @@ const router = useRouter()
 const scrollY = ref(0)
 const heroVisible = ref(false)
 const featuresVisible = ref(false)
-const ctaVisible = ref(false)
 
 function goRegister() {
   router.push('/register')
@@ -25,7 +24,6 @@ onMounted(() => {
   // 觸發進場動畫
   setTimeout(() => { heroVisible.value = true }, 100)
   setTimeout(() => { featuresVisible.value = true }, 400)
-  setTimeout(() => { ctaVisible.value = true }, 700)
 })
 
 onUnmounted(() => {
@@ -172,56 +170,6 @@ const features = [
             <p class="feature-desc">{{ f.desc }}</p>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- ───────── How It Works Section ───────── -->
-    <section class="how-section">
-      <div class="how-inner">
-        <div class="section-label light">使用流程</div>
-        <h2 class="section-title light">三步驟開始你的旅程</h2>
-        <div class="steps-row">
-          <div class="step-item">
-            <div class="step-num">01</div>
-            <div class="step-content">
-              <h3>建立帳號</h3>
-              <p>填寫基本資料，完成 Email 與手機驗證</p>
-            </div>
-          </div>
-          <div class="step-connector" />
-          <div class="step-item">
-            <div class="step-num">02</div>
-            <div class="step-content">
-              <h3>探索配對</h3>
-              <p>瀏覽已驗證的真實成員，發送訊息開始對話</p>
-            </div>
-          </div>
-          <div class="step-connector" />
-          <div class="step-item">
-            <div class="step-num">03</div>
-            <div class="step-content">
-              <h3>QR碼見面</h3>
-              <p>安排見面時掃描 QR 碼，雙方獲得誠信加分</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───────── Final CTA Section ───────── -->
-    <section class="cta-section" :class="{ visible: ctaVisible }">
-      <div class="cta-inner">
-        <div class="cta-bg-shape" />
-        <h2 class="cta-title">準備好開始了嗎？</h2>
-        <p class="cta-sub">加入 MiMeet，認識值得信賴的對象</p>
-        <button class="btn-cta-large" @click="goRegister">
-          立即加入
-          <span class="btn-arrow-lg">→</span>
-        </button>
-        <p class="cta-login-hint">
-          已有帳號？
-          <button class="inline-link" @click="goLogin">登入</button>
-        </p>
       </div>
     </section>
 
@@ -688,9 +636,6 @@ const features = [
   color: var(--primary);
   margin-bottom: 12px;
 }
-.section-label.light {
-  color: var(--primary);
-}
 .section-title {
   font-family: 'Noto Serif TC', serif;
   font-size: clamp(24px, 3.5vw, 36px);
@@ -698,9 +643,6 @@ const features = [
   color: var(--text-primary);
   margin: 0 0 48px;
   letter-spacing: -0.5px;
-}
-.section-title.light {
-  color: var(--text-primary);
 }
 .features-grid {
   display: grid;
@@ -752,154 +694,6 @@ const features = [
   color: var(--text-secondary);
   line-height: 1.7;
   margin: 0;
-}
-
-/* ─── How Section ─────────────────────────────────── */
-.how-section {
-  padding: 96px 24px;
-  background: var(--primary-light);
-  border-top: 1px solid var(--primary-50);
-  border-bottom: 1px solid var(--primary-50);
-}
-.how-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  text-align: center;
-}
-.steps-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  flex-wrap: wrap;
-  margin-top: 0;
-}
-.step-item {
-  flex: 1;
-  min-width: 200px;
-  max-width: 280px;
-  text-align: center;
-  padding: 0 24px;
-}
-.step-num {
-  font-family: 'Inter', sans-serif;
-  font-size: 40px;
-  font-weight: 700;
-  color: var(--primary-50);
-  line-height: 1;
-  margin-bottom: 16px;
-  letter-spacing: -2px;
-}
-.step-content h3 {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 8px;
-  font-family: inherit;
-}
-.step-content p {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.65;
-  margin: 0;
-}
-.step-connector {
-  width: 40px;
-  height: 1px;
-  background: var(--primary-50);
-  flex-shrink: 0;
-}
-
-/* ─── CTA Section ─────────────────────────────────── */
-.cta-section {
-  padding: 96px 24px;
-  background: #fff;
-  text-align: center;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
-}
-.cta-section.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-.cta-inner {
-  max-width: 560px;
-  margin: 0 auto;
-  position: relative;
-}
-.cta-bg-shape {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 400px;
-  height: 400px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #FFF5F7 0%, transparent 70%);
-  pointer-events: none;
-}
-.cta-title {
-  font-family: 'Noto Serif TC', serif;
-  font-size: clamp(26px, 4vw, 40px);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 14px;
-  letter-spacing: -0.5px;
-  position: relative;
-}
-.cta-sub {
-  font-size: 15px;
-  color: var(--text-secondary);
-  margin: 0 0 36px;
-  line-height: 1.6;
-  position: relative;
-}
-.btn-cta-large {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  padding: 16px 36px;
-  border-radius: 30px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  box-shadow: 0 8px 28px rgba(240,41,78,0.35);
-  transition: all 0.25s;
-  position: relative;
-}
-.btn-cta-large:hover {
-  background: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(240,41,78,0.45);
-}
-.btn-arrow-lg {
-  font-size: 18px;
-  transition: transform 0.2s;
-}
-.btn-cta-large:hover .btn-arrow-lg {
-  transform: translateX(4px);
-}
-.cta-login-hint {
-  margin-top: 20px;
-  font-size: 14px;
-  color: var(--text-muted);
-  position: relative;
-}
-.inline-link {
-  background: none;
-  border: none;
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 /* ─── Footer ─────────────────────────────────────── */
@@ -963,13 +757,6 @@ const features = [
   .fb2 { right: 0; }
   .features-grid {
     grid-template-columns: 1fr;
-  }
-  .steps-row {
-    flex-direction: column;
-    gap: 32px;
-  }
-  .step-connector {
-    display: none;
   }
   .footer-inner {
     flex-direction: column;
