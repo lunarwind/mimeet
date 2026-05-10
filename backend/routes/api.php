@@ -397,7 +397,6 @@ Route::prefix('api/v1')->group(function () {
                 // Dataset management
                 Route::get('dataset/stats', [DatasetController::class, 'stats']);
                 Route::post('dataset/reset', [DatasetController::class, 'reset']);
-                Route::post('dataset/seed', [DatasetController::class, 'seed']);
 
                 // Member level permissions (Sprint 11)
                 Route::get('member-level-permissions', [MemberLevelPermissionController::class, 'index']);

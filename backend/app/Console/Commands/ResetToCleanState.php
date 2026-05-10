@@ -10,11 +10,17 @@ use Illuminate\Support\Facades\Schema;
 class ResetToCleanState extends Command
 {
     protected $signature = 'mimeet:reset
-                            {--with-test-data : Also import 20 test users after reset}
                             {--force : Skip confirmation (for CI/CD)}';
     protected $description = 'Reset database to initial state (preserves id=1 system user + system config)';
 
-    private const TRUNCATE_TABLES = [
+    /**
+     * 業務表清空清單。新增 migration 必須同步此清單(否則 reset 後殘留)。
+     * Pre-merge guard 14ax 自動驗證:每張 migration 建表都必須在此清單
+     * 或 PRESERVE_TABLES whitelist(系統表)中。
+     *
+     * 改 public 讓 DatasetController 可動態 count 寫入 audit log。
+     */
+    public const TRUNCATE_TABLES = [
         // ── 用戶活動類 ────────────────────────────────────────────────
         'user_profile_visits',
         'user_follows',
@@ -24,7 +30,7 @@ class ResetToCleanState extends Command
 
         // ── 通知 / 廣播 / 檢舉 ───────────────────────────────────────
         'broadcast_campaigns',
-        'user_broadcasts',          // 2026-04-30 補：廣播個別推送記錄（broadcast_campaigns child）
+        'user_broadcasts',          // 2026-04-30 補:廣播個別推送記錄(broadcast_campaigns child)
         'report_followups',
         'report_images',
         'reports',
@@ -43,11 +49,11 @@ class ResetToCleanState extends Command
         'subscriptions',
         'orders',
 
-        // ── 點數交易（2026-04-28 補：MVP 早期建 reset 時這些表尚未建立）
+        // ── 點數交易(2026-04-28 補:MVP 早期建 reset 時這些表尚未建立)
         'point_orders',
         'point_transactions',
 
-        // ── 統一金流主表 + 信用卡驗證（2026-04-28 補，同上原因）──────
+        // ── 統一金流主表 + 信用卡驗證(2026-04-28 補,同上原因)──────
         'payments',
         'credit_card_verifications',
 
@@ -55,15 +61,20 @@ class ResetToCleanState extends Command
         'personal_access_tokens',
         'password_reset_tokens',
 
-        // ── Admin 操作日誌（2026-04-28 補）──────────────────────────
-        // 注意：DatasetController::reset 在 Artisan::call 之後才寫 audit log，
-        //       所以 reset 完成的紀錄會是清空後的第一筆，保留可追溯性。
+        // ── Admin 操作日誌(2026-04-28 補)──────────────────────────
+        // 注意:DatasetController::reset 在 Artisan::call 之後才寫 audit log,
+        //       所以 reset 完成的紀錄會是清空後的第一筆,保留可追溯性。
         'admin_operation_logs',
 
-        // ── Queue 殘留（2026-04-28 補）──────────────────────────────
+        // ── Queue 殘留(2026-04-28 補)──────────────────────────────
         // 避免 worker 重啟後執行指向已刪資料的 stale job。
-        // jobs 表不存在（queue 走 Redis），只清 failed_jobs（DB 持久化）。
+        // jobs 表不存在(queue 走 Redis),只清 failed_jobs(DB 持久化)。
         'failed_jobs',
+
+        // ── PR-2 / PR-3 audit + 安全表(2026-05-09 PR-Dataset-Cleanup 補)─
+        // 14ax guard 後續確保新增 migration 必須同步此清單
+        'registration_blacklists',  // PR-2 admin 維護的禁止名單,reset 後不應殘留
+        'phone_change_histories',   // PR-3 phone 變更 audit,append-only
     ];
 
     public function handle(): int
@@ -222,14 +233,6 @@ class ResetToCleanState extends Command
             ['point_packages', DB::table('point_packages')->count() . ' packages (preserved)'],
             ['system_settings', DB::table('system_settings')->count() . ' entries (preserved)'],
         ]);
-
-        if ($this->option('with-test-data')) {
-            $this->newLine();
-            $this->info('Importing test data...');
-            Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\TestDataSeeder', '--force' => true]);
-            $userCount = DB::table('users')->where('id', '!=', 1)->count();
-            $this->info("  ✓ {$userCount} test users imported");
-        }
 
         return self::SUCCESS;
     }

@@ -142,12 +142,18 @@ function DatasetManager() {
 
   const [stats, setStats] = useState<{ is_clean: boolean; counts: Record<string, number> }>({ is_clean: true, counts: {} })
   const [loading, setLoading] = useState(false)
-  const [freshMode, setFreshMode] = useState(true)
 
   const labels: Record<string, string> = {
     users: '用戶', conversations: '對話', messages: '訊息',
     date_invitations: '約會', orders: '訂單', subscriptions: '訂閱',
-    reports: '回報', credit_score_histories: '分數記錄', notifications: '通知',
+    point_orders: '點數訂單', point_transactions: '點數交易',
+    payments: '金流', credit_card_verifications: '卡驗證',
+    reports: '檢舉', report_followups: '檢舉跟進', report_images: '檢舉圖片',
+    credit_score_histories: '分數記錄', notifications: '通知', fcm_tokens: 'FCM Token',
+    user_profile_visits: '足跡', user_follows: '追蹤', user_blocks: '封鎖',
+    user_activity_logs: '活動日誌', user_verifications: '驗證紀錄',
+    user_broadcasts: '廣播訊息', broadcast_campaigns: '廣播活動',
+    registration_blacklists: '註冊黑名單', phone_change_histories: '手機變更紀錄',
   }
 
   useEffect(() => { loadStats() }, [])
@@ -161,15 +167,12 @@ function DatasetManager() {
     setLoading(false)
   }
 
-  function confirmAction(action: 'reset' | 'seed') {
-    const title = action === 'reset' ? '確認清空資料庫' : '確認匯入測試資料集'
+  function confirmReset() {
     const content = (
       <div>
         <Alert
-          type={action === 'reset' ? 'error' : 'warning'}
-          message={action === 'reset'
-            ? '此操作將永久刪除所有業務資料（用戶、聊天、訂單等），僅保留管理員帳號和系統設定。'
-            : `將匯入測試資料集（30 用戶、15 對話等）${freshMode ? '，會先清空現有資料' : ''}。`}
+          type="error"
+          message="此操作將永久刪除所有業務資料（用戶、聊天、訂單等），僅保留管理員帳號和系統設定。"
           showIcon style={{ marginBottom: 16 }}
         />
         <Text>請輸入管理員密碼確認：</Text>
@@ -178,28 +181,22 @@ function DatasetManager() {
     )
 
     Modal.confirm({
-      title,
+      title: '確認清空資料庫',
       content,
-      okText: action === 'reset' ? '清空' : '匯入',
-      okButtonProps: { danger: action === 'reset' },
+      okText: '清空',
+      okButtonProps: { danger: true },
       onOk: async () => {
         const pw = (document.getElementById('dataset-confirm-pw') as HTMLInputElement)?.value
         if (!pw) { message.error('請輸入密碼'); throw new Error('no password') }
         setLoading(true)
         try {
-          if (action === 'reset') {
-            await apiClient.post('/admin/settings/dataset/reset', { confirm_password: pw })
-            message.success('資料庫已清空，2 秒後跳轉至登入頁...')
-            // reset 會 truncate personal_access_tokens → chuck token 也失效，必須重新登入
-            setTimeout(() => {
-              useAuthStore.getState().logout?.()
-              window.location.href = '/admin/login'
-            }, 2000)
-          } else {
-            await apiClient.post('/admin/settings/dataset/seed', { fresh: freshMode, confirm_password: pw })
-            message.success('測試資料集已匯入')
-            await loadStats()
-          }
+          await apiClient.post('/admin/settings/dataset/reset', { confirm_password: pw })
+          message.success('資料庫已清空，2 秒後跳轉至登入頁...')
+          // reset 會 truncate personal_access_tokens → chuck token 也失效，必須重新登入
+          setTimeout(() => {
+            useAuthStore.getState().logout?.()
+            window.location.href = '/admin/login'
+          }, 2000)
         } catch (err: unknown) {
           const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '操作失敗'
           message.error(msg)
@@ -247,29 +244,12 @@ function DatasetManager() {
               <Button
                 danger
                 icon={<DeleteOutlined />}
-                onClick={() => confirmAction('reset')}
+                onClick={confirmReset}
                 disabled={loading || stats.is_clean || !isSuperAdminChuck}
               >
                 清空資料庫
               </Button>
             </Tooltip>
-          </Space>
-        </Card>
-
-        <Card size="small" style={{ background: '#FEF3C7', borderColor: '#FDE68A' }}>
-          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-            <div>
-              <Text strong>匯入測試資料集</Text>
-              <br /><Text type="secondary" style={{ fontSize: 12 }}>匯入 30 個測試用戶、15 組對話、8 筆約會等。</Text>
-              <br />
-              <label style={{ fontSize: 12, cursor: 'pointer' }}>
-                <input type="checkbox" checked={freshMode} onChange={(e) => setFreshMode(e.target.checked)} style={{ marginRight: 4 }} />
-                先清空再匯入（Fresh 模式）
-              </label>
-            </div>
-            <Button type="primary" style={{ background: '#F59E0B', borderColor: '#F59E0B' }} icon={<DatabaseOutlined />} onClick={() => confirmAction('seed')} disabled={loading}>
-              匯入測試資料
-            </Button>
           </Space>
         </Card>
       </Space>

@@ -212,6 +212,17 @@ check() {
 - **狀態**：**待實作**。`IMPLEMENTATION_STATUS.md` 結構需先標準化才能機械比對。
 - **追蹤**：見 `docs/IMPLEMENTATION_STATUS.md` 的 follow-up 條目。
 
+### 1.19 14ax — PR-Dataset-Cleanup migration 表分類守護(2026-05-09 新增)
+
+#### 14ax — 每張 migration 建立的表必須分類在 TRUNCATE_TABLES 或 PRESERVE whitelist
+
+- **語意**:從 `backend/database/migrations/*.php` 抽取所有 `Schema::create('...')` 表名,逐一檢查是否落在以下兩處之一:
+  1. `ResetToCleanState::TRUNCATE_TABLES` const(awk 切片精準抽出,避免註解誤匹配)
+  2. Guard 內建的 `PRESERVE_TABLES_14AX` whitelist:`users / admin_users / admin_permissions / admin_role_permissions / member_level_permissions / subscription_plans / point_packages / system_settings / seo_metas`
+- **依據**:PR-Dataset-Cleanup(2026-05-09)。先前 `registration_blacklists`(PR-2,2026-05-07)與 `phone_change_histories`(PR-3,2026-05-08)新增後**未同步**加入 TRUNCATE_TABLES,導致 `mimeet:reset` 後殘留 audit/blacklist 資料,屬於規格與實作 drift。本 guard 機械化把關,任何新 migration 必須同步分類否則 merge fail。
+- **失敗訊息**:列出未分類表 + 提示處理方式(業務表 → 加 TRUNCATE_TABLES;系統表 → 加 PRESERVE whitelist)。
+- **範圍**:僅掃描 `backend/database/migrations/*.php` 的 `Schema::create`,不涵蓋 vendor migration(如 sanctum 的 `personal_access_tokens` 由 `php artisan vendor:publish` 後才在 dir 中,此情境會自動受 guard 涵蓋)。
+
 ### 1.18 14aw — PR-4 phone mask 反轉守護(2026-05-08 新增)
 
 #### 14aw — register / login / me / phone-change verifyNew response 不可再 mask phone
@@ -337,6 +348,7 @@ check() {
 - **2026-05-07**:PR-2 — Email/mobile 註冊禁止名單功能。新增 `registration_blacklists` 表(方案 C race protection 用 `active_value_hash` nullable+UNIQUE,允許多筆 inactive 一筆 active);Admin 刪除流程加 checkbox 整合;register flow 加 gate(error response byte-for-byte 對齊既有 unique error 防 enumeration);D14-a 採選項 2a — `LogAdminOperation` middleware 加 `skip_admin_log` 機制讓 controller 自寫結構化 log → 觸發 14ak / 14al / 14am / 14an
 - **2026-05-08**:PR-3 — `AuthController::verifyPhoneSend / verifyPhoneConfirm` 接受任意 `phone` 參數,與 `auth user` 完全脫鉤。攻擊者可發 OTP 到任意號碼(SMS bombing / 探測號碼存在性),且可在 SMS confirm 時把 `user.phone` 換成另一個號碼繞過 PR-2 mobile blacklist。修法:移除 phone 參數固定用 `auth user.phone` + 抽 `PhoneService` 集中 unique + blacklist + race + atomic + 新增 phone-change 3-step OTP 流程 → 觸發 14ao / 14ap / 14aq / 14ar。**教訓:身份驗證類 endpoint 不該接受 user 可控制的「驗哪個 ID」參數,必須固定用 auth user 的 ID**。
 
+- **2026-05-09**:PR-Dataset-Cleanup — `mimeet:reset` 表清單 drift 修復 + 移除測試資料集匯入功能。**事件**:Codex review 發現 `registration_blacklists`(PR-2)與 `phone_change_histories`(PR-3)新增後**未同步**加入 `ResetToCleanState::TRUNCATE_TABLES`,reset 後仍殘留 audit/blacklist 資料(28→26 應為 28)。**修法**:(1) 補兩張表進 TRUNCATE_TABLES(現 28 張);(2) `TRUNCATE_TABLES` 改 `public const` 讓 `DatasetController::reset` audit log 可動態 count(原寫死「19 張」早已 drift);(3) 移除整套測試資料集匯入功能 — `SeedTestDataset` artisan + `TestDataSeeder` + 9 個 `Test*Seeder` + `DatasetController::seed()` + `dataset/seed` route + `--with-test-data` flag + admin UI「匯入測試資料集」card;(4) `DatasetController::stats()` 業務表清單擴展對齊 reset 範圍(9→24 張)。**Guard**:14ax — 從 migration 抽 `Schema::create` 表名,逐一檢查必須在 TRUNCATE_TABLES 或 PRESERVE whitelist 內,新 migration 漏分類即 merge fail。**教訓**:`mimeet:reset` 是 staging 衛生工具,但「正確性」依賴開發者人工同步 const list — 沒機械守護,半年後一定 drift。Lint guard 是把這類「人工同步」自動化的最便宜手段。
 - **2026-05-08**:PR-4 — Phone mask 反轉。PR-1(2026-05-06) 引入「user-self response 一律 mask `phone` 欄位」設計,PR-3 沿用於 phone-change endpoints。ship 後發現 UX 問題:(1) user 看自己的 verify 頁顯示 `09xx-xxx-000` 困惑「我用哪個號碼」(2) report modal 預填 masked phone,admin 收到 ticket metadata 後無法 debug SMS 失敗。**修法**:反轉 mask 場景分流 — user 看自己一律 raw,audit log / blacklist `value_masked` / `phone_change_histories` / internal log 保留 mask(GDPR);PhoneChangeController response 欄位 `new_phone_masked` 改名 `new_phone` 並回 raw;`AuthController:488` PhoneVerify log 從 hand-rolled `substr 4 + ****` 統一改 `Mask::phone()`;frontend `maskPhone()` / `maskEmail()` 加 `@deprecated` docblock(保留 helper,目前無 caller) → 觸發 14aw。**教訓:「API response 永遠 mask」不是 zero-trust 原則的正確應用 — 應該看「誰看到這個 response」決定。User-self response 的明文 PII 風險已由 token-based auth + HTTPS + log filter 多層保護,再多一層 mask 反而傷 UX**。
 
 - **2026-05-07 教訓:Mask::phone 規則描述 drift**:PR-1 ship 報告口語化把 `Mask::phone` 規則描述為「first-3 + middle-stars + last-3」(`091***678`),實際輸出是「first-2 + xx-xxx- + last-3」(`09xx-xxx-678`)。PR-2 prompt v3/v4 沿用兩版本,直到 v4.1 由 reviewer 實測 `php artisan tinker` 才校正。**規則**:函式描述必須附 input → output 對照表,至少 3 筆代表性 case,且註明用 `php artisan tinker` 實測。

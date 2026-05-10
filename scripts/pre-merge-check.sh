@@ -730,6 +730,53 @@ else
 fi
 
 echo ""
+echo "-- PR-Dataset-Cleanup guard (14ax) --"
+
+# 14ax: 每張 migration 建立的表必須被分類在以下其中之一,避免 reset drift:
+#   (a) ResetToCleanState::TRUNCATE_TABLES (業務表,reset 時清空)
+#   (b) PRESERVE_TABLES_14AX whitelist (系統/設定/帳號表,reset 時保留或特殊處理)
+# 新增 migration 時必須同步歸類,否則 reset 後表會殘留未知資料。
+RESET_FILE_AX=backend/app/Console/Commands/ResetToCleanState.php
+MIGRATIONS_DIR_AX=backend/database/migrations
+
+# 不 truncate 的表(系統設定/權限/方案/SEO,以及特殊處理的 users/admin_users)
+PRESERVE_TABLES_14AX="users admin_users admin_permissions admin_role_permissions member_level_permissions subscription_plans point_packages system_settings seo_metas"
+
+# 從 const TRUNCATE_TABLES 區段精準抽出表名 (避免註解誤匹配)
+TRUNCATE_LIST_AX=$(awk '/public const TRUNCATE_TABLES/,/\];/' "$RESET_FILE_AX" \
+  | grep -oE "'[a-zA-Z0-9_]+'" \
+  | tr -d "'" | sort -u)
+
+# 從 migration 抽出所有 Schema::create table
+MIGRATION_TABLES_AX=$(grep -hoE "Schema::create\(['\"][a-zA-Z0-9_]+['\"]" "$MIGRATIONS_DIR_AX"/*.php 2>/dev/null \
+  | sed -E "s/Schema::create\(['\"]([a-zA-Z0-9_]+)['\"]/\1/" \
+  | sort -u)
+
+GUARD_14AX_MISSING=""
+for TABLE in $MIGRATION_TABLES_AX; do
+  # 在 TRUNCATE 清單?
+  if echo "$TRUNCATE_LIST_AX" | grep -qx "$TABLE"; then
+    continue
+  fi
+  # 在 PRESERVE whitelist?
+  if echo " $PRESERVE_TABLES_14AX " | grep -q " $TABLE "; then
+    continue
+  fi
+  GUARD_14AX_MISSING="$GUARD_14AX_MISSING $TABLE"
+done
+
+if [ -z "$GUARD_14AX_MISSING" ]; then
+  echo "  [OK] 14ax 所有 migration 表皆已分類 (TRUNCATE_TABLES 或 PRESERVE whitelist)"
+else
+  echo "  [FAIL] 14ax: 下列 migration 建立的表既不在 TRUNCATE_TABLES 也不在 PRESERVE whitelist:"
+  for T in $GUARD_14AX_MISSING; do echo "         - $T"; done
+  echo "         處理方式:"
+  echo "           - 業務表 → 加入 ResetToCleanState::TRUNCATE_TABLES"
+  echo "           - 系統表 → 加入本 script 14ax 的 PRESERVE_TABLES_14AX 白名單"
+  ERRORS=$((ERRORS + 1))
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
