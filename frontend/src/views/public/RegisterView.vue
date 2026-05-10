@@ -560,9 +560,9 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
               </span>
               <span class="check-label">
                 我已閱讀並同意
-                <a href="/privacy" target="_blank" class="terms-link">《隱私權政策》</a>
+                <router-link to="/privacy" target="_blank" class="terms-link">《隱私權政策》</router-link>
                 及
-                <a href="/terms" target="_blank" class="terms-link">《使用者條款》</a>
+                <router-link to="/terms" target="_blank" class="terms-link">《使用者條款》</router-link>
               </span>
             </label>
             <label class="check-row">
