@@ -205,6 +205,43 @@ class AuthController extends Controller
         ], 201);
     }
 
+    public function checkNickname(Request $request): JsonResponse
+    {
+        $raw = $request->input('data');
+        $input = is_array($raw) && !empty($raw) ? $raw : $request->all();
+
+        $validator = Validator::make($input, [
+            'nickname' => ['required', 'string', 'min:2', 'max:20'],
+        ]);
+
+        if ($validator->fails()) {
+            $details = [];
+            foreach ($validator->errors()->toArray() as $field => $messages) {
+                $details[] = ['field' => $field, 'message' => $messages[0]];
+            }
+            return response()->json([
+                'success' => false,
+                'code'    => 400,
+                'message' => '格式錯誤',
+                'errors'  => $validator->errors()->toArray(),
+                'error'   => ['type' => 'validation_error', 'details' => $details],
+            ], 422);
+        }
+
+        $nickname = $input['nickname'];
+        $exists = User::where('nickname', $nickname)
+            ->where('status', '!=', 'deleted')
+            ->exists();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'nickname' => $nickname,
+                'available' => !$exists,
+            ],
+        ]);
+    }
+
     public function login(Request $request): JsonResponse
     {
         $request->validate([

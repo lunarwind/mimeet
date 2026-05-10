@@ -72,6 +72,21 @@ export function register(payload: RegisterPayload) {
   return client.post('/auth/register', payload)
 }
 
+export interface CheckNicknameResponse {
+  success: boolean
+  data: {
+    nickname: string
+    available: boolean
+  }
+}
+
+export async function checkNickname(nickname: string): Promise<boolean> {
+  const res = await client.post<CheckNicknameResponse>('/auth/check-nickname', {
+    data: { nickname },
+  })
+  return res.data?.data?.available ?? false
+}
+
 export function verifyEmail(payload: { verification_code: string; email: string }) {
   return client.post('/auth/verify-email', payload).then(r => r.data)
 }
