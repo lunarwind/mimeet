@@ -25,9 +25,7 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        // Test data (local only — requires fakerphp/faker dev dependency)
-        if (app()->environment('local')) {
-            $this->call(TestDataSeeder::class);
-        }
+        // Test data seeders 已於 2026-05-09 PR-Dataset-Cleanup 全部移除。
+        // 若 local 開發需要假資料,請改用 individual factory 或自行新增 dev-only seeder。
     }
 }
