@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useImageUpload } from '@/composables/useImageUpload'
 import { default as apiClient } from '@/api/client'
-import { getStyleOptionsByGender } from '@/constants/styleOptions'
+import { getStyleOptionsByGender, FEMALE_STYLE_OPTIONS, MALE_STYLE_OPTIONS } from '@/constants/styleOptions'
 import {
   DATING_TYPE_OPTIONS,
   DATING_BUDGET_GROUPS,
@@ -212,6 +212,31 @@ async function loadAvatarSlots() {
   } catch { /* ignore */ }
 }
 
+// Enum 白名單(source of truth = constants):防 legacy DB 值灌進 form 後 422
+const VALID_DATING_TYPE_VALUES: readonly string[] = DATING_TYPE_OPTIONS.map(o => o.value)
+const VALID_DATING_BUDGET_VALUES: readonly string[] = [
+  ...DATING_BUDGET_GROUPS.flatMap(g => g.options.map(o => o.value)),
+  DATING_BUDGET_UNDISCLOSED.value,
+]
+
+function sanitizeStyle(raw: unknown, gender: unknown): string {
+  if (typeof raw !== 'string') return ''
+  const valid = gender === 'male'
+    ? MALE_STYLE_OPTIONS.map(o => o.value)
+    : FEMALE_STYLE_OPTIONS.map(o => o.value)
+  return (valid as readonly string[]).includes(raw) ? raw : ''
+}
+
+function sanitizeDatingType(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.filter((v): v is string => typeof v === 'string' && VALID_DATING_TYPE_VALUES.includes(v))
+}
+
+function sanitizeDatingBudget(raw: unknown): string {
+  if (typeof raw !== 'string') return ''
+  return VALID_DATING_BUDGET_VALUES.includes(raw) ? raw : ''
+}
+
 async function loadProfile() {
   try {
     const res = await (await import('@/api/client')).default.get('/users/me/settings')
@@ -225,10 +250,10 @@ async function loadProfile() {
       job: p.job ?? '',
       education: p.education ?? '',
       introduction: p.introduction ?? '',
-      style: (p.style ?? '') as typeof form.value.style,
-      datingBudget: (p.dating_budget ?? '') as typeof form.value.datingBudget,
+      style: sanitizeStyle(p.style, p.gender),
+      datingBudget: sanitizeDatingBudget(p.dating_budget),
       datingFrequency: (p.dating_frequency ?? '') as typeof form.value.datingFrequency,
-      datingType: Array.isArray(p.dating_type) ? p.dating_type : [],
+      datingType: sanitizeDatingType(p.dating_type),
       relationshipGoal: (p.relationship_goal ?? '') as typeof form.value.relationshipGoal,
       smoking: (p.smoking ?? '') as typeof form.value.smoking,
       drinking: (p.drinking ?? '') as typeof form.value.drinking,
