@@ -71,38 +71,18 @@ const features = [
 
       <div class="hero-content" :class="{ visible: heroVisible }">
         <div class="hero-text-block">
-          <div class="hero-badge">
-            <span class="hero-badge-dot" />
-            台灣高端交友平台
-          </div>
-          <h1 class="hero-title">找到你值得<br>信賴的<em>另一半</em></h1>
+          <h1 class="hero-title">找到專屬<em>情人</em></h1>
           <p class="hero-subtitle">
-            誠信分數系統，讓每一次相遇都真實可靠
+            誠信讓相遇便捷可靠
           </p>
           <div class="hero-cta-row">
             <button class="btn-cta-main" @click="goRegister">
-              立即免費加入
+              立即加入
               <span class="btn-arrow">→</span>
             </button>
             <button class="btn-cta-ghost" @click="goLogin">
-              已有帳號？登入
+              登入
             </button>
-          </div>
-          <div class="hero-trust-row">
-            <div class="trust-item">
-              <span class="trust-num">5,000+</span>
-              <span class="trust-label">認證會員</span>
-            </div>
-            <div class="trust-divider" />
-            <div class="trust-item">
-              <span class="trust-num">98%</span>
-              <span class="trust-label">真實照片</span>
-            </div>
-            <div class="trust-divider" />
-            <div class="trust-item">
-              <span class="trust-num">3層</span>
-              <span class="trust-label">身份驗證</span>
-            </div>
           </div>
         </div>
 
@@ -233,14 +213,14 @@ const features = [
       <div class="cta-inner">
         <div class="cta-bg-shape" />
         <h2 class="cta-title">準備好開始了嗎？</h2>
-        <p class="cta-sub">立即免費註冊，加入台灣最真實可信的交友平台</p>
+        <p class="cta-sub">加入 MiMeet，認識值得信賴的對象</p>
         <button class="btn-cta-large" @click="goRegister">
-          免費立即加入
+          立即加入
           <span class="btn-arrow-lg">→</span>
         </button>
         <p class="cta-login-hint">
           已有帳號？
-          <button class="inline-link" @click="goLogin">直接登入</button>
+          <button class="inline-link" @click="goLogin">登入</button>
         </p>
       </div>
     </section>
@@ -403,30 +383,6 @@ const features = [
   flex: 1;
   max-width: 540px;
 }
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--primary-light);
-  border: 1px solid var(--primary-50);
-  color: var(--primary);
-  font-size: 13px;
-  padding: 6px 14px;
-  border-radius: 24px;
-  margin-bottom: 20px;
-  font-weight: 600;
-}
-.hero-badge-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #10B981;
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.3); }
-}
 .hero-title {
   font-family: 'Noto Serif TC', serif;
   font-size: clamp(32px, 5vw, 52px);
@@ -496,34 +452,6 @@ const features = [
 }
 .btn-cta-main:hover .btn-arrow {
   transform: translateX(3px);
-}
-
-/* Trust Row */
-.hero-trust-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.trust-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.trust-num {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
-  letter-spacing: -0.5px;
-}
-.trust-label {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.trust-divider {
-  width: 1px;
-  height: 36px;
-  background: var(--border);
 }
 
 /* ─── Phone Mockup ─────────────────────────────────── */
@@ -1026,9 +954,6 @@ const features = [
     max-width: 100%;
   }
   .hero-cta-row {
-    justify-content: center;
-  }
-  .hero-trust-row {
     justify-content: center;
   }
   .hero-illustration {
