@@ -124,13 +124,6 @@ const features = [
               </div>
             </div>
           </div>
-          <!-- Floating badges -->
-          <div class="float-badge fb1">
-            <span class="fb-icon">✓</span> 已驗證身份
-          </div>
-          <div class="float-badge fb2">
-            <span class="fb-score">91</span> 誠信頂級
-          </div>
         </div>
       </div>
     </section>
@@ -561,56 +554,6 @@ const features = [
   border-radius: 50%;
 }
 
-/* Floating badges */
-.float-badge {
-  position: absolute;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  white-space: nowrap;
-}
-.fb1 {
-  top: 40px;
-  left: -60px;
-  animation: float2 3.5s ease-in-out infinite;
-}
-.fb2 {
-  bottom: 60px;
-  right: -55px;
-  animation: float2 3.5s ease-in-out infinite 1s;
-}
-@keyframes float2 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-.fb-icon {
-  width: 18px; height: 18px;
-  background: #ECFDF5;
-  color: #065F46;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-}
-.fb-score {
-  background: var(--primary);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 12px;
-  font-family: 'Inter', sans-serif;
-}
-
 /* ─── Features Section ─────────────────────────────── */
 .features-section {
   padding: 96px 24px;
@@ -753,8 +696,6 @@ const features = [
   .hero-illustration {
     width: 100%;
   }
-  .fb1 { left: 0; top: 20px; }
-  .fb2 { right: 0; }
   .features-grid {
     grid-template-columns: 1fr;
   }
