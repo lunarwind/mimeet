@@ -41,6 +41,9 @@ export default function MemberDetailPage() {
   const [adjustModalOpen, setAdjustModalOpen] = useState(false)
   const [adjustValue, setAdjustValue] = useState<number>(0)
   const [adjustReason, setAdjustReason] = useState('')
+  // F3: adjust modal 範圍取自 /admin/settings/credit-score,default 為 DEV-008 §3.4 規格值
+  const [adjustRewardMax, setAdjustRewardMax] = useState<number>(20)
+  const [adjustPenaltyMax, setAdjustPenaltyMax] = useState<number>(20)
 
   // Permissions modal state
   const [permModalOpen, setPermModalOpen] = useState(false)
@@ -121,6 +124,17 @@ export default function MemberDetailPage() {
     apiClient.get(`/admin/members/${uid}/subscriptions`).then(res => {
       setSubscriptions(res.data.data ?? [])
     }).catch(() => {})
+
+    // F3: 取 credit-score 配分設定,用於 adjust modal 的 InputNumber 範圍與提示
+    apiClient.get('/admin/settings/credit-score').then(res => {
+      const items = (res.data?.data ?? []) as Array<{ key: string; value: number }>
+      const rmax = items.find(x => x.key === 'credit_admin_reward_max')?.value
+      const pmax = items.find(x => x.key === 'credit_admin_penalty_max')?.value
+      if (typeof rmax === 'number') setAdjustRewardMax(rmax)
+      if (typeof pmax === 'number') setAdjustPenaltyMax(pmax)
+    }).catch(() => {
+      // 403 (非 super_admin) 或網路錯,沿用 default 20/20
+    })
   }, [uid])
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>載入中...</div>
@@ -155,8 +169,13 @@ export default function MemberDetailPage() {
       reloadMember()
       // Refresh score history
       apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data ?? [])).catch(() => {})
-    } catch {
-      message.error('調整失敗')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+      const serverMsg = e?.response?.data?.message
+      const firstFieldError = e?.response?.data?.errors
+        ? Object.values(e.response.data.errors)[0]?.[0]
+        : undefined
+      message.error(serverMsg ?? firstFieldError ?? '調整失敗')
     }
   }
 
@@ -757,7 +776,17 @@ export default function MemberDetailPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <Text>調整值（正數加分，負數扣分）：</Text>
-          <InputNumber value={adjustValue} onChange={(v) => setAdjustValue(v || 0)} style={{ width: '100%', marginTop: 4 }} />
+          <InputNumber
+            value={adjustValue}
+            onChange={(v) => setAdjustValue(Number(v) || 0)}
+            min={-adjustPenaltyMax}
+            max={adjustRewardMax}
+            step={1}
+            style={{ width: '100%', marginTop: 4 }}
+          />
+          <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+            可調整範圍：-{adjustPenaltyMax} ~ +{adjustRewardMax}（不可為 0；大幅調整請使用「權限調整」）
+          </div>
         </div>
         <div>
           <Text>原因：</Text>
