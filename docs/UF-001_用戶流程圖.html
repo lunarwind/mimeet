@@ -218,7 +218,12 @@ flowchart TD
     START(["訪客進入 /register"]) --> S1A
     subgraph STEP1 [Step 1 基本資料]
         S1A["選擇性別 生理男/生理女"] --> S1B[填入暱稱]
-        S1B --> S1C[填入生日]
+        S1B --> S1B_CHECK{點擊 確認可用?}
+        S1B_CHECK -->|否| S1C[填入生日]
+        S1B_CHECK -->|是| S1B_API[呼叫 check-nickname API]
+        S1B_API --> S1B_RESULT{available?}
+        S1B_RESULT -->|true| S1C
+        S1B_RESULT -->|false| S1B
         S1C --> AGE{年滿 18 歲?}
         AGE -->|否| AGE_ERR[錯誤提示 未滿18歲無法加入]
         AGE -->|是| S1D[下一步]

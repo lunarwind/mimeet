@@ -53,6 +53,8 @@ Route::prefix('api/v1')->group(function () {
     // ─── Auth (public, rate-limited) ────────────────────────────────────
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+        Route::post('check-nickname', [AuthController::class, 'checkNickname'])
+            ->middleware('throttle:30,1');
         Route::post('/login', [AuthController::class, 'login']);
         Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
         Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->middleware('throttle:otp');

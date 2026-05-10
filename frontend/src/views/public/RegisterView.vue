@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { register, verifyEmail, resendVerification, sendPhoneCode, verifyPhoneCode } from '@/api/auth'
+import { register, verifyEmail, resendVerification, sendPhoneCode, verifyPhoneCode, checkNickname as apiCheckNickname } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import MiMeetLogo from '@/components/common/MiMeetLogo.vue'
 import {
@@ -35,6 +35,32 @@ const step1 = reactive({
   birthDay: '',
 })
 const step1Errors = reactive({ gender: '', nickname: '', birth: '' })
+const nicknameChecking = ref(false)
+const nicknameStatus = ref<'idle' | 'available' | 'taken' | 'error'>('idle')
+
+function onNicknameInput() {
+  step1Errors.nickname = ''
+  nicknameStatus.value = 'idle'
+}
+
+async function onCheckNickname() {
+  const err = validateNickname(step1.nickname)
+  if (err) {
+    step1Errors.nickname = err
+    nicknameStatus.value = 'idle'
+    return
+  }
+  nicknameChecking.value = true
+  nicknameStatus.value = 'idle'
+  try {
+    const available = await apiCheckNickname(step1.nickname.trim())
+    nicknameStatus.value = available ? 'available' : 'taken'
+  } catch {
+    nicknameStatus.value = 'error'
+  } finally {
+    nicknameChecking.value = false
+  }
+}
 
 const years = Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - 18 - i)
 const months = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -403,19 +429,32 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
           <!-- 暱稱 -->
           <div class="field-group">
             <label class="field-label">暱稱</label>
-            <div class="input-wrap" :class="{ error: step1Errors.nickname }">
-              <input
-                v-model="step1.nickname"
-                type="text"
-                placeholder="2-20 個字"
-                maxlength="20"
-                class="field-input no-icon"
-                @input="step1Errors.nickname = ''"
-              />
-              <span class="char-count">{{ step1.nickname.length }}/20</span>
+            <div class="nickname-row">
+              <div class="input-wrap nickname-input" :class="{ error: step1Errors.nickname }">
+                <input
+                  v-model="step1.nickname"
+                  type="text"
+                  placeholder="2-20 個字"
+                  maxlength="20"
+                  class="field-input no-icon"
+                  @input="onNicknameInput"
+                />
+                <span class="char-count">{{ step1.nickname.length }}/20</span>
+              </div>
+              <button
+                type="button"
+                class="nickname-check-btn"
+                :disabled="step1.nickname.trim().length < 2 || nicknameChecking"
+                @click="onCheckNickname"
+              >
+                {{ nicknameChecking ? '檢查中...' : '確認可用' }}
+              </button>
             </div>
             <Transition name="err">
               <p v-if="step1Errors.nickname" class="field-error">{{ step1Errors.nickname }}</p>
+              <p v-else-if="nicknameStatus === 'available'" class="field-success">✓ 暱稱可用</p>
+              <p v-else-if="nicknameStatus === 'taken'" class="field-error">✗ 此暱稱已被使用，請換一個</p>
+              <p v-else-if="nicknameStatus === 'error'" class="field-error">檢查失敗，請稍後再試</p>
             </Transition>
           </div>
 
@@ -776,6 +815,44 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
 }
 .char-count {
   position: absolute; right: 12px; font-size: 11px; color: var(--t3); pointer-events: none;
+}
+
+/* ── Nickname Check Row ─────────────────────── */
+.nickname-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.nickname-row .nickname-input {
+  flex: 1;
+  min-width: 0;
+}
+.nickname-check-btn {
+  flex-shrink: 0;
+  padding: 0 16px;
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  color: var(--p);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.nickname-check-btn:not(:disabled):hover {
+  background: var(--pl);
+  border-color: var(--p50);
+}
+.nickname-check-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.field-success {
+  color: #10B981;
+  font-size: 13px;
+  margin-top: 4px;
 }
 
 /* ── Birth Row ──────────────────────────────── */

@@ -306,6 +306,56 @@ Authorization: Bearer {access_token}
 }
 ```
 
+#### 2.1.5 檢查暱稱可用性
+
+```http
+POST /api/v1/auth/check-nickname
+Content-Type: application/json
+```
+
+**公開端點**，throttle:30,1（每分鐘 30 次/IP）。
+
+**請求參數：**
+```json
+{
+  "data": {
+    "nickname": "張三"
+  }
+}
+```
+
+格式：`nickname` required, string, 2-20 字。
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "data": {
+    "nickname": "張三",
+    "available": true
+  }
+}
+```
+
+**格式錯誤 (422)：**
+```json
+{
+  "success": false,
+  "code": 400,
+  "message": "格式錯誤",
+  "error": {
+    "type": "validation_error",
+    "details": [{ "field": "nickname", "message": "..." }]
+  }
+}
+```
+
+**語意說明：**
+- 「不可用」= 有任一 `status != 'deleted'` 用戶持有此暱稱（含 active / pending_deletion 但未匿名化的帳號）
+- 「可用」= GdprService 已 anonymize 過的舊用戶持有的暱稱會釋放
+- 與 register 共用同一條 DB 唯一性 query
+- 此端點僅為 UX 預警，**不做 reservation**：使用者 A 檢查可用後、submit 前，使用者 B 搶註冊同名仍可能發生，最終由 register endpoint 422 把關
+
 ### 2.2 身份驗證
 
 #### 2.2.1 Email驗證
