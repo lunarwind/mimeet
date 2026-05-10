@@ -392,7 +392,7 @@ GET /api/v1/admin/members
 | `sort_by` | string | 否 | `created_at`（預設）/ `credit_score` / `last_login_at` |
 | `sort_dir` | string | 否 | `desc`（預設）/ `asc` |
 | `dating_budget` | string | 否 | F27 快速篩選：`casual`/`moderate`/`generous`/`luxury`/`undisclosed`（精確匹配，NULL 會被排除）|
-| `style` | string | 否 | F27 快速篩選：`fresh`/`sweet`/`sexy`/`intellectual`/`sporty`（精確匹配）|
+| `style` | string | 否 | F27 快速篩選（gender-strict 全 18 個值）：女 `fresh`/`sweet`/`sexy`/`intellectual`/`sporty`/`elegant`/`korean`/`pure_student`/`petite_japanese`；男 `business_elite`/`british_gentleman`/`smart_casual`/`outdoor`/`boy_next_door`/`minimalist`/`japanese`/`warm_guy`/`preppy`（精確匹配）|
 
 > **注意：** 後台 F27 篩選為**精確匹配**（未填欄位會被排除），與前台搜尋的「寬鬆篩選（OR NULL）」行為不同，因後台是管理用途需要精準定位。
 

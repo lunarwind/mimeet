@@ -193,7 +193,7 @@ class UserBroadcastController extends Controller
             'filters.age_max' => 'sometimes|nullable|integer|min:18|max:99',
             'filters.location' => 'sometimes|nullable|string|max:50',
             'filters.dating_budget' => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
-            'filters.style' => 'sometimes|nullable|string|in:fresh,sweet,sexy,intellectual,sporty',
+            'filters.style' => 'sometimes|nullable|string|in:fresh,sweet,sexy,intellectual,sporty,elegant,korean,pure_student,petite_japanese,business_elite,british_gentleman,smart_casual,outdoor,boy_next_door,minimalist,japanese,warm_guy,preppy',
         ]);
     }
 

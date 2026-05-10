@@ -12,6 +12,7 @@ use App\Services\UserActivityLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -29,6 +30,11 @@ class UserController extends Controller
             return response()->json(['success' => false, 'code' => 'IMMUTABLE_FIELD', 'message' => '生日與性別設定後無法修改。'], 422);
         }
 
+        $user = $request->user();
+        $styleEnum = $user->gender === 'male'
+            ? ['business_elite', 'british_gentleman', 'smart_casual', 'outdoor', 'boy_next_door', 'minimalist', 'japanese', 'warm_guy', 'preppy']
+            : ['fresh', 'sweet', 'sexy', 'intellectual', 'sporty', 'elegant', 'korean', 'pure_student', 'petite_japanese'];
+
         $request->validate([
             'nickname' => 'sometimes|string|max:20',
             'bio' => 'sometimes|nullable|string|max:500',
@@ -41,7 +47,7 @@ class UserController extends Controller
             'interests' => 'sometimes|nullable|array',
 
             // F27 新增的 9 個 profile 欄位 — 全部選填
-            'style'             => 'sometimes|nullable|string|in:fresh,sweet,sexy,intellectual,sporty',
+            'style'             => ['sometimes', 'nullable', 'string', Rule::in($styleEnum)],
             'dating_budget'     => 'sometimes|nullable|string|in:casual,moderate,generous,luxury,undisclosed',
             'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
             'dating_type'       => 'sometimes|nullable|array',
@@ -54,7 +60,6 @@ class UserController extends Controller
             'availability.*'    => 'string|in:weekday_day,weekday_night,weekend,flexible',
         ]);
 
-        $user = $request->user();
         $fields = $request->only([
             'nickname', 'bio', 'avatar_url', 'height', 'weight', 'location', 'occupation', 'education', 'interests',
             'style', 'dating_budget', 'dating_frequency', 'dating_type', 'relationship_goal',
@@ -83,7 +88,7 @@ class UserController extends Controller
             'max_weight'       => 'sometimes|integer|max:200',
             'education'        => 'sometimes|string',
             'occupation'       => 'sometimes|string',
-            'style'            => 'sometimes|string',
+            'style'            => 'sometimes|string|in:fresh,sweet,sexy,intellectual,sporty,elegant,korean,pure_student,petite_japanese,business_elite,british_gentleman,smart_casual,outdoor,boy_next_door,minimalist,japanese,warm_guy,preppy',
             'dating_budget'    => 'sometimes|string',
             'dating_frequency' => 'sometimes|string',
             'dating_type'      => 'sometimes|string',

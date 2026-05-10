@@ -12,7 +12,8 @@ import { useAuthStore } from '../../stores/authStore'
 import apiClient from '../../api/client'
 import dayjs from 'dayjs'
 import {
-  STYLE_LABELS, DATING_BUDGET_LABELS, DATING_FREQUENCY_LABELS, DATING_TYPE_LABELS,
+  STYLE_LABELS, MALE_STYLE_KEYS, FEMALE_STYLE_KEYS,
+  DATING_BUDGET_LABELS, DATING_FREQUENCY_LABELS, DATING_TYPE_LABELS,
   RELATIONSHIP_GOAL_LABELS, SMOKING_LABELS, DRINKING_LABELS, AVAILABILITY_LABELS,
   formatLabel,
 } from '../../constants/labelMaps'
@@ -927,11 +928,20 @@ export default function MemberDetailPage() {
           <Divider>進階資料</Divider>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="style" label="自我風格">
-                <Select allowClear placeholder="不指定">
-                  {Object.entries(STYLE_LABELS).map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
-                </Select>
-              </Form.Item>
+              {(() => {
+                const formGender = Form.useWatch('gender', editForm)
+                const allowedKeys = formGender === 'male' ? MALE_STYLE_KEYS
+                  : formGender === 'female' ? FEMALE_STYLE_KEYS
+                  : [...FEMALE_STYLE_KEYS, ...MALE_STYLE_KEYS]
+                const filteredEntries = Object.entries(STYLE_LABELS).filter(([k]) => (allowedKeys as readonly string[]).includes(k))
+                return (
+                  <Form.Item name="style" label="自我風格">
+                    <Select allowClear placeholder="不指定">
+                      {filteredEntries.map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                    </Select>
+                  </Form.Item>
+                )
+              })()}
             </Col>
             <Col span={12}>
               <Form.Item name="dating_budget" label="約會預算">

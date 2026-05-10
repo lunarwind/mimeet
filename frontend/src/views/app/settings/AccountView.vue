@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useImageUpload } from '@/composables/useImageUpload'
 import { default as apiClient } from '@/api/client'
+import { getStyleOptionsByGender } from '@/constants/styleOptions'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -24,7 +25,7 @@ const form = ref({
   education: '',
   introduction: '',
   // F27 profile fields
-  style: '' as '' | 'fresh' | 'sweet' | 'sexy' | 'intellectual' | 'sporty',
+  style: '' as string,
   datingBudget: '' as '' | 'casual' | 'moderate' | 'generous' | 'luxury' | 'undisclosed',
   datingFrequency: '' as '' | 'occasional' | 'weekly' | 'flexible',
   datingType: [] as string[],
@@ -66,6 +67,9 @@ const isSaving = ref(false)
 
 const introLength = computed(() => form.value.introduction.length)
 const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
+const styleOptions = computed(() =>
+  getStyleOptionsByGender(authStore.user?.gender as 'male' | 'female' | undefined)
+)
 
 // F42 隱身模式
 import { useStealth } from '@/composables/useStealth'
@@ -663,11 +667,7 @@ const settingsLinks = [
           <label class="field__label">自我風格</label>
           <select v-model="form.style" class="field__input">
             <option value="">不指定</option>
-            <option value="fresh">清新</option>
-            <option value="sweet">甜美</option>
-            <option value="sexy">性感</option>
-            <option value="intellectual">知性</option>
-            <option value="sporty">運動</option>
+            <option v-for="opt in styleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
         </div>
       </section>

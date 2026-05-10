@@ -3,12 +3,33 @@
  * F27 profile 欄位中英對照表（後台專用）
  */
 
+// 女性風格（9）
+export const FEMALE_STYLE_KEYS = ['fresh', 'sweet', 'sexy', 'intellectual', 'sporty', 'elegant', 'korean', 'pure_student', 'petite_japanese'] as const
+
+// 男性風格（9）
+export const MALE_STYLE_KEYS = ['business_elite', 'british_gentleman', 'smart_casual', 'outdoor', 'boy_next_door', 'minimalist', 'japanese', 'warm_guy', 'preppy'] as const
+
 export const STYLE_LABELS: Record<string, string> = {
+  // 女性
   fresh: '清新',
   sweet: '甜美',
   sexy: '性感',
   intellectual: '知性',
   sporty: '運動',
+  elegant: '優雅',
+  korean: '韓系',
+  pure_student: '清純學生',
+  petite_japanese: '嬌小日系',
+  // 男性
+  business_elite: '商務菁英',
+  british_gentleman: '英倫紳士',
+  smart_casual: '休閒正裝',
+  outdoor: '戶外運動',
+  boy_next_door: '鄰家男孩',
+  minimalist: '極簡',
+  japanese: '日系',
+  warm_guy: '暖男',
+  preppy: '學院風',
 }
 
 export const DATING_BUDGET_LABELS: Record<string, string> = {
