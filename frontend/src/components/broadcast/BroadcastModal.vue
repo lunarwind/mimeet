@@ -5,9 +5,10 @@
  *   2. 篩選對象
  *   3. 確認發送
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import client from '@/api/client'
+import { getStyleOptionsByGender } from '@/constants/styleOptions'
 
 const emit = defineEmits<{
   close: []
@@ -42,6 +43,13 @@ const isSending = ref(false)
 const sentResult = ref<{ recipientCount: number; pointsSpent: number; pointsBalance: number } | null>(null)
 
 const contentLen = computed(() => content.value.length)
+
+const styleFilterOptions = computed(() =>
+  getStyleOptionsByGender(filters.value.gender as 'male' | 'female' | undefined)
+)
+watch(() => filters.value.gender, (newVal, oldVal) => {
+  if (newVal !== oldVal) filters.value.style = ''
+})
 
 function buildFiltersPayload() {
   const f: Record<string, any> = {}
@@ -180,11 +188,7 @@ function goTopUp() {
           <label>風格</label>
           <select v-model="filters.style">
             <option value="">不限</option>
-            <option value="fresh">清新</option>
-            <option value="sweet">甜美</option>
-            <option value="sexy">性感</option>
-            <option value="intellectual">知性</option>
-            <option value="sporty">運動</option>
+            <option v-for="opt in styleFilterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
         </div>
         <div class="bc-actions">

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import type { ExploreFilter } from '@/types/explore'
+import { getStyleOptionsByGender } from '@/constants/styleOptions'
 
 interface Props {
   currentFilters: ExploreFilter
@@ -27,6 +28,11 @@ const ageMax = ref(localFilters.value.ageMax ?? 50)
 
 // ── 性別 ──────────────────────────────────────────────────
 const gender = ref<'all' | 'male' | 'female'>(localFilters.value.gender ?? 'all')
+
+// ── 自我風格選項：依 gender 動態切換可選範圍（watcher 在 styleVal 宣告後） ──
+const styleFilterOptions = computed(() =>
+  getStyleOptionsByGender(gender.value === 'all' ? '' : gender.value)
+)
 
 // ── 誠信分數區間 ──────────────────────────────────────────
 type CreditRange = '0-30' | '31-60' | '61-90' | '91-120'
@@ -72,6 +78,9 @@ const minHeight = ref<number | null>(localFilters.value.minHeight ?? null)
 const maxHeight = ref<number | null>(localFilters.value.maxHeight ?? null)
 const education = ref<string>(localFilters.value.education ?? '')
 const styleVal = ref<string>(localFilters.value.style ?? '')
+watch(gender, (newVal, oldVal) => {
+  if (newVal !== oldVal) styleVal.value = ''
+})
 const datingBudget = ref<string>(localFilters.value.datingBudget ?? '')
 const relationshipGoal = ref<string>(localFilters.value.relationshipGoal ?? '')
 const smoking = ref<string>(localFilters.value.smoking ?? '')
@@ -352,11 +361,7 @@ function resetFilters() {
               <label class="filter-adv-label">自我風格</label>
               <select v-model="styleVal" class="filter-adv-select">
                 <option value="">不限</option>
-                <option value="fresh">清新</option>
-                <option value="sweet">甜美</option>
-                <option value="sexy">性感</option>
-                <option value="intellectual">知性</option>
-                <option value="sporty">運動</option>
+                <option v-for="opt in styleFilterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
 
