@@ -8,6 +8,11 @@ import { useUiStore } from '@/stores/ui'
 import { useImageUpload } from '@/composables/useImageUpload'
 import { default as apiClient } from '@/api/client'
 import { getStyleOptionsByGender } from '@/constants/styleOptions'
+import {
+  DATING_TYPE_OPTIONS,
+  DATING_BUDGET_GROUPS,
+  DATING_BUDGET_UNDISCLOSED,
+} from '@/constants/datingOptions'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -26,7 +31,7 @@ const form = ref({
   introduction: '',
   // F27 profile fields
   style: '' as string,
-  datingBudget: '' as '' | 'casual' | 'moderate' | 'generous' | 'luxury' | 'undisclosed',
+  datingBudget: '' as string,
   datingFrequency: '' as '' | 'occasional' | 'weekly' | 'flexible',
   datingType: [] as string[],
   relationshipGoal: '' as '' | 'short_term' | 'long_term' | 'open' | 'undisclosed',
@@ -37,13 +42,6 @@ const form = ref({
 })
 
 // F27 選項字典 — 前端顯示用
-const DATING_TYPE_OPTIONS = [
-  { value: 'dining', label: '餐敘' },
-  { value: 'travel', label: '旅遊' },
-  { value: 'companion', label: '陪伴' },
-  { value: 'mentorship', label: '指導' },
-  { value: 'undisclosed', label: '不透露' },
-]
 const AVAILABILITY_OPTIONS = [
   { value: 'weekday_day', label: '平日白天' },
   { value: 'weekday_night', label: '平日晚上' },
@@ -679,11 +677,10 @@ const settingsLinks = [
           <label class="field__label">約會預算</label>
           <select v-model="form.datingBudget" class="field__input">
             <option value="">不指定</option>
-            <option value="casual">輕鬆小聚</option>
-            <option value="moderate">質感約會</option>
-            <option value="generous">高品質體驗</option>
-            <option value="luxury">頂級享受</option>
-            <option value="undisclosed">不透露</option>
+            <optgroup v-for="group in DATING_BUDGET_GROUPS" :key="group.label" :label="group.label">
+              <option v-for="opt in group.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </optgroup>
+            <option :value="DATING_BUDGET_UNDISCLOSED.value">{{ DATING_BUDGET_UNDISCLOSED.label }}</option>
           </select>
         </div>
 

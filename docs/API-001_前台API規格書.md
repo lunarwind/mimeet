@@ -823,9 +823,9 @@ min_weight / max_weight:   體重範圍（kg）
 education:                 high_school|associate|bachelor|master|phd|other（精確）
 occupation:                職業（LIKE 模糊）
 style:                     business_elite|british_gentleman|smart_casual|outdoor|boy_next_door|minimalist|japanese|warm_guy|preppy|fresh|sweet|sexy|intellectual|sporty|elegant|korean|pure_student|petite_japanese
-dating_budget:             casual|moderate|generous|luxury|undisclosed
+dating_budget:             single_under_8k|single_8k_12k|single_above_12k|long_under_40k|long_40k_60k|long_above_60k|undisclosed
 dating_frequency:          occasional|weekly|flexible
-dating_type:               dining|travel|companion|mentorship|undisclosed（JSON_CONTAINS 單值）
+dating_type:               dining|companion|consultation|undisclosed（JSON_CONTAINS 單值）
 relationship_goal:         short_term|long_term|open|undisclosed
 smoking:                   never|sometimes|often
 drinking:                  never|social|often
@@ -840,6 +840,13 @@ last_online:               today|3days|7days（最後上線時間篩選；不傳
 > - 女性可用：fresh / sweet / sexy / intellectual / sporty / elegant / korean / pure_student / petite_japanese
 >
 > 搜尋／廣播 filter 不受此限，可填全 18 個值（filter 查的是別人）。
+
+> **dating_budget 結構**：
+> - 單次 3 檔（單次見面消費）：`single_under_8k` / `single_8k_12k` / `single_above_12k`
+> - 長期 3 檔（每月支付）：`long_under_40k` / `long_40k_60k` / `long_above_60k`
+> - 不透露：`undisclosed`
+>
+> **dating_type 變更（vs v1.x）**：原 5 個 `dining/travel/companion/mentorship/undisclosed` 簡化為 4 個 `dining/companion/consultation/undisclosed`。`travel` 與 `companion` 合併為「伴遊」（保留 `companion` key），`mentorship` rename 為 `consultation`（諮商）。
 
 **未填欄位的使用者不會被排除：** 每個進階篩選都用 `WHERE (column = val OR column IS NULL)` 形式，避免把剛註冊、尚未完整填寫 profile 的用戶排除在外。
 

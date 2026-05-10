@@ -15,11 +15,11 @@ return new class extends Migration
 
             // 約會偏好
             $table->string('dating_budget', 20)->nullable()->after('style')
-                ->comment('約會預算：casual/moderate/generous/luxury/undisclosed');
+                ->comment('約會預算：single_under_8k/single_8k_12k/single_above_12k/long_under_40k/long_40k_60k/long_above_60k/undisclosed');
             $table->string('dating_frequency', 20)->nullable()->after('dating_budget')
                 ->comment('見面頻率：occasional/weekly/flexible');
             $table->json('dating_type')->nullable()->after('dating_frequency')
-                ->comment('約會類型（複選）：dining/travel/companion/mentorship/undisclosed');
+                ->comment('約會類型（複選）：dining/companion/consultation/undisclosed');
             $table->string('relationship_goal', 20)->nullable()->after('dating_type')
                 ->comment('關係期望：short_term/long_term/open/undisclosed');
 
