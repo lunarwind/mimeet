@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Tabs, Descriptions, Avatar, Tag, Card, Table, Button, Modal, InputNumber, Input,
@@ -54,6 +54,15 @@ export default function MemberDetailPage() {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
   const [editForm] = Form.useForm()
+
+  // F27 Style 選項依 form 內 gender 動態過濾(hook 必須在 component top-level)
+  const watchedEditGender = Form.useWatch('gender', editForm)
+  const styleOptionEntries = useMemo(() => {
+    const allowedKeys = watchedEditGender === 'male' ? MALE_STYLE_KEYS
+      : watchedEditGender === 'female' ? FEMALE_STYLE_KEYS
+      : [...FEMALE_STYLE_KEYS, ...MALE_STYLE_KEYS]
+    return Object.entries(STYLE_LABELS).filter(([k]) => (allowedKeys as readonly string[]).includes(k))
+  }, [watchedEditGender])
 
   // F40 管理員贈扣點 modal
   const [pointModalOpen, setPointModalOpen] = useState(false)
@@ -928,20 +937,11 @@ export default function MemberDetailPage() {
           <Divider>進階資料</Divider>
           <Row gutter={16}>
             <Col span={12}>
-              {(() => {
-                const formGender = Form.useWatch('gender', editForm)
-                const allowedKeys = formGender === 'male' ? MALE_STYLE_KEYS
-                  : formGender === 'female' ? FEMALE_STYLE_KEYS
-                  : [...FEMALE_STYLE_KEYS, ...MALE_STYLE_KEYS]
-                const filteredEntries = Object.entries(STYLE_LABELS).filter(([k]) => (allowedKeys as readonly string[]).includes(k))
-                return (
-                  <Form.Item name="style" label="自我風格">
-                    <Select allowClear placeholder="不指定">
-                      {filteredEntries.map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
-                    </Select>
-                  </Form.Item>
-                )
-              })()}
+              <Form.Item name="style" label="自我風格">
+                <Select allowClear placeholder="不指定">
+                  {styleOptionEntries.map(([k, v]) => <Select.Option key={k} value={k}>{v}</Select.Option>)}
+                </Select>
+              </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="dating_budget" label="約會預算">
