@@ -1040,6 +1040,10 @@ padding-bottom: env(safe-area-inset-bottom);
 | 隱私權政策 | `/privacy` | 需法律顧問撰寫，涵蓋個資法要求 |
 | 使用者條款 | `/terms` | 需說明平台規則、年齡限制（18歲以上）、禁止行為 |
 | 防詐指南 | `/anti-fraud` | 提醒用戶常見詐騙手法，建議由平台運營人員撰寫 |
+| 幫助中心 | `/help` | hub 頁，列出可用主題卡片（防詐指南等），底部含 service@mimeet.club 聯絡資訊 |
+
+> **Footer 連結配置**（LandingView）：隱私權政策 / 使用者條款 / 聯絡我們（mailto:service@mimeet.club）/ 幫助中心（/help）。
+> 「聯絡我們」為 mailto 連結直接開啟使用者 mail client；其他三個為 SPA 內部路由（router-link）。
 
 **靜態頁面版面規格：**
 ```
