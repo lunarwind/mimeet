@@ -67,19 +67,22 @@ const isSaving = ref(false)
 const introLength = computed(() => form.value.introduction.length)
 const isPaid = computed(() => (authStore.user?.membership_level ?? 0) >= 2)
 
+// F42 隱身模式
+import { useStealth } from '@/composables/useStealth'
+const stealth = useStealth()
+
 // F40 會員狀態卡片
 const subscriptionInfo = computed(() => {
   const u = authStore.user as any
   return u?.subscription ?? null
 })
 const stealthStatusLabel = computed(() => {
-  const u = authStore.user as any
-  if (!u?.stealth_until) return '未啟用'
-  const end = new Date(u.stealth_until).getTime()
-  const left = end - Date.now()
-  if (left <= 0) return '未啟用'
-  const h = Math.floor(left / 3600000)
-  const m = Math.floor((left % 3600000) / 60000)
+  const s = stealth.status.value
+  if (!s?.isActive) return '未啟用'
+  const sec = s.remainingSeconds
+  if (sec <= 0) return '未啟用'
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
   return `剩餘 ${h}h ${m}m`
 })
 function daysColor(days: number | null): string {
@@ -104,9 +107,7 @@ const readReceipt = ref(true)
 const dnd = ref({ dndEnabled: false, dndStart: '22:00', dndEnd: '08:00' })
 const isDndSaving = ref(false)
 
-// F42 隱身模式
-import { useStealth } from '@/composables/useStealth'
-const stealth = useStealth()
+// F42 隱身模式（useStealth import 已移至上方，此處接續宣告 modal 狀態）
 const showStealthConfirm = ref(false)
 const showInsufficientModal = ref(false)
 const insufficientInfo = ref<{ required: number; current: number } | null>(null)
@@ -426,7 +427,6 @@ const settingsLinks = [
         <div class="status-row">
           <span class="status-row__label">會員等級</span>
           <span class="status-row__value">
-            Lv{{ authStore.user?.membership_level ?? 0 }}
             <span v-if="(authStore.user?.membership_level ?? 0) >= 3" class="member-tag member-tag--paid">付費會員 💎</span>
             <span v-else-if="(authStore.user?.membership_level ?? 0) >= 2" class="member-tag member-tag--adv">進階驗證</span>
             <span v-else-if="(authStore.user?.membership_level ?? 0) >= 1" class="member-tag">驗證會員</span>
