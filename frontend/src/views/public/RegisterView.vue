@@ -356,7 +356,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
 
           <!-- 性別選擇 -->
           <div class="gender-row">
-            <!-- 甜爹 -->
+            <!-- 生理男 -->
             <button
               class="gender-card"
               :class="{ selected: step1.gender === 'male' }"
@@ -368,8 +368,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
                   <circle cx="10" cy="14" r="6"/>
                 </svg>
               </div>
-              <div class="gender-label">甜爹</div>
-              <div class="gender-sublabel">Male</div>
+              <div class="gender-label">生理男</div>
               <div v-if="step1.gender === 'male'" class="gender-check">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                   <path d="M20 6L9 17l-5-5"/>
@@ -377,7 +376,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
               </div>
             </button>
 
-            <!-- 甜心 -->
+            <!-- 生理女 -->
             <button
               class="gender-card"
               :class="{ selected: step1.gender === 'female' }"
@@ -389,8 +388,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
                   <path d="M12 14v6M9 17h6"/>
                 </svg>
               </div>
-              <div class="gender-label">甜心</div>
-              <div class="gender-sublabel">Female</div>
+              <div class="gender-label">生理女</div>
               <div v-if="step1.gender === 'female'" class="gender-check">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                   <path d="M20 6L9 17l-5-5"/>
@@ -746,7 +744,6 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
 }
 .gender-card.selected .gender-icon-wrap { color: var(--p); border-color: var(--p50); }
 .gender-label { font-size: 15px; font-weight: 700; color: var(--t1); }
-.gender-sublabel { font-size: 11px; color: var(--t3); }
 .gender-check {
   position: absolute; top: 10px; right: 10px;
   width: 20px; height: 20px; border-radius: 50%;
