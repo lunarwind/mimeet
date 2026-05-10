@@ -56,6 +56,12 @@ export const publicRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: '/help',
+    name: 'help',
+    component: () => import('@/views/public/HelpView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: '/go/:slug',
     name: 'go-redirect',
     component: () => import('@/views/public/GoRedirectView.vue'),

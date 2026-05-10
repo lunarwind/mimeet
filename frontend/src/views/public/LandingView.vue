@@ -152,11 +152,13 @@ const features = [
         <span class="footer-brand">MiMeet</span>
         <span class="footer-copy">© 2026 MiMeet. 台灣高端交友平台</span>
         <div class="footer-links">
-          <a href="#/privacy">隱私權政策</a>
+          <router-link to="/privacy">隱私權政策</router-link>
           <span>·</span>
-          <a href="#/terms">使用者條款</a>
+          <router-link to="/terms">使用者條款</router-link>
           <span>·</span>
-          <a href="#/anti-fraud">聯絡我們</a>
+          <a href="mailto:service@mimeet.club">聯絡我們</a>
+          <span>·</span>
+          <router-link to="/help">幫助中心</router-link>
         </div>
       </div>
     </footer>
