@@ -2795,10 +2795,10 @@ Content-Type: application/json
 {
   "data": {
     "title":          "MiMeet - 台灣高端交友平台",
-    "description":    "透過誠信分數系統，找到真實可信賴的另一半",
+    "description":    "誠信讓相遇便捷可靠",
     "keywords":       "台灣交友,高端交友,誠信分數",
     "og_title":       "MiMeet - 台灣高端交友平台",
-    "og_description": "透過誠信分數系統，找到真實可信賴的另一半",
+    "og_description": "誠信讓相遇便捷可靠",
     "og_image":       "https://cdn.mimeet.tw/og-image.jpg"
   }
 }

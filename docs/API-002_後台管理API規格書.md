@@ -1535,7 +1535,7 @@ GET /api/v1/admin/seo/meta
       "id": 1,
       "route": "/",
       "title": "MiMeet - 台灣高端交友平台",
-      "description": "誠信分數系統，讓每一次相遇都值得信賴。",
+      "description": "誠信讓相遇便捷可靠",
       "og_title": "MiMeet 交友平台",
       "og_description": "安全、真實、高品質的交友體驗",
       "og_image_url": "https://cdn.mimeet.tw/og/home.jpg",

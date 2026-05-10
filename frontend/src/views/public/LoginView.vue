@@ -241,7 +241,7 @@ function goLanding() { router.push('/') }
         <!-- 前往註冊 -->
         <div class="register-hint">
           還沒有帳號？
-          <button class="register-link" @click="goRegister">立即免費加入</button>
+          <button class="register-link" @click="goRegister">立即加入</button>
         </div>
 
       </div>

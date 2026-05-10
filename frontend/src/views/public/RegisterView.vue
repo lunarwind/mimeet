@@ -450,7 +450,7 @@ function goBack() { if (currentStep.value > 1) goStep(currentStep.value - 1) }
             </svg>
           </button>
 
-          <p class="login-hint">已有帳號？<button class="inline-link" @click="goLogin">直接登入</button></p>
+          <p class="login-hint">已有帳號？<button class="inline-link" @click="goLogin">登入</button></p>
         </div>
 
         <!-- ════ Step 2：帳號資料 ════ -->
