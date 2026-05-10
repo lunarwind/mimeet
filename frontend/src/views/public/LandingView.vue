@@ -461,7 +461,8 @@ const features = [
 .mock-profile-photo {
   width: 100%;
   height: 140px;
-  background: linear-gradient(135deg, #FFE4EA 0%, #F0294E22 100%);
+  background: url('/images/hero-mockup-photo.png') center top / cover no-repeat;
+  background-color: #FFE4EA; /* 圖片載入失敗時的 fallback */
   border-radius: 12px;
   position: relative;
   overflow: hidden;
