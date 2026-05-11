@@ -29,6 +29,22 @@ interface ChatLogEntry {
   total_messages: number
 }
 
+/**
+ * 從 axios error 撈 server 回傳的 message,多層 fallback。
+ * 統一所有 admin handler 的錯誤訊息撈取邏輯。
+ */
+function extractApiError(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+  const serverMsg = e?.response?.data?.message
+  if (serverMsg) return serverMsg
+  const errors = e?.response?.data?.errors
+  if (errors) {
+    const firstField = Object.values(errors)[0]
+    if (firstField?.[0]) return firstField[0]
+  }
+  return fallback
+}
+
 export default function MemberDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -170,12 +186,7 @@ export default function MemberDetailPage() {
       // Refresh score history
       apiClient.get(`/admin/members/${uid}/credit-logs`).then(res => setScoreRecords(res.data.data ?? [])).catch(() => {})
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
-      const serverMsg = e?.response?.data?.message
-      const firstFieldError = e?.response?.data?.errors
-        ? Object.values(e.response.data.errors)[0]?.[0]
-        : undefined
-      message.error(serverMsg ?? firstFieldError ?? '調整失敗')
+      message.error(extractApiError(err, '調整失敗'))
     }
   }
 
@@ -194,8 +205,8 @@ export default function MemberDetailPage() {
           })
           message.success(isSuspended ? '已解除停權' : '已停權')
           reloadMember()
-        } catch {
-          message.error('操作失敗')
+        } catch (err: unknown) {
+          message.error(extractApiError(err, '操作失敗'))
         }
       },
     })
@@ -222,8 +233,8 @@ export default function MemberDetailPage() {
       message.success('會員權限已更新')
       setPermModalOpen(false)
       reloadMember()
-    } catch {
-      message.error('更新失敗')
+    } catch (err: unknown) {
+      message.error(extractApiError(err, '更新失敗'))
     }
     setPermSaving(false)
   }
@@ -285,8 +296,8 @@ export default function MemberDetailPage() {
       message.success('會員資料已更新')
       setEditDrawerOpen(false)
       reloadMember()
-    } catch {
-      message.error('更新失敗')
+    } catch (err: unknown) {
+      message.error(extractApiError(err, '更新失敗'))
     }
     setEditSaving(false)
   }

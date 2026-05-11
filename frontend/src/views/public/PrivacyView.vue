@@ -83,7 +83,7 @@ function goBack() { router.back() }
           <li>請求停止蒐集、處理或利用</li>
           <li>請求刪除（惟法律另有規定者除外）</li>
         </ul>
-        <p>如需行使上述權利，請透過平台內的「問題回報」功能或來信至 privacy@mimeet.tw 聯繫我們。</p>
+        <p>如需行使上述權利，請透過平台內的「問題回報」功能或來信至 privacy@mimeet.club 聯繫我們。</p>
       </section>
 
       <section>
@@ -106,7 +106,7 @@ function goBack() { router.back() }
         <p>如有任何隱私相關問題，請聯絡：</p>
         <p class="contact-info">
           MiMeet 個人資料保護專員<br>
-          Email：privacy@mimeet.tw<br>
+          Email：privacy@mimeet.club<br>
           地址：台灣（詳細地址待補）
         </p>
       </section>
