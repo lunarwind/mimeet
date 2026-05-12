@@ -18,8 +18,8 @@ export const STYLE_LABELS: Record<string, string> = {
   sporty: '運動',
   elegant: '優雅',
   korean: '韓系',
-  pure_student: '清純學生',
-  petite_japanese: '嬌小日系',
+  pure_student: '學院',
+  petite_japanese: '日系',
   // 男性
   business_elite: '商務菁英',
   british_gentleman: '英倫紳士',
@@ -33,9 +33,9 @@ export const STYLE_LABELS: Record<string, string> = {
 }
 
 export const DATING_BUDGET_LABELS: Record<string, string> = {
-  single_under_8k: '單次 8K 以下（輕鬆聚會）',
-  single_8k_12k: '單次 8K～12K（精緻約會）',
-  single_above_12k: '單次 12K 以上（高端體驗）',
+  single_under_8k: '單次 8K 以下',
+  single_8k_12k: '單次 8K～12K',
+  single_above_12k: '單次 12K 以上',
   long_under_40k: '長期 月 40K 以下',
   long_40k_60k: '長期 月 40K～60K',
   long_above_60k: '長期 月 60K 以上',

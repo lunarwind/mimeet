@@ -17,8 +17,8 @@ export const FEMALE_STYLE_OPTIONS: readonly StyleOption[] = [
   { value: 'sporty', label: '運動' },
   { value: 'elegant', label: '優雅' },
   { value: 'korean', label: '韓系' },
-  { value: 'pure_student', label: '清純學生' },
-  { value: 'petite_japanese', label: '嬌小日系' },
+  { value: 'pure_student', label: '學院' },
+  { value: 'petite_japanese', label: '日系' },
 ] as const
 
 export const MALE_STYLE_OPTIONS: readonly StyleOption[] = [
