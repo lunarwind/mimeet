@@ -19,6 +19,7 @@ export const DATING_TYPE_OPTIONS: readonly SimpleOption[] = [
   { value: 'dining', label: '餐敘' },
   { value: 'companion', label: '伴遊' },
   { value: 'consultation', label: '諮商' },
+  { value: 'intimate', label: '親密' },
   { value: 'undisclosed', label: '不透露' },
 ] as const
 
@@ -27,9 +28,9 @@ export const DATING_BUDGET_GROUPS: readonly OptionGroup[] = [
   {
     label: '單次見面',
     options: [
-      { value: 'single_under_8k', label: '8K 以下（輕鬆聚會）' },
-      { value: 'single_8k_12k', label: '8K～12K（精緻約會）' },
-      { value: 'single_above_12k', label: '12K 以上（高端體驗）' },
+      { value: 'single_under_8k', label: '8K 以下' },
+      { value: 'single_8k_12k', label: '8K～12K' },
+      { value: 'single_above_12k', label: '12K 以上' },
     ],
   },
   {

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('dating_frequency', 20)->nullable()->after('dating_budget')
                 ->comment('見面頻率：occasional/weekly/flexible');
             $table->json('dating_type')->nullable()->after('dating_frequency')
-                ->comment('約會類型（複選）：dining/companion/consultation/undisclosed');
+                ->comment('約會類型（複選）：dining/companion/consultation/intimate/undisclosed');
             $table->string('relationship_goal', 20)->nullable()->after('dating_type')
                 ->comment('關係期望：short_term/long_term/open/undisclosed');
 

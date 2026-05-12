@@ -761,7 +761,7 @@ class AdminController extends Controller
             'dating_budget'     => 'sometimes|nullable|string|in:single_under_8k,single_8k_12k,single_above_12k,long_under_40k,long_40k_60k,long_above_60k,undisclosed',
             'dating_frequency'  => 'sometimes|nullable|string|in:occasional,weekly,flexible',
             'dating_type'       => 'sometimes|nullable|array',
-            'dating_type.*'     => 'string|in:dining,companion,consultation,undisclosed',
+            'dating_type.*'     => 'string|in:dining,companion,consultation,intimate,undisclosed',
             'relationship_goal' => 'sometimes|nullable|string|in:short_term,long_term,open,undisclosed',
             'smoking'           => 'sometimes|nullable|string|in:never,sometimes,often',
             'drinking'          => 'sometimes|nullable|string|in:never,social,often',
