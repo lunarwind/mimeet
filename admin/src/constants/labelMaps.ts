@@ -52,6 +52,7 @@ export const DATING_TYPE_LABELS: Record<string, string> = {
   dining: '餐敘',
   companion: '伴遊',
   consultation: '諮商',
+  intimate: '親密',
   undisclosed: '不透露',
 }
 

@@ -19,6 +19,7 @@ export const DATING_TYPE_OPTIONS: readonly SimpleOption[] = [
   { value: 'dining', label: '餐敘' },
   { value: 'companion', label: '伴遊' },
   { value: 'consultation', label: '諮商' },
+  { value: 'intimate', label: '親密' },
   { value: 'undisclosed', label: '不透露' },
 ] as const
 
