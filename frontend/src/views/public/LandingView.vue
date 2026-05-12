@@ -636,8 +636,21 @@ const features = [
     padding: 40px 32px 60px;
   }
   .phone-mockup {
-    width: 190px;
-    height: 360px;
+    width: 260px;
+    height: 500px;
+  }
+  .mock-profile-photo {
+    height: 170px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .phone-mockup {
+    width: 320px;
+    height: 620px;
+  }
+  .mock-profile-photo {
+    height: 200px;
   }
 }
 </style>
