@@ -157,7 +157,7 @@ export function usePayment() {
 
   async function toggleAutoRenew(value: boolean): Promise<boolean> {
     try {
-      await client.patch('/me/subscription/auto-renew', { auto_renew: value })
+      await client.patch('/subscriptions/me', { auto_renew: value })
       if (currentSubscription.value) currentSubscription.value.autoRenew = value
       return true
     } catch (e) {

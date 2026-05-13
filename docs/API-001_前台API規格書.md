@@ -3352,7 +3352,7 @@ Authorization: Bearer {access_token}
 ### 10.9 訂閱自動續訂設定
 
 ```http
-PATCH /api/v1/me/subscription/auto-renew
+PATCH /api/v1/subscriptions/me
 Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
@@ -3374,6 +3374,8 @@ Content-Type: application/json
 ```json
 { "success": false, "error": { "code": "4032", "message": "無有效訂閱" } }
 ```
+
+> **歷史**：原規格 path 為 `PATCH /me/subscription/auto-renew`（v1.0），實作為 `PATCH /subscriptions/me`。2026-05-13 規格對齊實作（見 audit-D-20260424 Issue #D-004）。
 
 ---
 
