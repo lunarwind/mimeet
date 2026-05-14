@@ -140,7 +140,8 @@ class SubscriptionController extends Controller
             'auto_renew' => 'required|boolean',
         ]);
 
-        $sub = Subscription::where('user_id', $request->user()->id)
+        $sub = Subscription::with('plan')
+            ->where('user_id', $request->user()->id)
             ->where('status', 'active')
             ->first();
 
@@ -150,6 +151,16 @@ class SubscriptionController extends Controller
                 'code' => 404,
                 'message' => '目前沒有有效訂閱',
             ], 404);
+        }
+
+        // 體驗方案不可開啟自動續訂（PRD-001:702、API-001 §10.5）
+        if ($sub->plan && $sub->plan->is_trial && $request->boolean('auto_renew')) {
+            return response()->json([
+                'success' => false,
+                'code' => 422,
+                'error_code' => 'TRIAL_NOT_RENEWABLE',
+                'message' => '體驗方案不支援自動續訂',
+            ], 422);
         }
 
         $sub->update(['auto_renew' => $request->boolean('auto_renew')]);

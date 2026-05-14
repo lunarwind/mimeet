@@ -30,7 +30,6 @@ const {
 
 const showConfirmModal = ref(false)
 const selectedPlan = ref<SubscriptionPlan | null>(null)
-const autoRenewChecked = ref(true)
 const selectedPaymentMethod = ref<'credit_card' | 'atm' | 'cvs'>('credit_card')
 const isSubmitting = ref(false)
 
@@ -125,7 +124,6 @@ onMounted(async () => {
 
 function selectPlan(plan: SubscriptionPlan) {
   selectedPlan.value = plan
-  autoRenewChecked.value = true
   selectedPaymentMethod.value = 'credit_card'
   showConfirmModal.value = true
 }
@@ -251,7 +249,7 @@ const PAID_FEATURES = [
           <span>到期日：{{ formatDate(currentSubscription.expiresAt) }}</span>
           <span>剩餘 {{ daysRemaining }} 天</span>
         </div>
-        <div class="my-member__row">
+        <div class="my-member__row" v-if="!currentSubscription.isTrial">
           <span class="my-member__label">自動續訂</span>
           <button
             class="toggle-btn"
@@ -401,10 +399,6 @@ const PAID_FEATURES = [
               </div>
             </div>
 
-            <label class="modal-card__check">
-              <input type="checkbox" v-model="autoRenewChecked" />
-              <span>到期後自動續訂</span>
-            </label>
           </template>
           <div class="modal-card__actions">
             <button class="btn-secondary" @click="showConfirmModal = false">取消</button>

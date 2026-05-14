@@ -342,6 +342,7 @@ class PaymentService
             'id' => $sub->id,
             'plan_id' => $sub->plan->slug,
             'plan_name' => $sub->plan->name,
+            'is_trial' => (bool) $sub->plan->is_trial,
             'status' => $sub->status,
             'auto_renew' => $sub->auto_renew,
             'started_at' => $sub->started_at->toISOString(),

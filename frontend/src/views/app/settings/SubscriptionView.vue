@@ -69,7 +69,7 @@ function formatDate(iso: string) {
           </div>
         </div>
 
-        <div class="sub-setting">
+        <div class="sub-setting" v-if="!currentSubscription.isTrial">
           <div class="sub-setting__row">
             <div>
               <span class="sub-setting__label">自動續訂</span>
