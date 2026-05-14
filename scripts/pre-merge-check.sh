@@ -777,6 +777,48 @@ else
 fi
 
 echo ""
+echo "-- Trial auto_renew guards (14ay) --"
+
+# 14ay-1: SubscriptionController::update 必須擋 is_trial（防體驗方案被開啟自動續訂）
+SUB_CTRL="backend/app/Http/Controllers/Api/V1/SubscriptionController.php"
+if awk '/public function update\(/,/^    }/' "$SUB_CTRL" | grep -q "is_trial"; then
+  echo "  [OK] 14ay-1 SubscriptionController::update 含 is_trial guard"
+else
+  echo "  [FAIL] 14ay-1: SubscriptionController::update 必須檢查 \$sub->plan->is_trial，回 422 TRIAL_NOT_RENEWABLE"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# 14ay-2: PaymentService::getActiveSubscription payload 必須回 is_trial
+if grep -q "'is_trial' =>" backend/app/Services/PaymentService.php; then
+  echo "  [OK] 14ay-2 PaymentService::getActiveSubscription payload 含 is_trial"
+else
+  echo "  [FAIL] 14ay-2: PaymentService::getActiveSubscription return array 必須含 'is_trial' 欄位"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# 14ay-3: ShopView.vue dead UI（autoRenewChecked / 到期後自動續訂 checkbox）不可殘留
+if grep -q "autoRenewChecked\|到期後自動續訂" frontend/src/views/app/ShopView.vue; then
+  echo "  [FAIL] 14ay-3: ShopView.vue 仍含 autoRenewChecked / 到期後自動續訂 dead UI（dead checkbox 已移除）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ay-3 ShopView.vue 無 autoRenewChecked dead UI 殘留"
+fi
+
+# 14ay-4: ShopView / SubscriptionView 自動續訂 toggle 必須對 isTrial 條件渲染
+if ! grep -q "isTrial" frontend/src/views/app/ShopView.vue; then
+  echo "  [FAIL] 14ay-4a: ShopView.vue 自動續訂 toggle 必須以 isTrial 條件渲染（v-if=\"!currentSubscription.isTrial\"）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ay-4a ShopView.vue 含 isTrial 條件渲染"
+fi
+if ! grep -q "isTrial" frontend/src/views/app/settings/SubscriptionView.vue; then
+  echo "  [FAIL] 14ay-4b: SubscriptionView.vue 自動續訂 toggle 必須以 isTrial 條件渲染"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ay-4b SubscriptionView.vue 含 isTrial 條件渲染"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
