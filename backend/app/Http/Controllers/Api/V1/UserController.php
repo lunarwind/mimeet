@@ -358,7 +358,7 @@ class UserController extends Controller
                 'last_active_at' => $user->last_active_at?->toIso8601String(),
                 'is_favorited' => $request->user() ? \DB::table('user_follows')->where('follower_id', $request->user()->id)->where('following_id', $user->id)->exists() : false,
                 'is_blocked' => $request->user() ? UserBlock::where('blocker_id', $request->user()->id)->where('blocked_id', $user->id)->exists() : false,
-                'photos' => [],
+                'photos' => $this->buildProfilePhotos($user),
                 'created_at' => $user->created_at?->toIso8601String(),
             ]],
         ]);
@@ -560,6 +560,41 @@ class UserController extends Controller
             'expires_at' => $sub->expires_at->toISOString(),
             'days_remaining' => max(0, (int) now()->startOfDay()->diffInDays($sub->expires_at, false)),
         ];
+    }
+
+    /**
+     * 把 user 的 avatar_url + avatar_slots 映射成 profile.photos 陣列。
+     * 對齊 frontend/src/api/users.ts 的 photos 型別：
+     *   { id: number; url: string; is_avatar: boolean; order: number }[]
+     *
+     * @return array<int, array{id:int,url:string,is_avatar:bool,order:int}>
+     */
+    private function buildProfilePhotos(\App\Models\User $user): array
+    {
+        $active = $user->avatar_url;
+        $slots = is_array($user->avatar_slots) ? $user->avatar_slots : [];
+
+        $urls = [];
+        if (!empty($active)) {
+            $urls[] = $active;
+        }
+        foreach ($slots as $url) {
+            if (!empty($url) && !in_array($url, $urls, true)) {
+                $urls[] = $url;
+            }
+        }
+
+        $photos = [];
+        foreach ($urls as $index => $url) {
+            $photos[] = [
+                'id' => $index + 1,
+                'url' => $url,
+                'is_avatar' => $index === 0 && !empty($active),
+                'order' => $index,
+            ];
+        }
+
+        return $photos;
     }
 
     public function following(Request $request): JsonResponse
