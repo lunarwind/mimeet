@@ -620,7 +620,20 @@ Authorization: Bearer {access_token}
       "email_verified": true,
       "phone_verified": true,
       "advanced_verified": false,
-      "photos": [],
+      "photos": [
+        {
+          "id": 1,
+          "url": "https://cdn.mimeet.tw/avatars/123-main.webp",
+          "is_avatar": true,
+          "order": 0
+        },
+        {
+          "id": 2,
+          "url": "https://cdn.mimeet.tw/photos/123-extra1.webp",
+          "is_avatar": false,
+          "order": 1
+        }
+      ],
       "last_active_at": "2024-12-20T09:15:00Z",
       "created_at": "2024-11-15T14:20:00Z"
     }
@@ -628,7 +641,10 @@ Authorization: Bearer {access_token}
 }
 ```
 
-> `photos` 目前恆回傳空陣列 `[]`，頭像由 `avatar` 欄位直接提供。
+> **photos 來源**：由 `users.avatar_url`（active avatar）與 `users.avatar_slots`（候選照片陣列）合併映射，去重後依「active 在前、其餘依 slot 順序」排序。`is_avatar: true` 代表該 URL 是當前 active avatar。
+> 上傳新照片：`POST /me/avatars`（會 append 到 avatar_slots）。刪除：`DELETE /me/avatars`。更換 active：`PATCH /me/avatars/active`。
+>
+> **歷史**：原規格 §3.1 假設獨立 `user_photos` 表（未實作），§3.3 採 `avatar_slots` JSON 槽位（已實作）。本文件 2026-05-14 統一為 §3.3 模型，photos 響應字段為 avatar_slots 衍生映射（見 audit-B-20260424 Issue #B-003 / audit-G-20260423 Issue G-003）。
 >
 > `stats` 資料目前不包含於此端點回應。
 
