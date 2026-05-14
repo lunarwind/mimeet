@@ -2088,11 +2088,14 @@ Authorization: Bearer {access_token}
       "started_at": "2024-11-20T10:30:00Z",
       "expires_at": "2024-12-20T10:30:00Z",
       "auto_renew": true,
+      "is_trial": false,
       "days_remaining": 10
     }
   }
 }
 ```
+
+> **`is_trial`**（boolean）：true 表示此訂閱為體驗方案（PRD-001:702 強制 `auto_renew=false`）。前端應據此隱藏自動續訂相關 UI。
 
 ### 7.2 支付回調
 
@@ -3374,6 +3377,17 @@ Content-Type: application/json
 ```json
 { "success": false, "error": { "code": "4032", "message": "無有效訂閱" } }
 ```
+
+> **業務規則**：若當前 active subscription 對應 plan `is_trial=true`，request body `auto_renew=true` 將回 422：
+> ```json
+> {
+>   "success": false,
+>   "code": 422,
+>   "error_code": "TRIAL_NOT_RENEWABLE",
+>   "message": "體驗方案不支援自動續訂"
+> }
+> ```
+> 對齊 PRD-001 §F37 規定（體驗方案不自動續費）。
 
 > **歷史**：原規格 path 為 `PATCH /me/subscription/auto-renew`（v1.0），實作為 `PATCH /subscriptions/me`。2026-05-13 規格對齊實作（見 audit-D-20260424 Issue #D-004）。
 

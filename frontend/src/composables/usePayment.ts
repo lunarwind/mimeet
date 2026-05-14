@@ -71,6 +71,7 @@ export function usePayment() {
       const sub: CurrentSubscription = {
         planType: raw.plan_id ?? raw.planType ?? '',
         planName: raw.plan_name ?? raw.planName ?? '',
+        isTrial: Boolean(raw.is_trial ?? raw.isTrial ?? false),
         expiresAt: raw.expires_at ?? raw.expiresAt ?? '',
         autoRenew: raw.auto_renew ?? raw.autoRenew ?? false,
         daysRemaining: raw.days_remaining ?? raw.daysRemaining
@@ -160,7 +161,9 @@ export function usePayment() {
       await client.patch('/subscriptions/me', { auto_renew: value })
       if (currentSubscription.value) currentSubscription.value.autoRenew = value
       return true
-    } catch (e) {
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      error.value = e?.response?.data?.message ?? '切換自動續訂失敗'
       return false
     }
   }

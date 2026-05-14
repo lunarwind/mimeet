@@ -18,6 +18,7 @@ export interface SubscriptionPlan {
 export interface CurrentSubscription {
   planType: string
   planName: string
+  isTrial: boolean
   expiresAt: string
   autoRenew: boolean
   daysRemaining: number
