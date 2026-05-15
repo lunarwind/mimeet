@@ -8,6 +8,12 @@ import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfile'
 import { useDateInviteFromProfile } from '@/composables/useDateInviteFromProfile'
 import DateInviteBottomSheet from '@/components/date/DateInviteBottomSheet.vue'
+import { getStyleOptionsByGender } from '@/constants/styleOptions'
+import {
+  DATING_TYPE_OPTIONS,
+  DATING_BUDGET_GROUPS,
+  DATING_BUDGET_UNDISCLOSED,
+} from '@/constants/datingOptions'
 
 const route = useRoute()
 const router = useRouter()
@@ -74,6 +80,97 @@ const lastActiveText = computed(() => {
 })
 
 const isSelf = computed(() => authStore.user?.id === userId.value)
+
+type ProfileDetailItem = {
+  label: string
+  value?: string
+  chips?: string[]
+}
+
+const DATING_BUDGET_OPTIONS = [
+  ...DATING_BUDGET_GROUPS.flatMap(group => group.options),
+  DATING_BUDGET_UNDISCLOSED,
+]
+
+const DATING_FREQUENCY_LABELS: Record<string, string> = {
+  occasional: '偶爾見面',
+  weekly: '每週約會',
+  flexible: '看心情',
+}
+
+const RELATIONSHIP_GOAL_LABELS: Record<string, string> = {
+  short_term: '短期約會',
+  long_term: '長期穩定',
+  open: '開放探索',
+  undisclosed: '不透露',
+}
+
+const SMOKING_LABELS: Record<string, string> = {
+  never: '從不',
+  sometimes: '偶爾',
+  often: '經常',
+}
+
+const DRINKING_LABELS: Record<string, string> = {
+  never: '從不',
+  social: '社交場合',
+  often: '經常',
+}
+
+const AVAILABILITY_LABELS: Record<string, string> = {
+  weekday_day: '平日白天',
+  weekday_night: '平日晚上',
+  weekend: '週末',
+  flexible: '彈性配合',
+}
+
+function optionLabel(options: readonly { value: string; label: string }[], value: string | null | undefined) {
+  if (!value) return null
+  return options.find(opt => opt.value === value)?.label ?? value
+}
+
+function recordLabel(labels: Record<string, string>, value: string | null | undefined) {
+  if (!value) return null
+  return labels[value] ?? value
+}
+
+function arrayLabels(labels: Record<string, string>, values: string[] | null | undefined) {
+  if (!Array.isArray(values)) return []
+  return values.map(value => labels[value] ?? value).filter(Boolean)
+}
+
+const profileDetails = computed<ProfileDetailItem[]>(() => {
+  const p = profile.value
+  if (!p) return []
+
+  const details: ProfileDetailItem[] = []
+  const style = optionLabel(getStyleOptionsByGender(p.gender), p.style)
+  const budget = optionLabel(DATING_BUDGET_OPTIONS, p.dating_budget)
+  const frequency = recordLabel(DATING_FREQUENCY_LABELS, p.dating_frequency)
+  const datingTypes = Array.isArray(p.dating_type)
+    ? p.dating_type
+        .map(value => optionLabel(DATING_TYPE_OPTIONS, value))
+        .filter((label): label is string => Boolean(label))
+    : []
+  const relationshipGoal = recordLabel(RELATIONSHIP_GOAL_LABELS, p.relationship_goal)
+  const smoking = recordLabel(SMOKING_LABELS, p.smoking)
+  const drinking = recordLabel(DRINKING_LABELS, p.drinking)
+  const availability = arrayLabels(AVAILABILITY_LABELS, p.availability)
+
+  if (style) details.push({ label: '生活風格', value: style })
+  if (budget) details.push({ label: '約會預算', value: budget })
+  if (frequency) details.push({ label: '見面頻率', value: frequency })
+  if (datingTypes.length) details.push({ label: '約會偏好', chips: datingTypes })
+  if (relationshipGoal) details.push({ label: '關係目標', value: relationshipGoal })
+  if (smoking) details.push({ label: '抽菸', value: smoking })
+  if (drinking) details.push({ label: '飲酒', value: drinking })
+  if (p.car_owner !== null && p.car_owner !== undefined) {
+    details.push({ label: '自備車', value: p.car_owner ? '有自備車' : '未自備車' })
+  }
+  if (availability.length) details.push({ label: '可約時間', chips: availability })
+
+  return details
+})
 
 // ── 載入 ──────────────────────────────────────────────────
 onMounted(() => {
@@ -409,6 +506,30 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <!-- 詳細資料 -->
+      <section v-if="profileDetails.length" class="profile-details">
+        <h3 class="profile-details__title">詳細資料</h3>
+        <div class="profile-details__grid">
+          <div
+            v-for="item in profileDetails"
+            :key="item.label"
+            class="profile-details__item"
+          >
+            <span class="profile-details__label">{{ item.label }}</span>
+            <span v-if="item.value" class="profile-details__value">{{ item.value }}</span>
+            <div v-else class="profile-details__chips">
+              <span
+                v-for="chip in item.chips"
+                :key="chip"
+                class="profile-details__chip"
+              >
+                {{ chip }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- 個人簡介（可摺疊） -->
       <section v-if="profile.introduction" class="profile-bio">
@@ -866,6 +987,72 @@ onMounted(async () => {
   background: #FFF0F3;
   color: #F0294E;
   border: 1.5px solid #FECDD3;
+}
+
+/* ── Details ───────────────────────────────────────────────── */
+.profile-details {
+  padding: 0 16px;
+  margin-top: 16px;
+}
+
+.profile-details__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0F172A;
+  margin-bottom: 10px;
+}
+
+.profile-details__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-details__item {
+  min-height: 62px;
+  padding: 10px 12px;
+  border: 1px solid #E8ECF0;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.profile-details__label {
+  font-size: 11px;
+  color: #94A3B8;
+  line-height: 1.2;
+}
+
+.profile-details__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0F172A;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.profile-details__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-details__chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #F8FAFC;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 /* ── Bio ───────────────────────────────────────────────────── */

@@ -20,6 +20,15 @@ export interface UserProfileData {
   height: number | null
   job: string | null
   education: string | null
+  style: string | null
+  dating_budget: string | null
+  dating_frequency: string | null
+  dating_type: string[] | null
+  relationship_goal: string | null
+  smoking: string | null
+  drinking: string | null
+  car_owner: boolean | null
+  availability: string[] | null
   photos: { id: number; url: string; is_avatar: boolean; order: number }[]
   email_verified: boolean
   phone_verified: boolean
