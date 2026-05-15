@@ -29,12 +29,14 @@ class PointPackageSeeder extends Seeder
             );
         }
 
-        // F40 點數系統 system_settings（7 筆）
+        // F40 點數系統 system_settings（9 筆）
         $settings = [
             ['key_name' => 'point_cost_stealth',            'value' => '10', 'value_type' => 'integer', 'description' => '隱身模式 24h 消費點數'],
             ['key_name' => 'point_cost_reverse_msg',        'value' => '5',  'value_type' => 'integer', 'description' => '逆區間訊息消費點數'],
             ['key_name' => 'point_cost_super_like',         'value' => '3',  'value_type' => 'integer', 'description' => '超級讚消費點數'],
             ['key_name' => 'point_cost_broadcast_per_user', 'value' => '2',  'value_type' => 'integer', 'description' => '廣播每位接收者消費點數'],
+            ['key_name' => 'point_cost_profile_details',    'value' => '5',  'value_type' => 'integer', 'description' => 'F40-d 詳細資料 24h 通行證消費點數'],
+            ['key_name' => 'profile_details_duration_hours','value' => '24', 'value_type' => 'integer', 'description' => 'F40-d 詳細資料通行證持續時數'],
             ['key_name' => 'broadcast_user_daily_limit',    'value' => '1',  'value_type' => 'integer', 'description' => '用戶每日廣播次數上限'],
             ['key_name' => 'broadcast_user_max_recipients', 'value' => '50', 'value_type' => 'integer', 'description' => '每次廣播最多接收人數'],
             ['key_name' => 'stealth_duration_hours',        'value' => '24', 'value_type' => 'integer', 'description' => '隱身持續時數'],
@@ -47,6 +49,6 @@ class PointPackageSeeder extends Seeder
             );
         }
 
-        $this->command->info('  ✓ PointPackageSeeder: 10 packages + 7 settings upserted');
+        $this->command->info('  ✓ PointPackageSeeder: 10 packages + 9 settings upserted');
     }
 }

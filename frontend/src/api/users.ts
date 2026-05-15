@@ -20,15 +20,16 @@ export interface UserProfileData {
   height: number | null
   job: string | null
   education: string | null
-  style: string | null
-  dating_budget: string | null
-  dating_frequency: string | null
-  dating_type: string[] | null
-  relationship_goal: string | null
-  smoking: string | null
-  drinking: string | null
-  car_owner: boolean | null
-  availability: string[] | null
+  // F27 detail fields — only returned when `details_unlocked` is true
+  style?: string | null
+  dating_budget?: string | null
+  dating_frequency?: string | null
+  dating_type?: string[] | null
+  relationship_goal?: string | null
+  smoking?: string | null
+  drinking?: string | null
+  car_owner?: boolean | null
+  availability?: string[] | null
   photos: { id: number; url: string; is_avatar: boolean; order: number }[]
   email_verified: boolean
   phone_verified: boolean
@@ -37,7 +38,24 @@ export interface UserProfileData {
   last_active_at: string | null
   is_favorited: boolean
   is_blocked: boolean
+  details_unlocked: boolean
   created_at: string
+}
+
+// ── F40-d 詳細資料通行證解鎖回應 ──────────────────────────
+export interface UnlockDetailsResponse {
+  details_pass_until: string
+  duration_hours: number
+  points_deducted: number
+  points_balance: number
+}
+
+export async function unlockProfileDetails(): Promise<UnlockDetailsResponse> {
+  const res = await client.post<{
+    success: boolean
+    data: UnlockDetailsResponse
+  }>('/me/unlock-details')
+  return res.data.data
 }
 
 // ── 搜尋用戶（探索頁） ────────────────────────────────────

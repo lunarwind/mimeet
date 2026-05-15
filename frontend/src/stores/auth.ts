@@ -20,6 +20,8 @@ export interface AuthUser {
   points_balance?: number
   stealth_until?: string | null
   stealth_active?: boolean
+  details_pass_until?: string | null
+  details_pass_active?: boolean
   subscription?: {
     plan_slug?: string | null
     plan_name?: string | null

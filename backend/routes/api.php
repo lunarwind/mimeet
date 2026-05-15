@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\PaymentCallbackController;
 use App\Http\Controllers\Api\V1\PointController;
 use App\Http\Controllers\Api\V1\StealthController;
+use App\Http\Controllers\Api\V1\ProfileDetailsPassController;
 use App\Http\Controllers\Api\V1\SuperLikeController;
 use App\Http\Controllers\Api\V1\UserBroadcastController;
 use App\Http\Controllers\Api\V1\SiteConfigController;
@@ -200,6 +201,11 @@ Route::prefix('api/v1')->group(function () {
         Route::get('me/stealth', [StealthController::class, 'status']);
         Route::post('me/stealth', [StealthController::class, 'activate']);
         Route::delete('me/stealth', [StealthController::class, 'deactivate']);
+    });
+
+    // ─── F40-d 詳細資料通行證 (authenticated) ─────────────────────
+    Route::middleware(['auth:sanctum', 'check.suspended'])->group(function () {
+        Route::post('me/unlock-details', [ProfileDetailsPassController::class, 'activate']);
     });
 
     // ─── FCM Push Token (B-003/H-004) ─────────────────────────────

@@ -116,6 +116,7 @@ class User extends Authenticatable
         // F40 points
         'points_balance',
         'stealth_until',
+        'details_pass_until',
     ];
 
     // Admin-only fields (credit_score, status, membership_level, suspended_at,
@@ -160,6 +161,7 @@ class User extends Authenticatable
         'car_owner' => 'boolean',
         'points_balance' => 'integer',
         'stealth_until' => 'datetime',
+        'details_pass_until' => 'datetime',
     ];
 
     public function getPrivacySettingsAttribute($value): array
@@ -185,6 +187,14 @@ class User extends Authenticatable
     public function isStealthActive(): bool
     {
         return $this->stealth_until && $this->stealth_until->isFuture();
+    }
+
+    /**
+     * F40-d 詳細資料通行證是否生效中（details_pass_until 晚於現在）
+     */
+    public function isDetailsPassActive(): bool
+    {
+        return $this->details_pass_until && $this->details_pass_until->isFuture();
     }
 
     public function isInDndPeriod(): bool

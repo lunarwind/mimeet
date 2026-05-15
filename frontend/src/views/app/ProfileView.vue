@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfile'
 import { useDateInviteFromProfile } from '@/composables/useDateInviteFromProfile'
 import DateInviteBottomSheet from '@/components/date/DateInviteBottomSheet.vue'
+import UnlockDetailsModal from '@/components/user/UnlockDetailsModal.vue'
 import { getStyleOptionsByGender } from '@/constants/styleOptions'
 import {
   DATING_TYPE_OPTIONS,
@@ -38,6 +39,7 @@ const {
 const bioExpanded = ref(false)
 const currentPhotoIndex = ref(0)
 const showMoreMenu = ref(false)
+const showUnlockModal = ref(false)
 
 // ── 計算屬性 ──────────────────────────────────────────────
 const creditLevel = computed(() => {
@@ -227,6 +229,16 @@ async function toggleBlock() {
 
 function goBack() {
   router.back()
+}
+
+// ── F40-d 詳細資料解鎖 ──────────────────────────────────────
+function goShopUpgrade() {
+  router.push('/app/shop')
+}
+
+async function handleUnlockSuccess() {
+  // 解鎖成功後 refetch profile，server 端會回傳 details_unlocked: true 並含 9 個欄位
+  await fetchProfile(userId.value)
 }
 
 // ── F40-c 超級讚 ──────────────────────────────────────────
@@ -507,8 +519,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 詳細資料 -->
-      <section v-if="profileDetails.length" class="profile-details">
+      <!-- 詳細資料（解鎖後顯示） -->
+      <section v-if="profile.details_unlocked && profileDetails.length" class="profile-details">
         <h3 class="profile-details__title">詳細資料</h3>
         <div class="profile-details__grid">
           <div
@@ -530,6 +542,40 @@ onMounted(async () => {
           </div>
         </div>
       </section>
+
+      <!-- 詳細資料（鎖定狀態，僅看別人時顯示） -->
+      <section
+        v-else-if="!profile.details_unlocked && !isSelf"
+        class="profile-details profile-details--locked"
+      >
+        <h3 class="profile-details__title">詳細資料</h3>
+        <div class="profile-details__locked">
+          <p class="profile-details__locked-text">升級可看更多</p>
+          <p class="profile-details__locked-sub">
+            付費會員 / 完成進階驗證的女性 / 解鎖通行證 可查看
+          </p>
+          <div class="profile-details__locked-actions">
+            <button
+              class="profile-details__locked-btn profile-details__locked-btn--primary"
+              @click="goShopUpgrade"
+            >
+              升級會員
+            </button>
+            <button
+              class="profile-details__locked-btn profile-details__locked-btn--secondary"
+              @click="showUnlockModal = true"
+            >
+              使用 5 點解鎖 24h
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解鎖 modal -->
+      <UnlockDetailsModal
+        v-model="showUnlockModal"
+        @success="handleUnlockSuccess"
+      />
 
       <!-- 個人簡介（可摺疊） -->
       <section v-if="profile.introduction" class="profile-bio">
@@ -1053,6 +1099,66 @@ onMounted(async () => {
   font-weight: 600;
   line-height: 1.3;
   overflow-wrap: anywhere;
+}
+
+/* F40-d Locked placeholder（升級可看更多） */
+.profile-details__locked {
+  padding: 20px 16px;
+  border: 1px dashed #CBD5E1;
+  border-radius: 12px;
+  background: #F8FAFC;
+  text-align: center;
+}
+
+.profile-details__locked-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 4px;
+}
+
+.profile-details__locked-sub {
+  font-size: 12px;
+  color: #94A3B8;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.profile-details__locked-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.profile-details__locked-btn {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: filter 0.15s;
+}
+
+.profile-details__locked-btn--primary {
+  background: #F0294E;
+  color: #fff;
+}
+
+.profile-details__locked-btn--primary:hover {
+  filter: brightness(0.95);
+}
+
+.profile-details__locked-btn--secondary {
+  background: #fff;
+  color: #F0294E;
+  border-color: #F0294E;
+}
+
+.profile-details__locked-btn--secondary:hover {
+  background: #FFF5F7;
 }
 
 /* ── Bio ───────────────────────────────────────────────────── */
