@@ -400,6 +400,8 @@ class AuthController extends Controller
                 'points_balance' => (int) ($user->points_balance ?? 0),
                 'stealth_until' => $user->stealth_until?->toISOString(),
                 'stealth_active' => $user->isStealthActive(),
+                'details_pass_until' => $user->details_pass_until?->toISOString(),
+                'details_pass_active' => $user->isDetailsPassActive(),
                 'subscription' => $subscriptionData,
             ]],
         ]);

@@ -325,43 +325,82 @@ class UserController extends Controller
             }
         }
 
+        // F40-d 詳細資料 9 個欄位的條件遮罩（details_unlocked = 是否解鎖）
+        $detailsUnlocked = $this->canSeeProfileDetails($request->user(), $user);
+
+        $payload = [
+            'id' => $user->id,
+            'nickname' => $user->nickname,
+            'gender' => $user->gender,
+            'age' => $user->birth_date ? $user->birth_date->age : null,
+            'avatar' => $user->avatar_url,
+            'introduction' => $user->bio,
+            'location' => $user->location,
+            'height' => $user->height,
+            'weight' => $user->weight,
+            'job' => $user->occupation,
+            'education' => $user->education,
+            'membership_level' => $user->membership_level,
+            'credit_score' => $user->credit_score,
+            'email_verified' => (bool) $user->email_verified,
+            'phone_verified' => (bool) $user->phone_verified,
+            'advanced_verified' => (bool) ($user->advanced_verified ?? false),
+            'online_status' => $user->last_active_at && $user->last_active_at->gt(now()->subMinutes(5)) ? 'online' : 'offline',
+            'last_active_at' => $user->last_active_at?->toIso8601String(),
+            'is_favorited' => $request->user() ? \DB::table('user_follows')->where('follower_id', $request->user()->id)->where('following_id', $user->id)->exists() : false,
+            'is_blocked' => $request->user() ? UserBlock::where('blocker_id', $request->user()->id)->where('blocked_id', $user->id)->exists() : false,
+            'photos' => $this->buildProfilePhotos($user),
+            'details_unlocked' => $detailsUnlocked,
+            'created_at' => $user->created_at?->toIso8601String(),
+        ];
+
+        // F27 detail fields — 僅在 details_unlocked = true 時回傳
+        if ($detailsUnlocked) {
+            $payload['style'] = $user->style;
+            $payload['dating_budget'] = $user->dating_budget;
+            $payload['dating_frequency'] = $user->dating_frequency;
+            $payload['dating_type'] = $user->dating_type;
+            $payload['relationship_goal'] = $user->relationship_goal;
+            $payload['smoking'] = $user->smoking;
+            $payload['drinking'] = $user->drinking;
+            $payload['car_owner'] = $user->car_owner;
+            $payload['availability'] = $user->availability;
+        }
+
         return response()->json([
             'success' => true, 'code' => 'USER_DETAIL', 'message' => 'OK',
-            'data' => ['user' => [
-                'id' => $user->id,
-                'nickname' => $user->nickname,
-                'gender' => $user->gender,
-                'age' => $user->birth_date ? $user->birth_date->age : null,
-                'avatar' => $user->avatar_url,
-                'introduction' => $user->bio,
-                'location' => $user->location,
-                'height' => $user->height,
-                'weight' => $user->weight,
-                'job' => $user->occupation,
-                'education' => $user->education,
-                // F27 profile fields
-                'style' => $user->style,
-                'dating_budget' => $user->dating_budget,
-                'dating_frequency' => $user->dating_frequency,
-                'dating_type' => $user->dating_type,
-                'relationship_goal' => $user->relationship_goal,
-                'smoking' => $user->smoking,
-                'drinking' => $user->drinking,
-                'car_owner' => $user->car_owner,
-                'availability' => $user->availability,
-                'membership_level' => $user->membership_level,
-                'credit_score' => $user->credit_score,
-                'email_verified' => (bool) $user->email_verified,
-                'phone_verified' => (bool) $user->phone_verified,
-                'advanced_verified' => (bool) ($user->advanced_verified ?? false),
-                'online_status' => $user->last_active_at && $user->last_active_at->gt(now()->subMinutes(5)) ? 'online' : 'offline',
-                'last_active_at' => $user->last_active_at?->toIso8601String(),
-                'is_favorited' => $request->user() ? \DB::table('user_follows')->where('follower_id', $request->user()->id)->where('following_id', $user->id)->exists() : false,
-                'is_blocked' => $request->user() ? UserBlock::where('blocker_id', $request->user()->id)->where('blocked_id', $user->id)->exists() : false,
-                'photos' => $this->buildProfilePhotos($user),
-                'created_at' => $user->created_at?->toIso8601String(),
-            ]],
+            'data' => ['user' => $payload],
         ]);
+    }
+
+    /**
+     * F40-d 是否可看詳細資料：
+     *  - 看自己 → 永遠可看
+     *  - 女性 viewer 且 advanced_verified → 可看
+     *  - 男性 viewer 且當前有「未過期」訂閱（含 trial 期內）→ 可看
+     *  - 任何 viewer 有 details_pass_until 未過期 → 可看
+     *  - 其餘 → 不可看
+     */
+    private function canSeeProfileDetails(?\App\Models\User $viewer, \App\Models\User $target): bool
+    {
+        if (!$viewer) return false;
+        if ($viewer->id === $target->id) return true;
+
+        if ($viewer->gender === 'female' && (bool) ($viewer->advanced_verified ?? false)) {
+            return true;
+        }
+
+        if ($viewer->gender === 'male') {
+            $hasActiveSub = \App\Models\Subscription::where('user_id', $viewer->id)
+                ->where('status', 'active')
+                ->where('expires_at', '>', now())
+                ->exists();
+            if ($hasActiveSub) return true;
+        }
+
+        if ($viewer->isDetailsPassActive()) return true;
+
+        return false;
     }
 
     public function uploadPhoto(Request $request): JsonResponse

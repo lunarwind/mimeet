@@ -408,6 +408,23 @@ Auto-grow：依內容自動延伸，最大 300px
 > 生活風格、約會預算、見面頻率、約會偏好、關係目標、抽菸、飲酒、自備車、可約時間。
 > 單值欄位用 label + value；多值欄位（約會偏好、可約時間）用 chips；未填欄位不顯示。
 
+> **v1.5 更新 — 詳細資料區 F40-d 鎖定狀態（2026-05-15）**：
+> 後端 API `details_unlocked: false` 時，原 2 欄 grid 整段以 **locked placeholder** 取代：
+> - 容器：白底虛線邊框 `1px dashed #CBD5E1`、淺灰背景 `#F8FAFC`、padding 20px 16px、border-radius 12px、文字置中
+> - 主文案：「升級可看更多」（15px，font-weight 600，`#334155`）
+> - 副文案：「付費會員 / 完成進階驗證的女性 / 解鎖通行證 可查看」（12px，`#94A3B8`）
+> - CTA 雙按鈕（flex row, gap 8px, justify-center）：
+>   - 「升級會員」Primary：`#F0294E` 填色，白字，點擊跳 `/app/shop`
+>   - 「使用 5 點解鎖 24h」Secondary：白底、`#F0294E` 邊框與文字，點擊開啟解鎖確認 Modal
+> - **不模糊既有區塊**；只渲染 placeholder（與一般 v-if/v-else 切換）
+>
+> 解鎖確認 Modal（BaseModal 標題「解鎖詳細資料」）：
+> - 主文案：「消費 **5 點** 即可在 **24 小時內** 查看任何用戶的詳細資料」
+> - 餘額列：當前點數餘額（從 authStore 讀取，灰色背景 row）
+> - 餘額不足提示：橙色 warn banner「點數不足，請先儲值」
+> - Footer：取消（ghost）/ 確認消費 5 點（primary，loading 時 disabled 並改文案「處理中…」）/ 餘額不足時 primary 改為「前往儲值」跳 `/app/shop`
+> - 後端拒絕重複購買時（`DETAILS_PASS_ACTIVE`）顯示 inline error「通行證仍有效，請於到期後再購買。」
+
 背景：白色
 圓角：14px（--radius-lg）
 陰影：--shadow-card

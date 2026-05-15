@@ -819,6 +819,25 @@ else
 fi
 
 echo ""
+echo "-- F40-d profile details lock guards (14az) --"
+
+# 14az-1: ProfileView 詳細資料 section 必須 v-if 在 details_unlocked 上（防忘記擋）
+if ! grep -q "v-if=\"profile.details_unlocked" frontend/src/views/app/ProfileView.vue; then
+  echo "  [FAIL] 14az-1: ProfileView.vue 詳細資料 section 必須以 v-if=\"profile.details_unlocked && ...\" 守護（防退化）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14az-1 ProfileView.vue 詳細資料 section 受 details_unlocked 守護"
+fi
+
+# 14az-2: UserController::show 必須含 canSeeProfileDetails 條件遮罩
+if ! grep -q "canSeeProfileDetails\|details_unlocked" backend/app/Http/Controllers/Api/V1/UserController.php; then
+  echo "  [FAIL] 14az-2: UserController::show 必須含 details_unlocked 條件遮罩（防後端洩漏 9 個 F27 欄位）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14az-2 UserController::show 含 details_unlocked 遮罩邏輯"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

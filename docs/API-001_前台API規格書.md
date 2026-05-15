@@ -635,6 +635,16 @@ Authorization: Bearer {access_token}
         }
       ],
       "last_active_at": "2024-12-20T09:15:00Z",
+      "details_unlocked": true,
+      "style": "elegant",
+      "dating_budget": "single_8k_12k",
+      "dating_frequency": "weekly",
+      "dating_type": ["dining"],
+      "relationship_goal": "long_term",
+      "smoking": "never",
+      "drinking": "social",
+      "car_owner": false,
+      "availability": ["weekend"],
       "created_at": "2024-11-15T14:20:00Z"
     }
   }
@@ -647,6 +657,19 @@ Authorization: Bearer {access_token}
 > **歷史**：原規格 §3.1 假設獨立 `user_photos` 表（未實作），§3.3 採 `avatar_slots` JSON 槽位（已實作）。本文件 2026-05-14 統一為 §3.3 模型，photos 響應字段為 avatar_slots 衍生映射（見 audit-B-20260424 Issue #B-003 / audit-G-20260423 Issue G-003）。
 >
 > `stats` 資料目前不包含於此端點回應。
+>
+> **F40-d 詳細資料條件回傳（2026-05-15 起）**：
+> `style` / `dating_budget` / `dating_frequency` / `dating_type` /
+> `relationship_goal` / `smoking` / `drinking` / `car_owner` / `availability`
+> 這 9 個 F27 欄位**僅在 `details_unlocked = true` 時出現**；否則整段省略。
+>
+> `details_unlocked: boolean` 一律出現，前端據此判斷渲染詳細資料 section 或鎖定 placeholder。
+>
+> 解鎖條件（任一成立即 unlocked）：
+> 1. viewer 即為 target（看自己）
+> 2. viewer.gender == female 且 advanced_verified == true（Lv1.5+）
+> 3. viewer.gender == male 且當前有未過期、status='active' 的訂閱（含 trial 期內）
+> 4. viewer.details_pass_until 未過期（24h 通行證未到期，見 §11.7）
 
 #### 3.1.2 更新用戶資料
 ```http
@@ -3789,6 +3812,63 @@ Authorization: Bearer {access_token}
 
 ---
 
+### 11.7 詳細資料通行證（F40-d）
+
+> 設計：時間制通行證——扣 `point_cost_profile_details` 點（預設 5），24 小時內看任意用戶的詳細資料 9 欄位（§3.1.1）。
+> 跟 §11.5 stealth 共用 `users` 表單欄位模型，欄位 `details_pass_until: timestamp nullable`。
+>
+> **解鎖 9 個欄位的免費條件**：見 §3.1.1 結尾「F40-d 詳細資料條件回傳」。本端點為其餘人付費取得 24h 通行證的管道。
+
+#### 11.7.1 啟用通行證
+```http
+POST /api/v1/me/unlock-details
+Authorization: Bearer {access_token}
+```
+
+**規則：**
+- 扣 `point_cost_profile_details`（預設 5）點 → 設 `details_pass_until = now() + profile_details_duration_hours`（預設 24 小時）
+- **方案 B：拒絕重複購買**——若 `details_pass_until` 仍未過期，回 422 `DETAILS_PASS_ACTIVE` + 剩餘秒數，**不延長、不扣點**
+- 餘額不足 → 422 `INSUFFICIENT_POINTS`
+
+**成功回應 (200)：**
+```json
+{
+  "success": true,
+  "message": "詳細資料通行證已啟用",
+  "data": {
+    "details_pass_until": "2026-05-16T17:35:00Z",
+    "duration_hours": 24,
+    "points_deducted": 5,
+    "points_balance": 95
+  }
+}
+```
+
+**422 通行證仍有效：**
+```json
+{
+  "success": false,
+  "code": "DETAILS_PASS_ACTIVE",
+  "message": "通行證仍有效，請於到期後再購買。",
+  "data": {
+    "details_pass_until": "2026-05-16T17:35:00Z",
+    "remaining_seconds": 64800
+  }
+}
+```
+
+**422 餘額不足：**
+```json
+{
+  "success": false,
+  "code": "INSUFFICIENT_POINTS",
+  "message": "點數不足：需要 5 點，目前 3 點",
+  "data": { "required": 5, "current_balance": 3 }
+}
+```
+
+---
+
 ### 11.8 用戶廣播（F41）
 
 > 設計：以發送者**本人名義**發送私訊給符合條件的對象（非系統通知）。跟後台 A14 廣播（/admin/broadcasts）完全獨立，表 `user_broadcasts`、Job `ProcessUserBroadcast`。
@@ -3881,6 +3961,8 @@ GET /api/v1/broadcasts/my
 | `points_balance` | 目前點數餘額 |
 | `stealth_until` | F42 隱身到期時間（ISO 8601）|
 | `stealth_active` | 是否目前為隱身狀態 |
+| `details_pass_until` | F40-d 詳細資料通行證到期時間（ISO 8601，無則 null）|
+| `details_pass_active` | 是否目前為通行證啟用中 |
 | `subscription` | 當前有效訂閱（含 `plan_name` / `expires_at` / `days_remaining` / `auto_renew`），無則為 null |
 
 ---
