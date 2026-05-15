@@ -246,6 +246,11 @@ onMounted(async () => {
         <div class="profile-gallery__viewport">
           <img
             :src="allPhotos[currentPhotoIndex]"
+            aria-hidden="true"
+            class="profile-gallery__img-bg"
+          />
+          <img
+            :src="allPhotos[currentPhotoIndex]"
             :alt="`${profile.nickname} 的照片 ${currentPhotoIndex + 1}`"
             class="profile-gallery__img"
           />
@@ -633,10 +638,23 @@ onMounted(async () => {
   background: #E2E8F0;
 }
 
-.profile-gallery__img {
+.profile-gallery__img-bg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform: scale(1.1);
+  filter: blur(40px) brightness(0.9);
+  display: block;
+}
+
+.profile-gallery__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
 }
 
