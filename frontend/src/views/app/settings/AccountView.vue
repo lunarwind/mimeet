@@ -17,7 +17,7 @@ import {
 const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
-const { isUploading, uploadAvatar: _uploadAvatar, uploadPhoto, error: uploadError } = useImageUpload()
+const { isUploading } = useImageUpload()
 
 // ── 表單資料 ──────────────────────────────────────────────
 const form = ref({
@@ -59,7 +59,6 @@ const avatarUrl = ref<string | null>(null)
 const avatarSlots = ref<string[]>([])
 const showCropModal = ref(false)
 const cropSrc = ref<string | null>(null)
-const photos = ref<string[]>([])
 const isDirty = ref(false)
 const isSaving = ref(false)
 
@@ -328,34 +327,6 @@ async function deleteAvatarSlot(url: string) {
     const e = err as { response?: { data?: { error?: { message?: string } } } }
     uiStore.showToast(e?.response?.data?.error?.message ?? '刪除失敗', 'error')
   }
-}
-
-// ── 相冊上傳 ──────────────────────────────────────────────
-const photoInput = ref<HTMLInputElement | null>(null)
-
-function triggerPhotoUpload() {
-  if (photos.value.length >= 3) {
-    uiStore.showToast('最多 3 張相冊照片', 'warning')
-    return
-  }
-  photoInput.value?.click()
-}
-
-async function handlePhotoChange(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  const result = await uploadPhoto(file)
-  if (result) {
-    photos.value.push(result.url)
-    isDirty.value = true
-  } else if (uploadError.value) {
-    uiStore.showToast(uploadError.value, 'error')
-  }
-}
-
-function removePhoto(index: number) {
-  photos.value.splice(index, 1)
-  isDirty.value = true
 }
 
 // ── 儲存 ──────────────────────────────────────────────────
