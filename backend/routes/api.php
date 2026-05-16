@@ -368,7 +368,6 @@ Route::prefix('api/v1')->group(function () {
                 Route::get('/stats/chart', [StatsController::class, 'chart']);
                 Route::get('/stats/export', [StatsController::class, 'export']);
             });
-            Route::get('/stats/server-metrics', [StatsController::class, 'serverMetrics'])->middleware('admin.permission:settings.roles');
             Route::middleware('admin.permission:settings.pricing')->group(function () {
                 Route::get('/point-packages', [AdminPointController::class, 'packages']);
                 Route::patch('/point-packages/{id}', [AdminPointController::class, 'updatePackage']);
