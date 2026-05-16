@@ -206,12 +206,6 @@ check() {
   fi
   ```
 
-### 1.14 14ah — IMPLEMENTATION_STATUS 一致性（待實作）
-
-- **語意**（草案）：當 PRD / API-001 / API-002 中標 `[實作]` / `Phase 1` 的功能與 `IMPLEMENTATION_STATUS.md` 條目不一致時，pre-merge 提示。
-- **狀態**：**待實作**。`IMPLEMENTATION_STATUS.md` 結構需先標準化才能機械比對。
-- **追蹤**：見 `docs/IMPLEMENTATION_STATUS.md` 的 follow-up 條目。
-
 ### 1.19 14ax — PR-Dataset-Cleanup migration 表分類守護(2026-05-09 新增)
 
 #### 14ax — 每張 migration 建立的表必須分類在 TRUNCATE_TABLES 或 PRESERVE whitelist
@@ -362,5 +356,4 @@ check() {
 | `CLAUDE.md` | 專案總則，包含部署流程、API contract 一致性、敏感檔案、四項禁令 |
 | `scripts/pre-merge-check.sh` | 守護實作 |
 | `scripts/check-env.sh` | .env 必填變數檢查（被 pre-merge-check 呼叫） |
-| `docs/IMPLEMENTATION_STATUS.md` | 實作狀態追蹤；14ah 機械比對守護待此檔結構標準化後實作 |
 | `AGENTS.md` | 多 agent 協作規範，含 API Contract 變更回滾流程 |
