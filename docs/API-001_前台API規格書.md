@@ -2473,31 +2473,6 @@ end_date:   2024-12-31   （必填）
 ```
 **回應：**`Content-Type: text/csv`，檔名 `{metric}_{start}_{end}.csv`
 
-```http
-# 伺服器流量參數圖表
-GET /api/v1/admin/stats/server-metrics
-Authorization: Bearer {admin_token}
-```
-**查詢參數：**
-```
-range: today | month
-```
-**成功回應 (200)：**
-```json
-{
-  "success": true,
-  "data": {
-    "range": "today",
-    "x_axis": "hour",
-    "series": [
-      { "label": "bandwidth_mbps",  "data": [12.3, 15.6, "..."] },
-      { "label": "requests_per_min","data": [1200, 1450, "..."] },
-      { "label": "cpu_usage_pct",   "data": [35, 42, "..."] },
-      { "label": "memory_usage_pct","data": [58, 61, "..."] }
-    ]
-  }
-}
-```
 
 ---
 

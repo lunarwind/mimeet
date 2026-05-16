@@ -758,8 +758,6 @@ TopBar：
   右（1/3 寬）：圓餅圖 — 男/女比例
 
 [匯出按鈕] 右上角，CSV/Excel 格式選擇
-
-[伺服器狀態] 底部，CPU/Memory 進度條（從 API 拉取）
 ```
 
 #### 會員列表（`/admin/members`）

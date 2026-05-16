@@ -318,41 +318,6 @@ GET /api/v1/admin/stats/export
 
 ---
 
-### 3.4 取得伺服器指標
-
-```
-GET /api/v1/admin/stats/server-metrics
-```
-
-> 所需權限：`settings.roles`（super_admin 專屬）
-
-**成功回應 200：**
-```json
-{
-  "success": true,
-  "data": {
-    "db_version": "8.0.33",
-    "load_avg": { "1m": 0.42, "5m": 0.31, "15m": 0.28 },
-    "disk": {
-      "total_gb": 120.0,
-      "free_gb": 84.3,
-      "used_percent": 29.8
-    },
-    "redis": {
-      "version": "7.0.11",
-      "used_memory_human": "12.50M",
-      "connected_clients": 4
-    },
-    "php_version": "8.2.12",
-    "timestamp": "2025-01-15T10:30:00Z"
-  }
-}
-```
-
-> **實作說明：** 此端點呼叫 shell 指令 (`df`, `free`, `top`) 並從 Redis 讀取 Horizon 統計，回傳即時數據。請在前端加 30 秒 polling，不建議更頻繁。
-
----
-
 ## 4. 會員管理 API
 
 > 所需權限：`members.view`（查看）、`members.edit`（操作）、`members.delete`（刪除）
@@ -2712,7 +2677,6 @@ GET /api/v1/admin/settings/system/app-mode
 | 摘要統計 | `/stats/summary` | GET | 已登入 |
 | 圖表資料 | `/stats/chart` | GET | 已登入 |
 | 匯出統計 | `/stats/export` | GET | 已登入 |
-| 伺服器指標 | `/stats/server-metrics` | GET | super_admin |
 | 會員列表 | `/members` | GET | members.view |
 | 會員詳情 | `/members/{id}` | GET | members.view |
 | 會員操作 | `/members/{id}/actions` | PATCH | members.edit |

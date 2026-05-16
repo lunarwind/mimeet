@@ -251,48 +251,4 @@ class StatsController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    /**
-     * GET /admin/stats/server-metrics — basic server health snapshot
-     */
-    public function serverMetrics(): JsonResponse
-    {
-        $dbVersion = DB::selectOne('SELECT VERSION() as version')?->version ?? 'unknown';
-
-        $load = null;
-        if (function_exists('sys_getloadavg')) {
-            $load = sys_getloadavg();
-        }
-
-        $diskTotal = disk_total_space('/');
-        $diskFree = disk_free_space('/');
-
-        $redisInfo = null;
-        try {
-            $redis = app('redis')->connection();
-            $info = $redis->info();
-            $redisInfo = [
-                'version' => $info['redis_version'] ?? null,
-                'used_memory_human' => $info['used_memory_human'] ?? null,
-                'connected_clients' => $info['connected_clients'] ?? null,
-            ];
-        } catch (\Throwable) {
-            $redisInfo = ['error' => 'unavailable'];
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'db_version' => $dbVersion,
-                'load_avg' => $load ? ['1m' => round($load[0], 2), '5m' => round($load[1], 2), '15m' => round($load[2], 2)] : null,
-                'disk' => [
-                    'total_gb' => $diskTotal ? round($diskTotal / 1073741824, 1) : null,
-                    'free_gb' => $diskFree ? round($diskFree / 1073741824, 1) : null,
-                    'used_percent' => ($diskTotal && $diskFree) ? round(($diskTotal - $diskFree) / $diskTotal * 100, 1) : null,
-                ],
-                'redis' => $redisInfo,
-                'php_version' => PHP_VERSION,
-                'timestamp' => now()->toISOString(),
-            ],
-        ]);
-    }
 }
