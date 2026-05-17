@@ -931,6 +931,30 @@ else
 fi
 
 echo ""
+echo "-- Laravel runtime cache must not be tracked (14bg) --"
+
+# 14bg：禁止 Laravel runtime cache 檔被 git tracked
+# 2026-05-17 staging-deploy [1/7] 失敗根因：services.php / packages.php 被誤 tracked，
+# staging artisan *:cache 重寫該檔，下次 git pull 視為衝突 abort。
+# 正向：bootstrap/cache/ 下不可有任何 *.php 被 tracked
+TRACKED_CACHE_PHP=$(git ls-files backend/bootstrap/cache/ | grep -E '\.php$' || true)
+if [ -n "$TRACKED_CACHE_PHP" ]; then
+  echo "  [FAIL] 14bg: backend/bootstrap/cache/ 下不可有 *.php 被 git tracked（runtime artifact, 由 artisan *:cache 動態生成）"
+  echo "         currently tracked: $TRACKED_CACHE_PHP"
+  echo "         修法：git rm --cached <files> 並確認 .gitignore 已含 backend/bootstrap/cache/*.php"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bg bootstrap/cache/ 無 *.php 被 tracked"
+fi
+# 反向：.gitignore 必須含對應規則（防有人 untrack 但忘 .gitignore，下次重新 add 又中招）
+if ! grep -qF 'backend/bootstrap/cache/*.php' .gitignore; then
+  echo "  [FAIL] 14bg-2: .gitignore 必須含 'backend/bootstrap/cache/*.php' 規則（防 runtime cache 再次被 tracked）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bg-2 .gitignore 含 bootstrap/cache/*.php 規則"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
