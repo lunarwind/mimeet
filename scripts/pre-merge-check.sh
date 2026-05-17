@@ -1009,15 +1009,56 @@ else
   echo "  [OK] 14bh-6 frontend/src/views/app/ 無 hardcode padding-bottom: 32px/64px"
 fi
 
-# 14bh-7：BottomNav.vue 的 .bottom-nav height 不可使用 var(--bottom-nav-height)
+# 14bh-7：BottomNav.vue base 層 .bottom-nav height 不可使用 var(--bottom-nav-height)
 # Tailwind v4 box-sizing: border-box 會導致 nav-items 從 box 頂端溢出 ~11px on iOS（2026-05-17 根因）
-# 必須用 var(--app-bottom-inset)，讓 box 含 safe-area，content 區回到 64px 容納 items
-if grep -E "^\s*height:\s*var\(--bottom-nav-height\)\s*;" frontend/src/components/layout/BottomNav.vue > /dev/null; then
-  echo "  [FAIL] 14bh-7: BottomNav.vue 的 .bottom-nav height 不可使用 var(--bottom-nav-height)"
+# base 層必須用 var(--app-bottom-inset)，讓 box 含 safe-area，content 區回到 64px 容納 items
+# 注意：本守護用 awk 只切 base 層 `.bottom-nav { ... }` 區段（不含 @media block）—— @media 1440px+
+# 內 var(--bottom-nav-height) 是合法用法，因 variables.css 已 override 為 68px 且 desktop env=0 不引發溢出
+BASE_BOTTOM_NAV_BLOCK=$(awk '
+  /^\.bottom-nav\s*\{/ { in_block=1 }
+  in_block { print; if (/^\}/) exit }
+' frontend/src/components/layout/BottomNav.vue)
+if echo "$BASE_BOTTOM_NAV_BLOCK" | grep -E "^\s*height:\s*var\(--bottom-nav-height\)\s*;" > /dev/null; then
+  echo "  [FAIL] 14bh-7: BottomNav.vue base 層 .bottom-nav height 不可使用 var(--bottom-nav-height)"
   echo "         必須用 var(--app-bottom-inset)，否則 iOS Safari 上 nav-items 會視覺溢出 box 頂端 ~11px"
   ERRORS=$((ERRORS + 1))
 else
-  echo "  [OK] 14bh-7 BottomNav.vue .bottom-nav height 未退回 var(--bottom-nav-height)"
+  echo "  [OK] 14bh-7 BottomNav.vue base 層 height 未退回 var(--bottom-nav-height)"
+fi
+
+# 14bh-8：BottomNav.vue @media (width>=1440px) 區段不可 hardcode height 或 bottom 數值
+# variables.css 在 1440px+ override --bottom-nav-height 與 --bottom-nav-floating-bottom，
+# BottomNav.vue 該區段必須引用變數，不可寫死 68px / 16px（防退化 + 維持 single source of truth）
+if awk '/@media[^{]*1440/,/^}[[:space:]]*$/' frontend/src/components/layout/BottomNav.vue | \
+   grep -E "(height|bottom):[[:space:]]*[0-9]+px" > /dev/null; then
+  echo "  [FAIL] 14bh-8: BottomNav.vue @media 1440px+ 區段不可 hardcode height/bottom 數值"
+  echo "         必須用 var(--bottom-nav-height) 與 var(--bottom-nav-floating-bottom)"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-8 BottomNav.vue @media 1440px+ 區段引用變數，無 hardcode"
+fi
+
+# 14bh-9：variables.css 必須定義 --bottom-nav-floating-bottom
+if ! grep -q -- "--bottom-nav-floating-bottom" frontend/src/assets/variables.css; then
+  echo "  [FAIL] 14bh-9: variables.css 缺少 --bottom-nav-floating-bottom 變數"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-9 variables.css 含 --bottom-nav-floating-bottom"
+fi
+
+# 14bh-10：variables.css @media (width>=1440px) 必須 override --bottom-nav-height + --bottom-nav-floating-bottom
+MEDIA_OVERRIDE=$(awk '/@media[^{]*1440/,/^}[[:space:]]*$/' frontend/src/assets/variables.css)
+if ! echo "$MEDIA_OVERRIDE" | grep -q -- "--bottom-nav-height"; then
+  echo "  [FAIL] 14bh-10a: variables.css @media 1440px+ 必須 override --bottom-nav-height"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-10a variables.css @media 1440px+ override --bottom-nav-height"
+fi
+if ! echo "$MEDIA_OVERRIDE" | grep -q -- "--bottom-nav-floating-bottom"; then
+  echo "  [FAIL] 14bh-10b: variables.css @media 1440px+ 必須 override --bottom-nav-floating-bottom"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-10b variables.css @media 1440px+ override --bottom-nav-floating-bottom"
 fi
 
 echo ""

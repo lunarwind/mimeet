@@ -16,5 +16,19 @@
   /* BottomNav 視覺高度 + iOS home indicator 安全區（2026-05-17）
      view 自己 padding-bottom 對齊用 --app-bottom-inset，避免 BottomNav 蓋住底部內容 */
   --bottom-nav-height: 64px;
-  --app-bottom-inset: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  --bottom-nav-floating-bottom: 0px;  /* navbar 距 viewport 底的 gap，desktop 浮動式才 > 0 */
+  --app-bottom-inset: calc(
+    var(--bottom-nav-height) +
+    var(--bottom-nav-floating-bottom) +
+    env(safe-area-inset-bottom, 0px)
+  );
+}
+
+/* Desktop ≥1440px：BottomNav 改為浮動式（距 viewport 底 16px gap，bar 高 68px）
+   override 變數後 --app-bottom-inset 自動 resolve 為 84px，所有 view 自動跟著放大預留空間 */
+@media (width >= 1440px) {
+  :root {
+    --bottom-nav-height: 68px;
+    --bottom-nav-floating-bottom: 16px;
+  }
 }
