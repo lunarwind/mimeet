@@ -1064,19 +1064,38 @@ fi
 echo ""
 echo "-- Flex item width: 100% guard (14bi) --"
 
-# 14bi：ProfileView .profile-view base rule 必須含 width: 100%
+# 14bi：直掛 AppShell 且 root 有 margin: 0 auto 的 view 必須含 width: 100%
 # AppShell 是 flex column，當 768px+ 啟用 margin: 0 auto 後，auto margin 會 override
 # align-items: stretch，flex item 寬度退回 content 自然寬度 → 不同 user 寬度不一致（2026-05-18 根因）
-PROFILE_VIEW_BLOCK=$(awk '
-  /^\.profile-view[[:space:]]*\{/ { in_block=1 }
-  in_block { print; if (/^\}/) exit }
-' frontend/src/views/app/ProfileView.vue)
-if ! echo "$PROFILE_VIEW_BLOCK" | grep -qE "^[[:space:]]*width:[[:space:]]*100%"; then
-  echo "  [FAIL] 14bi: .profile-view base rule 缺少 width: 100%"
+# 新增直掛 AppShell + max-width + margin: 0 auto 的 view 時，必須加入下列清單
+BI_FAIL=0
+BI_VIEWS=(
+  "ProfileView.vue|.profile-view"
+  "FavoritesView.vue|.fav-page"
+  "VisitorsView.vue|.vis-page"
+  "settings/VerifyView.vue|.verify-view"
+)
+for entry in "${BI_VIEWS[@]}"; do
+  vue_file="${entry%%|*}"
+  selector="${entry##*|}"
+  path="frontend/src/views/app/${vue_file}"
+  # awk 切該 selector 的 base block（含單行 / 多行寫法，遇到 } 結束）
+  block=$(awk -v sel="${selector}" '
+    index($0, sel "{") || index($0, sel " {") { in_block=1 }
+    in_block { print }
+    in_block && /\}/ { exit }
+  ' "$path")
+  # grep 要求結尾分號，避免註解內出現 "width: 100% xxx" 字串 false-pass
+  if ! echo "$block" | grep -qE "width:[[:space:]]*100%[[:space:]]*;"; then
+    echo "  [FAIL] 14bi: ${path} 的 ${selector} base rule 缺少 width: 100%"
+    BI_FAIL=$((BI_FAIL + 1))
+  fi
+done
+if [ $BI_FAIL -gt 0 ]; then
   echo "         flex item margin auto 會 override stretch，需 width: 100% 強制取 parent 寬度"
-  ERRORS=$((ERRORS + 1))
+  ERRORS=$((ERRORS + BI_FAIL))
 else
-  echo "  [OK] 14bi .profile-view base 含 width: 100%"
+  echo "  [OK] 14bi 全部 4 個直掛 AppShell view base rule 含 width: 100%"
 fi
 
 echo ""
