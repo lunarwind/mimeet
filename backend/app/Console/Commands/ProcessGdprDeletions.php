@@ -36,9 +36,11 @@ class ProcessGdprDeletions extends Command
         $purgedCount = $gdprService->purgeQuarantinedFiles($retentionDays);
         $this->info("Phase 2: Purged {$purgedCount} quarantined file(s) older than {$retentionDays} days.");
 
-        // Phase 3: Hard-delete soft-deleted messages older than retention period
-        $messagesDeleted = $gdprService->purgeDeletedMessages($retentionDays);
-        $this->info("Phase 3: Permanently deleted {$messagesDeleted} soft-deleted message(s) older than {$retentionDays} days.");
+        // Phase 3: Hard-delete recalled messages whose recalled_at is older than retention period.
+        // 2026-05-17：改用 purgeOldRecalledMessages（依 recalled_at），取代 dead code purgeDeletedMessages。
+        // 對應 DEV-001 §6.3.1 兩階段銷毀第二階段。
+        $messagesDeleted = $gdprService->purgeOldRecalledMessages($retentionDays);
+        $this->info("Phase 3: Permanently deleted {$messagesDeleted} recalled message(s) older than {$retentionDays} days.");
 
         // Phase 4: Trim old activity logs
         $logsDeleted = $gdprService->purgeOldActivityLogs($retentionDays);

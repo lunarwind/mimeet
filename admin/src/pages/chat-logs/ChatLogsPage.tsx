@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Tabs, Card, Input, Button, Table, Typography, Space, Result, Avatar, List, message,
+  Tabs, Card, Input, Button, Table, Typography, Space, Result, Avatar, List, message, Alert, Tag,
 } from 'antd'
 import { SearchOutlined, DownloadOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../stores/authStore'
@@ -16,10 +16,13 @@ interface SearchResult {
   conversation_id: number
   sender: { id: number; nickname: string } | null
   receiver: { id: number; nickname: string } | null
-  content: string
+  content: string | null
   type: string
   sent_at: string
   is_read: boolean
+  is_recalled?: boolean
+  recalled_at?: string | null
+  is_content_visible?: boolean
 }
 
 interface ConversationMessage {
@@ -28,6 +31,8 @@ interface ConversationMessage {
   content: string | null
   type: string
   is_recalled: boolean
+  recalled_at?: string | null
+  is_content_visible?: boolean
   sent_at: string
   is_read: boolean
   read_at?: string | null
@@ -44,7 +49,12 @@ interface MemberChatEntry {
   conversation_id: number
   counterpart: { id: number; nickname: string; avatar_url?: string } | null
   total_messages: number
-  last_message: { content: string; sent_at: string } | null
+  last_message: {
+    content: string | null
+    sent_at: string
+    is_recalled?: boolean
+    is_content_visible?: boolean
+  } | null
 }
 
 export default function ChatLogsPage() {
@@ -60,6 +70,8 @@ export default function ChatLogsPage() {
 function ChatLogsContent() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const currentUser = useAuthStore((s) => s.user)
+  const isSuperAdmin = currentUser?.role === 'super_admin'
 
   const urlTab = searchParams.get('tab')
   const urlUserA = searchParams.get('user_a') || ''
@@ -244,7 +256,20 @@ function ChatLogsContent() {
     },
     {
       title: '內容', dataIndex: 'content', key: 'content',
-      render: (c: string) => <span>{highlightKeyword(c)}</span>,
+      render: (_: string | null, r: SearchResult) => {
+        if (r.is_recalled && r.is_content_visible === false) {
+          return <Text type="secondary" italic>[已收回]</Text>
+        }
+        if (r.is_recalled && r.is_content_visible) {
+          return (
+            <Space size={4} wrap>
+              <span>{highlightKeyword(r.content ?? '')}</span>
+              <Tag color="orange">已被使用者收回於 {r.recalled_at ? dayjs(r.recalled_at).format('MM/DD HH:mm') : ''}</Tag>
+            </Space>
+          )
+        }
+        return <span>{highlightKeyword(r.content ?? '')}</span>
+      },
     },
     {
       title: '操作', key: 'action', width: 120,
@@ -257,6 +282,9 @@ function ChatLogsContent() {
       ),
     },
   ]
+
+  const searchRecalledVisibleCount = searchResults.filter(r => r.is_recalled && r.is_content_visible).length
+  const convRecalledVisibleCount = convMessages.filter(m => m.is_recalled && m.is_content_visible).length
 
   // ─── Tab 3 columns ───
   const memberColumns = [
@@ -271,12 +299,19 @@ function ChatLogsContent() {
     },
     {
       title: '最後訊息', key: 'last_message',
-      render: (_: unknown, r: MemberChatEntry) => (
-        <Text type={r.last_message?.content === '[已收回]' ? 'secondary' : undefined}
-          italic={r.last_message?.content === '[已收回]'}>
-          {r.last_message?.content ?? '-'}
-        </Text>
-      ),
+      render: (_: unknown, r: MemberChatEntry) => {
+        const lm = r.last_message
+        if (!lm) return '-'
+        const recalledHidden = lm.is_recalled && lm.is_content_visible === false
+        return (
+          <Text type={recalledHidden ? 'secondary' : undefined} italic={recalledHidden}>
+            {lm.content ?? '-'}
+            {lm.is_recalled && lm.is_content_visible && (
+              <Tag color="orange" style={{ marginLeft: 8, fontSize: 10 }}>已收回（原文可見）</Tag>
+            )}
+          </Text>
+        )
+      },
     },
     {
       title: '最後時間', key: 'last_time', width: 160,
@@ -337,6 +372,16 @@ function ChatLogsContent() {
                 </Space>
               </Card>
 
+              {isSuperAdmin && searchRecalledVisibleCount > 0 && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                  message="您正在檢視已收回訊息原文"
+                  description={`本次搜尋結果含 ${searchRecalledVisibleCount} 筆已收回訊息。此操作會記錄至 admin_operation_logs，僅供稽核 / 法遵調閱使用。`}
+                />
+              )}
+
               {searchTotal > 0 && (
                 <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>共 {searchTotal} 筆結果</Text>
               )}
@@ -385,6 +430,15 @@ function ChatLogsContent() {
 
               {convData ? (
                 <div>
+                  {isSuperAdmin && convRecalledVisibleCount > 0 && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      style={{ marginBottom: 12 }}
+                      message="您正在檢視已收回訊息原文"
+                      description={`本對話含 ${convRecalledVisibleCount} 筆已收回訊息。此操作會記錄至 admin_operation_logs，僅供稽核 / 法遵調閱使用。`}
+                    />
+                  )}
                   <Card style={{ marginBottom: 16 }}>
                     <Space size={32}>
                       {convData.user_a && (
@@ -436,13 +490,21 @@ function ChatLogsContent() {
                             <div style={{
                               padding: '8px 12px',
                               borderRadius: isUserA ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
-                              background: msg.is_recalled ? '#f5f5f5' : (isUserA ? '#e6f7ff' : '#fff7e6'),
+                              background: msg.is_recalled ? '#fff7e6' : (isUserA ? '#e6f7ff' : '#fff7e6'),
+                              border: msg.is_recalled && msg.is_content_visible ? '1px dashed #fa8c16' : undefined,
                             }}>
-                              {msg.is_recalled ? (
-                                <Text type="secondary" italic>此訊息已被收回</Text>
-                              ) : (
-                                <Text>{msg.content}</Text>
+                              {msg.is_recalled && !msg.is_content_visible && (
+                                <Text type="secondary" italic>[已收回]</Text>
                               )}
+                              {msg.is_recalled && msg.is_content_visible && (
+                                <Space size={6} direction="vertical" style={{ alignItems: 'flex-start' }}>
+                                  <Text>{msg.content}</Text>
+                                  <Tag color="orange" style={{ fontSize: 10 }}>
+                                    已被使用者收回{msg.recalled_at ? `於 ${dayjs(msg.recalled_at).format('MM/DD HH:mm')}` : ''}
+                                  </Tag>
+                                </Space>
+                              )}
+                              {!msg.is_recalled && <Text>{msg.content}</Text>}
                             </div>
                             {!isUserA && msg.is_read && !msg.is_recalled && (
                               <Text type="secondary" style={{ fontSize: 10, marginTop: 2 }}>已讀</Text>

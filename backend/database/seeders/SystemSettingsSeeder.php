@@ -28,7 +28,7 @@ class SystemSettingsSeeder extends Seeder
 
         // ── 2. 系統基礎設定 ──────────────────────────────────────────
         $basics = [
-            ['key_name' => 'data_retention_days', 'value' => '365',     'value_type' => 'integer', 'description' => '用戶活動日誌保留天數'],
+            ['key_name' => 'data_retention_days', 'value' => '180',     'value_type' => 'integer', 'description' => '資料保留天數（180 天，DEV-001 §6.3.1）'],
             ['key_name' => 'trial_plan_price',    'value' => '199',     'value_type' => 'integer', 'description' => '體驗方案價格'],
             ['key_name' => 'trial_plan_days',     'value' => '30',      'value_type' => 'integer', 'description' => '體驗方案天數'],
             ['key_name' => 'app_mode',            'value' => 'testing', 'value_type' => 'string',  'description' => '應用模式（testing / production）— 影響 Email/SMS 是否真送'],

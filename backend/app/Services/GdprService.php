@@ -168,11 +168,33 @@ class GdprService
 
     /**
      * Hard-delete soft-deleted messages older than $days.
+     *
+     * @deprecated 2026-05-17 — 改用 purgeOldRecalledMessages（依 recalled_at）。
+     * 本方法保留供既有測試 / 排程相容，下個 sprint 完整移除。
+     * 由於系統內沒有任何路徑會把 Message 軟刪除（is_deleted_by_sender / receiver 欄位也未使用），
+     * 此方法目前回傳值永遠為 0。
+     * 參考 docs/audits/audit-msg-destroy-20260517.md MD-002。
      */
     public function purgeDeletedMessages(int $days): int
     {
         return Message::onlyTrashed()
             ->where('deleted_at', '<=', now()->subDays($days))
+            ->forceDelete();
+    }
+
+    /**
+     * Two-phase destruction Phase 2（v1.6）：
+     * forceDelete 已收回（is_recalled=true）且 recalled_at 超過 retention 期的訊息。
+     *
+     * 對應規格：
+     * - DEV-001 §6.3.1「超過 data_retention_days 的 recalled 訊息 → forceDelete()」
+     * - SDD-001 §9.1.5
+     * - API-002 §7 隱私保護段落
+     */
+    public function purgeOldRecalledMessages(int $days): int
+    {
+        return Message::where('is_recalled', true)
+            ->where('recalled_at', '<=', now()->subDays($days))
             ->forceDelete();
     }
 
