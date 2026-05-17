@@ -249,7 +249,7 @@ function clearSearch() {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: var(--app-bottom-inset);
   background: #F8F9FB;
 }
 

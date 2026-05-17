@@ -651,7 +651,7 @@ onMounted(async () => {
 .profile-view {
   background: #F9F9FB;
   min-height: 100dvh;
-  padding-bottom: 32px;
+  padding-bottom: var(--app-bottom-inset);
 }
 
 /* ── TopBar ────────────────────────────────────────────────── */

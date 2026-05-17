@@ -255,6 +255,7 @@ function goBack() {
 .phone-change-view {
   background: #F9F9FB;
   min-height: 100dvh;
+  padding-bottom: var(--app-bottom-inset);
 }
 
 .topbar {

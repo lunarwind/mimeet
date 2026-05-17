@@ -12,4 +12,9 @@
   --border: #E5E7EB;
   --hero-gradient-start: #F0294E;
   --hero-gradient-end: #A80F2C;
+
+  /* BottomNav 視覺高度 + iOS home indicator 安全區（2026-05-17）
+     view 自己 padding-bottom 對齊用 --app-bottom-inset，避免 BottomNav 蓋住底部內容 */
+  --bottom-nav-height: 64px;
+  --app-bottom-inset: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
 }

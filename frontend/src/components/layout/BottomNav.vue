@@ -111,7 +111,7 @@ const { unreadCount } = storeToRefs(notificationStore)
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  height: var(--bottom-nav-height);
   background: white;
   border-top: 0.5px solid #e5e7eb;
   display: flex;
