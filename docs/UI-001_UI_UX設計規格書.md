@@ -620,7 +620,17 @@ Desktop 寬度下 BottomNav 改為「浮動式」設計（距 viewport 底 16px 
 }
 ```
 
-此規範由 `pre-merge-check 14bi` 守護 `ProfileView`；其他直掛 AppShell 的 view 若日後重構觸發同樣 bug，請依此規範補 `width: 100%` 並擴充守護。
+**目前已套用此規範的 view**（v1.6 補完 2026-05-18）：
+
+- `frontend/src/views/app/ProfileView.vue` → `.profile-view`
+- `frontend/src/views/app/FavoritesView.vue` → `.fav-page`
+- `frontend/src/views/app/VisitorsView.vue` → `.vis-page`
+- `frontend/src/views/app/settings/VerifyView.vue` → `.verify-view`
+
+此清單由 `pre-merge-check 14bi` 守護同步（迴圈守護 4 個 view）。**新增直掛 AppShell 且使用 `max-width + margin: 0 auto` 的 view 時**，必須：
+
+1. 在 base rule 加 `width: 100%`
+2. 把該 view 加入 14bi 的 `BI_VIEWS` 陣列
 
 ---
 

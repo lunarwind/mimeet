@@ -629,6 +629,7 @@ async function handleLogout() {
 
 <style scoped>
 .verify-view {
+  width: 100%;
   background: #F9F9FB;
   min-height: 100dvh;
   padding-bottom: var(--app-bottom-inset);
