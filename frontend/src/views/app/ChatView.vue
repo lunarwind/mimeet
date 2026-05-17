@@ -459,7 +459,7 @@ function goProfile() { router.push(`/app/profiles/${otherUser.value.id}`) }
 </template>
 
 <style scoped>
-.chat-view { display:flex; flex-direction:column; height:calc(100dvh - 64px - env(safe-area-inset-bottom)); background:#fff; }
+.chat-view { display:flex; flex-direction:column; height:calc(100dvh - var(--app-bottom-inset)); background:#fff; }
 
 .chat-topbar { display:flex; align-items:center; gap:10px; height:56px; padding:0 12px; background:#fff; border-bottom:0.5px solid #E5E7EB; flex-shrink:0; }
 .chat-topbar__back { background:none; border:none; padding:4px; cursor:pointer; color:#374151; display:flex; }

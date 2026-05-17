@@ -144,7 +144,7 @@ function handleLogoClick() {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: var(--app-bottom-inset);
 }
 
 /* ── Tablet (768px+) ──────────────────────────────────────── */
@@ -162,7 +162,8 @@ function handleLogoClick() {
 /* ── Large desktop (1440px+) ─────────────────────────────── */
 @media (min-width: 1440px) {
   .top-bar { max-width: 960px; }
-  .main-content { max-width: 960px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  /* 1440px+ 用 floating pill BottomNav，視覺底距較大 */
+  .main-content { max-width: 960px; padding-bottom: calc(var(--app-bottom-inset) + 16px); }
 }
 
 /* ── 4K / ultra-wide (1920px+) ───────────────────────────── */

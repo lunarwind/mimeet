@@ -631,6 +631,7 @@ async function handleLogout() {
 .verify-view {
   background: #F9F9FB;
   min-height: 100dvh;
+  padding-bottom: var(--app-bottom-inset);
 }
 
 /* ── TopBar ────────────────────────────────────────────────── */

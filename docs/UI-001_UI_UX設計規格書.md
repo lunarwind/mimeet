@@ -523,6 +523,54 @@ Tab 未選中：圖示與文字為 #9CA3AF
 未讀數徽章：紅底（#F0294E）白字，最大 99+，右上角顯示
 ```
 
+#### 3.4.1 BottomNav 視覺高度與 main content 底距規範（v1.4 新增 2026-05-17）
+
+為避免 fixed 定位的 BottomNav 覆蓋 main content 末端（特別是 iPhone home indicator 設備），所有受影響 view 必須以**統一 CSS 變數**對齊底距，不再散落 hardcode 數值（如 `64px` / `80px` / `100px` / `pb-20`）。
+
+**CSS 變數（定義於 `frontend/src/assets/variables.css`）**：
+
+```css
+--bottom-nav-height: 64px;
+--app-bottom-inset: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+```
+
+**引用規範**：
+
+| 角色 | 該引用什麼 |
+|---|---|
+| `BottomNav.vue` 自身 height | `var(--bottom-nav-height)` |
+| `AppLayout.vue` main-content padding-bottom | `var(--app-bottom-inset)` |
+| **未經 AppLayout、自掛 BottomNav** 的 view（如 `ProfileView` / `ExploreView` / `VisitorsView` / `FavoritesView` / `PhoneChangeView` / `VerifyView`）root 容器 padding-bottom | `var(--app-bottom-inset)` |
+| **全螢幕 fixed-height view**（如 `ChatView`）height calc 預留 | `var(--app-bottom-inset)` 直接從 100dvh 扣除 |
+
+**反例（不可寫）**：
+
+- ❌ `padding-bottom: 64px;`
+- ❌ `padding-bottom: calc(64px + env(safe-area-inset-bottom));`（手寫展開）
+- ❌ Tailwind utility 如 `pb-20`、`pb-[60px]` 直接寫底距
+
+**例外**：被 `<AppLayout>` 包裝的 view 不需自加 padding-bottom（AppLayout main-content 已負責）。如 `TrialView` / `ShopView` / `DatesView` / `NotificationsView` / `ReportsHistoryView` / `MessagesView` / `ReportsView` / `settings/*View.vue` 中的多數頁面。
+
+#### 3.4.2 已知議題：AppLayout 與 AppShell 並存導致 BottomNav 雙渲染
+
+- **發現日**：2026-05-17（BottomNav 底距修法任務 Phase 0）
+- **影響 view**：`TrialView` / `ShopView` / `DatesView` / `NotificationsView` / `ReportsHistoryView` / `MessagesView` / `ReportsView` 以及多數 `settings/*View.vue`
+- **症狀**：DOM 中同時存在 2 個 `<BottomNav>` 實例 — 一個由 `AppShell.vue` line 6 渲染（`v-if="showNav"`），一個由 `AppLayout.vue` line 34 渲染（無條件）。因 `position: fixed; bottom: 0; z-index: 50` 完全重疊，視覺上看不出。
+- **暫時處置**：本任務不處理（會擴大改動範圍且風險高）
+- **建議方向（擇一）**：
+  - **A**：廢棄 `AppLayout`，把其 TopBar 功能拆成獨立元件，view 直接組合 TopBar + 內容
+  - **B**：把 `AppLayout` 改為**不含** BottomNav 的純內容包裝（只保留 TopBar + main padding）
+- **觸發時機**：下次 frontend layout 重構時
+
+#### 3.4.3 已知議題：AppLayout-wrapped view 內部 hardcode padding-bottom
+
+- **發現日**：2026-05-17（BottomNav layout 任務 Phase 1）
+- **影響 view**：`settings/AccountView`（內距 100px）、`settings/ChangePasswordView`（內距 80px）
+- **症狀**：這些 view 用 `AppLayout` 包裝（外層已提供 `var(--app-bottom-inset)`），內部又有 hardcode `padding-bottom`，造成輕微 double padding。視覺接近正確，無用戶可見 bug。
+- **暫時處置**：本任務不動（避免風險）
+- **建議方向**：與雙渲染議題（§3.4.2）一併在 AppLayout refactor 時處理 — 移除 view 內 hardcode，讓 `AppLayout` 為唯一 bottom-inset owner
+- **觸發時機**：下次 AppLayout / AppShell 重構
+
 ---
 
 ### 3.5 誠信分數徽章（CreditScoreBadge）

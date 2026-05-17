@@ -955,6 +955,59 @@ else
 fi
 
 echo ""
+echo "-- BottomNav bottom-inset variable cohesion (14bh) --"
+
+# 14bh：variables.css 必須宣告 --bottom-nav-height 與 --app-bottom-inset
+# 對應 UI-001 §3.4.1（2026-05-17 BottomNav 底距統一變數方案）
+if ! grep -q -- "--bottom-nav-height" frontend/src/assets/variables.css; then
+  echo "  [FAIL] 14bh-1: frontend/src/assets/variables.css 必須宣告 --bottom-nav-height"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-1 variables.css 宣告 --bottom-nav-height"
+fi
+if ! grep -q -- "--app-bottom-inset" frontend/src/assets/variables.css; then
+  echo "  [FAIL] 14bh-2: frontend/src/assets/variables.css 必須宣告 --app-bottom-inset"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-2 variables.css 宣告 --app-bottom-inset"
+fi
+
+# 14bh-3：BottomNav.vue 必須引用 var(--bottom-nav-height)
+if ! grep -q "var(--bottom-nav-height)" frontend/src/components/layout/BottomNav.vue; then
+  echo "  [FAIL] 14bh-3: BottomNav.vue 必須引用 var(--bottom-nav-height)（不可硬寫 height: 64px）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-3 BottomNav.vue 引用 var(--bottom-nav-height)"
+fi
+
+# 14bh-4：AppLayout.vue 必須引用 var(--app-bottom-inset)
+if ! grep -q "var(--app-bottom-inset)" frontend/src/components/layout/AppLayout.vue; then
+  echo "  [FAIL] 14bh-4: AppLayout.vue 必須引用 var(--app-bottom-inset)（main-content padding-bottom）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-4 AppLayout.vue 引用 var(--app-bottom-inset)"
+fi
+
+# 14bh-5：ProfileView.vue 必須引用 var(--app-bottom-inset)（過去 hardcode 32px 蓋住底部 bug）
+if ! grep -q "var(--app-bottom-inset)" frontend/src/views/app/ProfileView.vue; then
+  echo "  [FAIL] 14bh-5: ProfileView.vue 必須引用 var(--app-bottom-inset)（防回退 padding-bottom: 32px bug）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-5 ProfileView.vue 引用 var(--app-bottom-inset)"
+fi
+
+# 14bh-6：frontend/src/views/app/ 下不可出現 hardcode padding-bottom: 64px / 32px
+# 切換成 var(--app-bottom-inset) 後若有人退回 hardcode 數值會被擋下
+BAD_PB=$(grep -rEn "padding-bottom:\s*(32|64)px\s*[;}]" frontend/src/views/app/ 2>/dev/null || true)
+if [ -n "$BAD_PB" ]; then
+  echo "  [FAIL] 14bh-6: frontend/src/views/app/ 下不可寫死 padding-bottom: 32px 或 64px（請改用 var(--app-bottom-inset)）"
+  echo "$BAD_PB" | sed 's/^/         /'
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-6 frontend/src/views/app/ 無 hardcode padding-bottom: 32px/64px"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."
