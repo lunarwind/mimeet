@@ -197,17 +197,20 @@ const { unreadCount } = storeToRefs(notificationStore)
   .nav-label { font-size: 11px; }
 }
 
-/* ── Large desktop (1440px+): floating pill ──────────────── */
+/* ── Large desktop (1440px+): floating pill ────────────────
+   variables.css 在此 breakpoint override --bottom-nav-height (64→68) 與
+   --bottom-nav-floating-bottom (0→16)，本區段直接引用變數即可，
+   不可再 hardcode 數值（防退化，由 pre-merge-check 14bh-8 守護） */
 @media (min-width: 1440px) {
   .bottom-nav {
-    bottom: 16px;
+    bottom: var(--bottom-nav-floating-bottom);
     left: 50%;
     right: auto;
     transform: translateX(-50%);
     width: auto;
     min-width: 560px;
     max-width: 720px;
-    height: 68px;
+    height: var(--bottom-nav-height);
     padding: 0 12px;
     border-radius: 20px;
     border: none;

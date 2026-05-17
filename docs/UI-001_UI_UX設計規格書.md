@@ -551,6 +551,33 @@ Tab 未選中：圖示與文字為 #9CA3AF
 
 **例外**：被 `<AppLayout>` 包裝的 view 不需自加 padding-bottom（AppLayout main-content 已負責）。如 `TrialView` / `ShopView` / `DatesView` / `NotificationsView` / `ReportsHistoryView` / `MessagesView` / `ReportsView` / `settings/*View.vue` 中的多數頁面。
 
+##### Desktop (≥1440px) 浮動式 navbar（v1.5 補完 2026-05-17）
+
+Desktop 寬度下 BottomNav 改為「浮動式」設計（距 viewport 底 16px gap、bar 高 68px），總佔據視覺空間 = 68 + 16 = **84px**。
+
+此規範由 `variables.css` 的 `@media (width >= 1440px)` 區段管理：
+
+```css
+@media (width >= 1440px) {
+  :root {
+    --bottom-nav-height: 68px;
+    --bottom-nav-floating-bottom: 16px;
+  }
+}
+```
+
+`--app-bottom-inset` 的 `calc()` 公式同時計入這兩個變數：
+
+```css
+--app-bottom-inset: calc(
+  var(--bottom-nav-height) +
+  var(--bottom-nav-floating-bottom) +
+  env(safe-area-inset-bottom, 0px)
+);
+```
+
+所有使用 `var(--app-bottom-inset)` 的 view 自動在 desktop 下預留 84px（mobile 仍為 64px + safe-area），**無需各自加 media query**。`BottomNav.vue` 的 `@media (min-width: 1440px)` 區段也只引用變數、不再 hardcode 68px / 16px（由 pre-merge-check 14bh-8 守護）。
+
 #### 3.4.2 已知議題：AppLayout 與 AppShell 並存導致 BottomNav 雙渲染
 
 - **發現日**：2026-05-17（BottomNav 底距修法任務 Phase 0）
