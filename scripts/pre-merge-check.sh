@@ -1062,6 +1062,24 @@ else
 fi
 
 echo ""
+echo "-- Flex item width: 100% guard (14bi) --"
+
+# 14bi：ProfileView .profile-view base rule 必須含 width: 100%
+# AppShell 是 flex column，當 768px+ 啟用 margin: 0 auto 後，auto margin 會 override
+# align-items: stretch，flex item 寬度退回 content 自然寬度 → 不同 user 寬度不一致（2026-05-18 根因）
+PROFILE_VIEW_BLOCK=$(awk '
+  /^\.profile-view[[:space:]]*\{/ { in_block=1 }
+  in_block { print; if (/^\}/) exit }
+' frontend/src/views/app/ProfileView.vue)
+if ! echo "$PROFILE_VIEW_BLOCK" | grep -qE "^[[:space:]]*width:[[:space:]]*100%"; then
+  echo "  [FAIL] 14bi: .profile-view base rule 缺少 width: 100%"
+  echo "         flex item margin auto 會 override stretch，需 width: 100% 強制取 parent 寬度"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bi .profile-view base 含 width: 100%"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

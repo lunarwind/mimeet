@@ -649,6 +649,11 @@ onMounted(async () => {
 .sl-btn--primary:disabled { opacity:0.6; cursor:not-allowed; }
 
 .profile-view {
+  /* width: 100% 必要 — AppShell 是 flex column，當 768px+ 啟用 margin: 0 auto 後
+     auto margin 會 override align-items: stretch，flex item width 退回 content
+     自然寬度，導致不同 user 資料寬度不一致（2026-05-18 根因）。
+     由 pre-merge-check 14bi 守護防退化。 */
+  width: 100%;
   background: #F9F9FB;
   min-height: 100dvh;
   /* 兩行 fallback：若 var() 因 scope / cache / 舊瀏覽器解析失敗，至少保 96px */
