@@ -651,6 +651,8 @@ onMounted(async () => {
 .profile-view {
   background: #F9F9FB;
   min-height: 100dvh;
+  /* 兩行 fallback：若 var() 因 scope / cache / 舊瀏覽器解析失敗，至少保 96px */
+  padding-bottom: 96px;
   padding-bottom: var(--app-bottom-inset);
 }
 

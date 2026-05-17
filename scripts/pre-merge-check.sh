@@ -972,12 +972,14 @@ else
   echo "  [OK] 14bh-2 variables.css 宣告 --app-bottom-inset"
 fi
 
-# 14bh-3：BottomNav.vue 必須引用 var(--bottom-nav-height)
-if ! grep -q "var(--bottom-nav-height)" frontend/src/components/layout/BottomNav.vue; then
-  echo "  [FAIL] 14bh-3: BottomNav.vue 必須引用 var(--bottom-nav-height)（不可硬寫 height: 64px）"
+# 14bh-3：BottomNav.vue 必須引用 var(--bottom-nav-height) 或 var(--app-bottom-inset)
+# 2026-05-17 修正：因 Tailwind v4 box-sizing: border-box，BottomNav height 改為 var(--app-bottom-inset)
+# 才能讓 content 區足夠容納 items（防 items 視覺溢出 box top 蓋住上層內容）
+if ! grep -qE "var\(--bottom-nav-height\)|var\(--app-bottom-inset\)" frontend/src/components/layout/BottomNav.vue; then
+  echo "  [FAIL] 14bh-3: BottomNav.vue 必須引用 var(--bottom-nav-height) 或 var(--app-bottom-inset)（不可硬寫 height: 64px）"
   ERRORS=$((ERRORS + 1))
 else
-  echo "  [OK] 14bh-3 BottomNav.vue 引用 var(--bottom-nav-height)"
+  echo "  [OK] 14bh-3 BottomNav.vue 引用 CSS 變數（--bottom-nav-height 或 --app-bottom-inset）"
 fi
 
 # 14bh-4：AppLayout.vue 必須引用 var(--app-bottom-inset)
@@ -1005,6 +1007,17 @@ if [ -n "$BAD_PB" ]; then
   ERRORS=$((ERRORS + 1))
 else
   echo "  [OK] 14bh-6 frontend/src/views/app/ 無 hardcode padding-bottom: 32px/64px"
+fi
+
+# 14bh-7：BottomNav.vue 的 .bottom-nav height 不可使用 var(--bottom-nav-height)
+# Tailwind v4 box-sizing: border-box 會導致 nav-items 從 box 頂端溢出 ~11px on iOS（2026-05-17 根因）
+# 必須用 var(--app-bottom-inset)，讓 box 含 safe-area，content 區回到 64px 容納 items
+if grep -E "^\s*height:\s*var\(--bottom-nav-height\)\s*;" frontend/src/components/layout/BottomNav.vue > /dev/null; then
+  echo "  [FAIL] 14bh-7: BottomNav.vue 的 .bottom-nav height 不可使用 var(--bottom-nav-height)"
+  echo "         必須用 var(--app-bottom-inset)，否則 iOS Safari 上 nav-items 會視覺溢出 box 頂端 ~11px"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bh-7 BottomNav.vue .bottom-nav height 未退回 var(--bottom-nav-height)"
 fi
 
 echo ""
