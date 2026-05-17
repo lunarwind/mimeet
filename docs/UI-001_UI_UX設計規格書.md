@@ -598,6 +598,30 @@ Desktop 寬度下 BottomNav 改為「浮動式」設計（距 viewport 底 16px 
 - **建議方向**：與雙渲染議題（§3.4.2）一併在 AppLayout refactor 時處理 — 移除 view 內 hardcode，讓 `AppLayout` 為唯一 bottom-inset owner
 - **觸發時機**：下次 AppLayout / AppShell 重構
 
+#### 3.4.4 Flex container 下 view 寬度規範（v1.5 補完 2026-05-18）
+
+`AppShell` 為 `display: flex; flex-direction: column`，掛在 `AppShell` 下的 view（如 `ProfileView`、`ExploreView`、`VisitorsView`、`FavoritesView`、`VerifyView` 等不透過 `AppLayout` 包裝者）屬於 flex item。若 view 同時使用 `max-width + margin: 0 auto` 居中，**必須再加 `width: 100%`**。
+
+**原因**：flex layout 中 auto margin 吸收所有 free space，會 override `align-items: stretch`。沒有 stretch 的 flex item width 退回 **content 自然寬度**，導致不同資料下寬度不一致（如 ProfileView 的 profile/1 撐到 max-width 960、profile/2 卻只有 ~402px）。
+
+**正確寫法**：
+
+```css
+.view-root {
+  width: 100%;       /* 必要：強制 flex item 取 parent 寬度 */
+  min-height: 100dvh;
+  /* @media 768px+ 才啟用居中 */
+}
+@media (min-width: 768px) {
+  .view-root {
+    max-width: 960px;  /* 上限約束 */
+    margin: 0 auto;    /* 居中（需 width: 100% 已存在於 base） */
+  }
+}
+```
+
+此規範由 `pre-merge-check 14bi` 守護 `ProfileView`；其他直掛 AppShell 的 view 若日後重構觸發同樣 bug，請依此規範補 `width: 100%` 並擴充守護。
+
 ---
 
 ### 3.5 誠信分數徽章（CreditScoreBadge）
