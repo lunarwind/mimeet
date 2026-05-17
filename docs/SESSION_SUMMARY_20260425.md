@@ -503,3 +503,55 @@ depends_on，兩邊檔案 hash 完全相同。
 
 未來改動 docker-compose 時必須意識到這點。是否從 .gitignore 移除是另一個
 issue（涉及敏感資訊處理策略），不在 layer 2 範圍內。
+
+---
+
+## staging-deploy.sh [1/7] 失敗事故（2026-05-17）
+
+### 觸發
+Option C「分級權限 recalled 訊息可見度」改動 commit 後，跑 `staging-deploy.sh --yes`，
+`[1/7] git pull origin main` 失敗：
+```
+error: Your local changes to the following files would be overwritten by merge:
+	backend/bootstrap/cache/services.php
+Please commit your changes or stash them before you merge.
+Aborting
+```
+
+### 根因
+`backend/bootstrap/cache/services.php` 與 `backend/bootstrap/cache/packages.php` 是
+Laravel runtime 由 `php artisan config:cache` / `package:discover` 動態生成的
+cache artifact，**過去被誤 tracked 進 git**（`.gitignore` 無對應規則）。
+
+- Staging 主機每次 `staging-deploy.sh [4/7]` 跑 `php artisan config:cache` 會重寫該檔
+- 開發者本機跑測試 / 啟 dev server 也會重寫
+- 兩地檔案各自漂移 → 下次 `git pull` 視為「會覆寫本地修改」而 abort
+
+git log 揭露 services.php 已多次「被 commit 進來」歷史漂移（f23c88f / 27a1f5f / 09da047），
+此次只是踩到累積已久的雷。
+
+### 處置（依 CLAUDE.md §例外處理原則 + §敏感檔案同步流程精神）
+
+1. **本機**：加 `.gitignore` 規則 `backend/bootstrap/cache/*.php` + `git rm --cached`
+   兩個 .php，commit `499871f`，按標準流程 push develop → merge main → push main
+   （新 main HEAD: `bffded1`）
+2. **Staging（例外處置）**：`ssh mimeet-staging "cd /var/www/mimeet && git checkout -- backend/bootstrap/cache/{services,packages}.php"`
+   把 staging working dir 對齊回 git HEAD。
+   方向是「讓 staging 重回 git 控制」而非「直接修改 staging 業務檔」，依例外處理原則登錄。
+3. **重跑** `bash scripts/staging-deploy.sh --yes` → 成功部署 `bffded1`，smoke test 全綠。
+
+### Prevention
+新增 pre-merge-check **14bg**（正反雙向）：
+- 正向：`git ls-files backend/bootstrap/cache/` 不可含任何 `*.php`
+- 反向：`.gitignore` 必須含 `backend/bootstrap/cache/*.php` 規則
+
+### 教訓
+1. **Runtime artifact 不該 tracked**：Laravel `bootstrap/cache/` 與 `vendor/` 同性質，
+   一開始就該在 .gitignore。過去 Sprint 7 時被 commit 進來是錯誤起點，
+   此後每次相關 commit（mail config 改 / 本次 Option C）都跟著漂移。
+2. **diff stat 顯示 cache 檔變動是 red flag**：之後 review 自己的 commit 時，
+   若看到 `bootstrap/cache/*.php`、`*.cache`、`vendor/`、`node_modules/` 出現在
+   diff stat，先停下檢查 .gitignore 是不是有缺漏，再決定是否真的要 commit。
+3. **deploy 失敗時遵守規定不自救**：本次 PM 明確指示「失敗立即停下回報」，
+   後續處置由 PM 拍板（Question 1 診斷 + Step 1-6 流程）才執行。
+   這個節奏避免了在 staging 端胡亂 `git stash` / `git reset --hard` 等危險操作。
