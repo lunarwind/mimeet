@@ -1181,7 +1181,23 @@ class AdminController extends Controller
         ]);
 
         $admin = $request->user();
-        foreach ($request->except(['_token']) as $key => $value) {
+
+        // 攤平來自前端的 `{ settings: { key: value, ... } }` payload
+        $payload = $request->except(['_token']);
+        if (isset($payload['settings']) && is_array($payload['settings'])) {
+            $payload = array_merge($payload, $payload['settings']);
+            unset($payload['settings']);
+        }
+
+        // data_retention_days 影響全平台物理銷毀時點，限 super_admin 修改（對應 UI-001 §5.3 Tab 7）
+        if (array_key_exists('data_retention_days', $payload) && $admin?->role !== 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'error' => ['code' => 'ADMIN_4003', 'message' => '僅 super_admin 可修改 data_retention_days。'],
+            ], 403);
+        }
+
+        foreach ($payload as $key => $value) {
             SystemSetting::set($key, $value, $admin?->id);
             // 雙層快取清除：SystemSetting 已清 "sys:{$key}"，
             // 這裡額外清 CreditScoreService::getConfig 的 "setting:{$key}" 層（TTL 300s）

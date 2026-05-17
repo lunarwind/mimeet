@@ -838,6 +838,99 @@ else
 fi
 
 echo ""
+echo "-- Recalled-message Option C guards (14ba-14bf) --"
+
+# 14ba：ChatLogController 必須含 canViewRecalledContent helper（分級權限入口）
+if ! grep -q "canViewRecalledContent" backend/app/Http/Controllers/Api/Admin/ChatLogController.php; then
+  echo "  [FAIL] 14ba: ChatLogController.php 必須含 canViewRecalledContent 字串（Option C 分級權限入口）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14ba ChatLogController.php 含 canViewRecalledContent"
+fi
+
+# 14bb-1：GdprService 必須含 purgeOldRecalledMessages 方法
+if ! grep -q "function purgeOldRecalledMessages" backend/app/Services/GdprService.php; then
+  echo "  [FAIL] 14bb-1: GdprService.php 必須含 purgeOldRecalledMessages 方法（兩階段銷毀 Phase 2）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bb-1 GdprService::purgeOldRecalledMessages 存在"
+fi
+
+# 14bb-2：purgeOldRecalledMessages 必須依 is_recalled + recalled_at 條件 forceDelete
+if ! awk '/function purgeOldRecalledMessages/,/^    \}/' backend/app/Services/GdprService.php | grep -q "is_recalled.*true"; then
+  echo "  [FAIL] 14bb-2: purgeOldRecalledMessages 必須以 is_recalled=true 為條件"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bb-2 purgeOldRecalledMessages 依 is_recalled 過濾"
+fi
+if ! awk '/function purgeOldRecalledMessages/,/^    \}/' backend/app/Services/GdprService.php | grep -q "recalled_at"; then
+  echo "  [FAIL] 14bb-2: purgeOldRecalledMessages 必須以 recalled_at 為 retention 起算"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bb-2 purgeOldRecalledMessages 依 recalled_at 過濾"
+fi
+
+# 14bc：ProcessGdprDeletions Phase 3 必須改用 purgeOldRecalledMessages（範圍只切 handle 方法）
+if ! awk '/function handle\(/,/^    \}/' backend/app/Console/Commands/ProcessGdprDeletions.php | grep -q "purgeOldRecalledMessages"; then
+  echo "  [FAIL] 14bc: ProcessGdprDeletions::handle 必須呼叫 purgeOldRecalledMessages"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bc ProcessGdprDeletions::handle 呼叫 purgeOldRecalledMessages"
+fi
+# 14bc 反向：handle 區段不可再「呼叫」 purgeDeletedMessages（避免兩個都呼叫造成 0 + 真實刪除混淆）
+# 注意：(1) deprecated 方法本身在 GdprService 仍保留供既有測試相容，因此**只**檢查 ProcessGdprDeletions::handle 區段
+#       (2) 用 `->purgeDeletedMessages(` 鎖定真正的方法呼叫，避免誤觸註解中的歷史說明字串
+if awk '/function handle\(/,/^    \}/' backend/app/Console/Commands/ProcessGdprDeletions.php | grep -q '\->purgeDeletedMessages('; then
+  echo "  [FAIL] 14bc-2: ProcessGdprDeletions::handle 不可再呼叫 deprecated ->purgeDeletedMessages("
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bc-2 ProcessGdprDeletions::handle 不再呼叫 deprecated purgeDeletedMessages"
+fi
+
+# 14bd：ChatLogTest 必須含 super_admin 看原文 + admin search 排除 recalled 兩個案例
+if ! grep -q "test_super_admin_sees_recalled_content_in_retention_period" backend/tests/Feature/Admin/ChatLogTest.php; then
+  echo "  [FAIL] 14bd-1: ChatLogTest.php 必須含 test_super_admin_sees_recalled_content_in_retention_period（守護 super_admin 看得到原文）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bd-1 ChatLogTest 含 super_admin 看 recalled 原文測試"
+fi
+if ! grep -q "test_regular_admin_search_excludes_recalled" backend/tests/Feature/Admin/ChatLogTest.php; then
+  echo "  [FAIL] 14bd-2: ChatLogTest.php 必須含 test_regular_admin_search_excludes_recalled（守護 admin search 不含 recalled）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bd-2 ChatLogTest 含 admin search 排除 recalled 測試"
+fi
+# 14bd 反向：舊版鎖死「admin 一律遮蔽」的單一測試不應再存在（已被三分級測試取代）
+if grep -q "test_conversations_shows_recalled_message_placeholder" backend/tests/Feature/Admin/ChatLogTest.php; then
+  echo "  [FAIL] 14bd-3: 舊測試 test_conversations_shows_recalled_message_placeholder 應被三分級測試取代，請移除"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bd-3 舊版 placeholder-only 測試已移除"
+fi
+
+# 14be：SystemSettingsSeeder data_retention_days 必須為 '180'（不可為 '365'）
+if grep -q "'data_retention_days', 'value' => '365'" backend/database/seeders/SystemSettingsSeeder.php; then
+  echo "  [FAIL] 14be: SystemSettingsSeeder data_retention_days 不可為 '365'（須對齊 migration 與 DEV-001 §6.3.1 的 180）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14be SystemSettingsSeeder data_retention_days 未殘留 365"
+fi
+if ! grep -q "'data_retention_days', 'value' => '180'" backend/database/seeders/SystemSettingsSeeder.php; then
+  echo "  [FAIL] 14be-2: SystemSettingsSeeder data_retention_days 必須為 '180'"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14be-2 SystemSettingsSeeder data_retention_days = '180'"
+fi
+
+# 14bf：RecallMessageTest.php 必須存在於 backend/tests/Feature/Chat/（F19 自動化覆蓋）
+if [ ! -f "backend/tests/Feature/Chat/RecallMessageTest.php" ]; then
+  echo "  [FAIL] 14bf: backend/tests/Feature/Chat/RecallMessageTest.php 必須存在（F19 自動化測試入口）"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "  [OK] 14bf RecallMessageTest.php 存在"
+fi
+
+echo ""
 
 if [ $ERRORS -eq 0 ]; then
   echo "  All checks passed. Safe to merge."

@@ -1249,15 +1249,19 @@ middleware：`auth:sanctum` + `admin.auth` + `admin.permission:reports.process`
 > - ✅ `GET /api/v1/admin/chat-logs/export`
 > - ✅ `GET /api/v1/admin/members/{id}/chat-logs`
 >
-> **權限矩陣（確認版）**：
-> | 角色 | chat.view 權限 | 可使用聊天記錄查詢 |
-> |------|:--------------:|:------------------:|
-> | super_admin | ✅ | ✅ |
-> | admin | ✅ | ✅ |
-> | cs | ❌ | ❌（403） |
+> **權限矩陣（v1.6 更新）**：
+> | 角色 | chat.view | 可使用聊天記錄查詢 | 看 recalled 原文 | search 含 recalled |
+> |------|:---------:|:------------------:|:----------------:|:------------------:|
+> | super_admin | ✅ | ✅ | ✅（retention 期內）| ✅ |
+> | admin | ✅ | ✅ | ❌（顯示「[已收回]」）| ❌ |
+> | cs | ❌ | ❌（403） | ❌ | ❌ |
 >
-> **隱私保護**：已收回的訊息（is_recalled=true）不顯示內容，僅顯示佔位符「[已收回]」。
-> 所有查詢動作自動寫入 admin_operation_logs。
+> **隱私保護（v1.6 更新）**：
+> - 已收回的訊息（`is_recalled=true`）對 `admin` / `cs` 角色顯示佔位符「[已收回]」（`content: null`、`is_content_visible: false`）。
+> - 對 `super_admin` 角色在 retention 期內（預設 180 天，後台可調）回傳原始 `content`（`is_content_visible: true`），供稽核 / 法遵調閱使用。
+> - `search` 端點對 super_admin 包含 recalled 結果；對 admin 排除 recalled 結果（避免關鍵字反推被遮蔽的內容）。
+> - 超過 retention 期的 recalled 訊息由排程 `gdpr:process-deletions` 物理刪除（`forceDelete`），任何角色都看不到。
+> - 所有查詢動作自動寫入 laravel.log；super_admin 檢視 recalled 原文時另寫一筆結構化 `admin_operation_logs`（`action: chat_logs_view_recalled / chat_logs_search_recalled / chat_logs_export_recalled / chat_logs_member_view_recalled / chat_logs_member_export_recalled`，`request_summary.viewed_recalled_content: true` + `recalled_message_count`）。
 
 > 所需權限：`chat.view`（super_admin 與 admin 專屬，cs 不可查）
 
@@ -1274,7 +1278,10 @@ GET /api/v1/admin/chat-logs/search
 | `keyword` | string | 是 | 搜尋關鍵字（最少 2 字） |
 | `page` | int | 否 | 頁碼 |
 
-**成功回應 200：**
+**成功回應 200（v1.6）：**
+
+每筆訊息含 `is_recalled` / `recalled_at` / `is_content_visible`。對 admin 角色：recalled 訊息不會出現在此列表；對 super_admin：recalled 訊息會出現，`content` 為原文、`is_content_visible: true`。
+
 ```json
 {
   "success": true,
@@ -1285,7 +1292,12 @@ GET /api/v1/admin/chat-logs/search
       "sender": { "id": 1001, "nickname": "甜心寶貝" },
       "receiver": { "id": 1002, "nickname": "甜爹001" },
       "content": "...含關鍵字的訊息...",
-      "sent_at": "2025-01-10T14:30:00Z"
+      "type": "text",
+      "sent_at": "2025-01-10T14:30:00Z",
+      "is_read": true,
+      "is_recalled": false,
+      "recalled_at": null,
+      "is_content_visible": true
     }
   ],
   "meta": { "total": 12, "page": 1, "last_page": 1 }
@@ -1308,7 +1320,8 @@ GET /api/v1/admin/chat-logs/conversations
 | `user_b` | int | 是 | 用戶 B 的 user_id |
 | `page` | int | 否 | 頁碼，每頁 50 則訊息 |
 
-**成功回應 200：**
+**成功回應 200（v1.6）：**
+
 ```json
 {
   "success": true,
@@ -1323,13 +1336,31 @@ GET /api/v1/admin/chat-logs/conversations
         "content": "您好",
         "type": "text",
         "sent_at": "2025-01-10T14:30:00Z",
-        "is_read": true
+        "is_read": true,
+        "is_recalled": false,
+        "recalled_at": null,
+        "is_content_visible": true
+      },
+      {
+        "id": 50002,
+        "sender_id": 1001,
+        "content": null,
+        "type": "text",
+        "sent_at": "2025-01-10T14:35:00Z",
+        "is_read": false,
+        "is_recalled": true,
+        "recalled_at": "2025-01-10T14:36:00Z",
+        "is_content_visible": false
       }
     ]
   },
   "meta": { "total": 42, "page": 1, "last_page": 1 }
 }
 ```
+
+> 對 `super_admin`：`messages[].content` 對 recalled 訊息會回傳原文、`is_content_visible: true`。
+> 對 `admin`：如範例所示 `content: null`、`is_content_visible: false`。
+> 任一角色看到 recalled 訊息原文時，後端寫入 `admin_operation_logs`（action `chat_logs_view_recalled`）。
 
 ---
 
@@ -1338,6 +1369,20 @@ GET /api/v1/admin/chat-logs/conversations
 ```
 GET /api/v1/admin/chat-logs/export?user_a={id}&user_b={id}&format=csv
 ```
+
+**CSV 欄位（v1.6）：**
+
+| 欄位 | 說明 |
+|---|---|
+| `message_id` | 訊息 id |
+| `sender_id` / `sender_nickname` | 發送者 |
+| `receiver_id` / `receiver_nickname` | 接收者 |
+| `content` | super_admin 看到原文；admin 看到「[已收回]」（recalled 時） |
+| `type` | text / image / qr_invite |
+| `is_read` | Y / N |
+| `sent_at` / `read_at` | ISO 8601 |
+| `recall_status` | `RECALLED`（已收回）或空（正常） |
+| `recalled_at` | ISO 8601；非 recalled 時為空 |
 
 ---
 

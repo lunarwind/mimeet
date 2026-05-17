@@ -36,6 +36,8 @@ const POINT_SETTING_META: Record<PointSettingKey, { label: string; suffix?: stri
 }
 
 function SystemParamsTab() {
+  const adminUser = useAuthStore((s) => s.user)
+  const isSuperAdmin = adminUser?.role === 'super_admin'
   const [retentionDays, setRetentionDays] = useState(180)
   const [retentionSaving, setRetentionSaving] = useState(false)
 
@@ -80,16 +82,31 @@ function SystemParamsTab() {
   return (
     <div>
       <Card title="資料保留政策（Data Retention）" style={{ marginBottom: 24 }}>
-        <Alert type="info" message="超過保留期限的軟刪除訊息、隔離區檔案與用戶活動日誌將被每日排程永久清除。" showIcon style={{ marginBottom: 16 }} />
+        <Alert type="info" message="超過保留期限的已收回訊息、隔離區檔案與用戶活動日誌將被每日排程永久清除。" showIcon style={{ marginBottom: 16 }} />
+        {!isSuperAdmin && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="僅 super_admin 可修改資料保留天數"
+            description="此設定影響全平台已收回訊息、隔離區檔案與活動日誌的物理銷毀時點，需 super_admin 權限。"
+          />
+        )}
         <div style={{ maxWidth: 400 }}>
           <Text strong>資料物理銷毀期限</Text>
-          <InputNumber
-            value={retentionDays}
-            onChange={(v) => setRetentionDays(v || 30)}
-            min={30} max={730}
-            style={{ width: '100%', marginTop: 4 }}
-            addonAfter="天"
-          />
+          {isSuperAdmin ? (
+            <InputNumber
+              value={retentionDays}
+              onChange={(v) => setRetentionDays(v || 30)}
+              min={30} max={730}
+              style={{ width: '100%', marginTop: 4 }}
+              addonAfter="天"
+            />
+          ) : (
+            <div style={{ marginTop: 4 }}>
+              <Text>{retentionDays} 天（僅 super_admin 可修改）</Text>
+            </div>
+          )}
           <div style={{ marginTop: 4 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
               建議值：180 天（約 6 個月）。最低 30 天，最高 730 天。
@@ -97,7 +114,7 @@ function SystemParamsTab() {
           </div>
         </div>
         <Divider />
-        <Button type="primary" icon={<SaveOutlined />} onClick={saveRetention} loading={retentionSaving}>儲存保留政策</Button>
+        <Button type="primary" icon={<SaveOutlined />} onClick={saveRetention} loading={retentionSaving} disabled={!isSuperAdmin}>儲存保留政策</Button>
       </Card>
 
       <Card title="💎 點數消費設定（F40）" style={{ marginBottom: 24 }}>
