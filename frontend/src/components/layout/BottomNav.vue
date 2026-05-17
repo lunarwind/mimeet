@@ -111,7 +111,12 @@ const { unreadCount } = storeToRefs(notificationStore)
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--bottom-nav-height);
+  /* Tailwind v4 預設 box-sizing: border-box → height 鎖死含 padding，
+     必須用 --app-bottom-inset（含 env(safe-area-inset-bottom)）才能讓
+     content 區 = var(--bottom-nav-height) 足夠容納 items（24 icon + 2 gap + 10 label + 16 padding = 52px）。
+     若仍寫 var(--bottom-nav-height)，iOS 上 content 區會被 padding 吃到只剩 30px，
+     items 溢出 box 頂端蓋住上層內容（2026-05-17 bug 根因）。 */
+  height: var(--app-bottom-inset);
   background: white;
   border-top: 0.5px solid #e5e7eb;
   display: flex;
